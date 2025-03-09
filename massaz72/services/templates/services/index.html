@@ -1,0 +1,49 @@
+{% extends "services/base.html" %}
+{% load static %}
+{% block body %}
+  <header class="header container">
+    <div class="header__container text-center row">
+      <div class="header__logo col-3">
+        <a aria-label="Логотип"><img class="img-fluid h-25" src="{% static '/img/logo.png' %}" alt="Logo"></a>
+      </div>
+      <div class="header__nav col-9">
+        <nav class="nav header__nav header__2 justify-content-between flex" aria-label="Главная" data-menu>
+          <ul class="nav list-reset justify-content-between nav__list">
+            <li class="nav__item"><a href="#project" class="nav__link">Детский массаж</a></li>
+            <li class="nav__item"><a href="#services" class="nav__link">Взрослый массаж</a></li>
+            <li class="nav__item"><a href="#contacts" class="nav__link">Контакты</a></li>
+            <li class="nav__item"><a href="#studio" class="nav__link">О студии</a></li>
+          </ul>
+          <a href="tel:749542423532" class="header__phone">
+            <!-- <svg class="header__call-svg">
+              <use xlink:href="../img/sprite.svg#call"></use>
+            </svg> -->
+            +7 495 424-23-532
+          </a>
+        </nav>
+      </div>
+    </div>
+    <div class="text-center">
+      <div class="row">
+        <h2>Список массажей</h2>
+        <ul>
+          {% for massage in massages %}
+            <li>
+              {{ massage.name }} - {{ massage.price }}
+              <img src="{{ massage.image.url }}" alt="{{ massage.name }}">
+            </li>
+          {% endfor %}
+        </ul>
+        <!-- <div class="col"> -->
+        <!--   Колонка -->
+        <!-- </div> -->
+        <!-- <div class="col"> -->
+        <!--   Колонка -->
+        <!-- </div> -->
+        <!-- <div class="col"> -->
+        <!--   Колонка -->
+        <!-- </div> -->
+      </div>
+    </div>
+  </header>
+{% endblock %}
