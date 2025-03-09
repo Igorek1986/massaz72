@@ -13,6 +13,6 @@ RUN poetry config virtualenvs.create false && \
 
 COPY massaz72 .
 
-RUN python manage.py collectstatic
+RUN python manage.py collectstatic --noinput
 
 CMD ["gunicorn", "massaz72.wsgi:application", "--bind", "0.0.0.0:8000"]
