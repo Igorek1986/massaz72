@@ -36,7 +36,7 @@ SECRET_KEY = getenv(
 DEBUG = getenv("DJANGO_DEBUG", "0") == "1"
 
 ALLOWED_HOSTS = getenv("ALLOWED_HOSTS", "").split(",")
-
+CSRF_TRUSTED_ORIGINS = getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
 
 # Application definition
 
