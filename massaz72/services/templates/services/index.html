@@ -1,49 +1,67 @@
 {% extends "services/base.html" %}
 {% load static %}
 {% block body %}
-  <header class="header container">
-    <div class="header__container text-center row">
-      <div class="header__logo col-3">
-        <a aria-label="Логотип"><img class="img-fluid h-25" src="{% static '/img/logo.png' %}" alt="Logo"></a>
+  <header class="header">
+    <div class="container header__container grid">
+      <div class="flex header__logo">
+        <a aria-label="Логотип"><img class="" src="{% static '/img/logo.png' %}" alt="Logo"></a>
       </div>
-      <div class="header__nav col-9">
-        <nav class="nav header__nav header__2 justify-content-between flex" aria-label="Главная" data-menu>
-          <ul class="nav list-reset justify-content-between nav__list">
-            <li class="nav__item"><a href="#project" class="nav__link">Детский массаж</a></li>
-            <li class="nav__item"><a href="#services" class="nav__link">Взрослый массаж</a></li>
-            <li class="nav__item"><a href="#contacts" class="nav__link">Контакты</a></li>
+      <div class="header__nav">
+        <nav class="nav header__nav header__2 flex" aria-label="Главная" data-menu>
+          <ul class="flex nav list-reset nav__list">
+            <li class="nav__item"><a href="#cids" class="nav__link">Детский массаж</a></li>
+            <li class="nav__item"><a href="#massage" class="nav__link">Взрослый массаж</a></li>
+            <!-- <li class="nav__item"><a href="#contacts" class="nav__link">Контакты</a></li> -->
             <li class="nav__item"><a href="#studio" class="nav__link">О студии</a></li>
           </ul>
-          <a href="tel:749542423532" class="header__phone">
-            <!-- <svg class="header__call-svg">
-              <use xlink:href="../img/sprite.svg#call"></use>
-            </svg> -->
-            +7 495 424-23-532
-          </a>
         </nav>
       </div>
     </div>
-    <div class="text-center">
-      <div class="row">
-        <h2>Список массажей</h2>
-        <ul>
-          {% for massage in massages %}
-            <li>
-              {{ massage.name }} - {{ massage.price }}
-              <img src="{{ massage.image.url }}" alt="{{ massage.name }}">
-            </li>
-          {% endfor %}
-        </ul>
-        <!-- <div class="col"> -->
-        <!--   Колонка -->
-        <!-- </div> -->
-        <!-- <div class="col"> -->
-        <!--   Колонка -->
-        <!-- </div> -->
-        <!-- <div class="col"> -->
-        <!--   Колонка -->
-        <!-- </div> -->
-      </div>
-    </div>
   </header>
+  <main>
+    <section class="massage">
+      <div class="container">
+        <h1 class="massage__title">
+          Твой массажист
+        </h1>
+      </div>
+    </section>
+    <section class="service">
+      <div class="container">
+        <div class="">
+          <h2>Список массажей</h2>
+          <h3>Детские массажи</h3>
+          <ul class="list-reset service__card">
+            {% for massage in child_massages %}
+            <li class="service__image" style="background-image: url('{{ massage.image.url }}');">
+              <div class="service-info">
+                <h3 class="service-name">{{ massage.name }}</h3>
+                <p class="service-price">Price: {{ massage.price }}</p>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          <!-- <ul class="list-reset services__card"> -->
+          <!--   {% for massage in massages %} -->
+          <!--   <li> -->
+          <!--     {{ massage.name }} - {{ massage.price }} -->
+          <!--     <img src="{{ massage.image.url }}" alt="{{ massage.name }}"> -->
+          <!--   </li> -->
+          <!--   {% endfor %} -->
+          <!-- </ul> -->
+          <h3>Взрослые массажи</h3>
+          <ul class="list-reset service__card">
+              {% for massage in adult_massages %}
+              <li class="service__image" style="background-image: url('{{ massage.image.url }}');">
+                  <div class="service-info">
+                      <h3 class="service-name">{{ massage.name }}</h3>
+                      <p class="service-price">Цена: {{ massage.price }}</p>
+                  </div>
+              </li>
+              {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
 {% endblock %}

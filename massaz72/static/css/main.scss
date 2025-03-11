@@ -1,14 +1,17 @@
 // базовые подключения
-// @import "vars";
-// @import "mixins";
+@import "vars";
+@import "mixins";
+
 // @import "fonts";
-// @import "settings";
+@import "settings";
 
 // подключения компонентов страницы
 // @import "./components/btn";
 // @import "./components/placeholder";
-// @import "./components/header";
-// @import "./components/hero";
+@import "./components/header";
+@import "./components/massage";
+@import "./components/service";
+
 // @import "./components/studios";
 // @import "./components/project";
 // @import "./components/contact";
@@ -20,7 +23,3 @@ body {
   font-family: "Arial", sans-serif;
   color: #fff;
   background-color: #3498db; }
-
-.header {
-  height: 50px;
-}

@@ -29,12 +29,28 @@ class Category(models.Model):
 
 
 class Massage(models.Model):
+    ADULT = 'adult'
+    CHILD = 'child'
+    MASSAGE_TYPE_CHOICES = [
+        (ADULT, 'Взрослый'),
+        (CHILD, 'Детский'),
+    ]
+
     name = models.CharField(max_length=255, verbose_name="Название массажа")
     price = models.DecimalField(
         max_digits=10, decimal_places=2, verbose_name="Стоимость"
     )
     description = models.TextField(verbose_name="Описание", blank=True, null=True)
-    duration = models.PositiveIntegerField(verbose_name="Продолжительность (в минутах)")
+    duration_min = models.PositiveIntegerField(verbose_name="Минимальная продолжительность (в минутах)")
+    duration_max = models.PositiveIntegerField(verbose_name="Максимальная продолжительность (в минутах)")
+    # duration = models.PositiveIntegerField(verbose_name="Продолжительность (в минутах)")
+    massage_type = models.CharField(
+        max_length=5,
+        choices=MASSAGE_TYPE_CHOICES,
+        default=CHILD,
+        verbose_name="Тип массажа"
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name="Очередность")
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
@@ -63,3 +79,4 @@ class Massage(models.Model):
     class Meta:
         verbose_name = "Массаж"
         verbose_name_plural = "Массажи"
+        ordering = ['massage_type', 'order']  # Сортировка по типу и очередности

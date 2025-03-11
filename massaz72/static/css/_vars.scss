@@ -1,0 +1,13 @@
+// если вы хотите использовать sass-переменные - удалите root
+// colors
+:root {
+  // base
+  --font-family: "Roboto", sans-serif;
+  --second-family: "TT Firs Neue", sans-serif;
+  --third-family: "Muller", sans-serif;
+  --content-width: 1290px;
+  --container-offset: 15px;
+  --container-width: calc(var(--content-width) + (var(--container-offset) * 2));
+  --offset: 30px;
+
+}

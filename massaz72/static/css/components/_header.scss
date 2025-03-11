@@ -1,0 +1,22 @@
+.header {
+  padding: 23px 0;
+  background-color: #202020;
+
+  &__container {
+    align-items: center;
+  }
+
+  &__logo {
+    grid-column: 2 span;
+  }
+
+  &__nav {
+    grid-column: 4 / -1;
+  }
+}
+
+.nav {
+  &__list {
+    gap: 120px;
+  }
+}

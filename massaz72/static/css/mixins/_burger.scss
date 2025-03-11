@@ -1,0 +1,82 @@
+/* stylelint-disable */
+
+@mixin burger {
+  --burger-width: 30px;
+  --burger-height: 30px;
+  --burger-line-height: 2px;
+
+  position: relative;
+  border: none;
+  padding: 0;
+  width: var(--burger-width);
+  height: var(--burger-height);
+  color: #000;
+  background-color: transparent;
+  cursor: pointer;
+  background-size: 0;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: var(--burger-line-height);
+    background-color: currentColor;
+    transition: transform 0.3s ease-in-out, top 0.3s ease-in-out;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 50%;
+    height: var(--burger-line-height);
+    background-color: currentColor;
+    transition: transform 0.3s ease-in-out, top 0.3s ease-in-out;
+  }
+
+  &::before {
+    top: 0;
+  }
+
+  &::after {
+    top: calc(100% - var(--burger-line-height));
+  }
+
+  &__line {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: var(--burger-line-height);
+    background-color: currentColor;
+    transform: translateY(-50%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  &--active {
+    top: -70px;
+    left: 5px;
+    background-image: url("../../img/x.png");
+    background-repeat: no-repeat;
+    // opacity: 1;
+    background-size: 100%;
+    transition: background-size 0.3s ease-in-out;
+
+    &::before {
+      height: 0;
+      top: 0;
+      transition: transform 0.3s ease-in-out, top 0.3s ease-in-out;
+    }
+
+    &::after {
+      height: 0;
+      top: 0;
+      transition: transform 0.3s ease-in-out, top 0.3s ease-in-out;
+    }
+
+    .burger__line {
+      height: 0;
+    }
+  }
+}
