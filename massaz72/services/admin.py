@@ -20,7 +20,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Massage)
 class MassageAdmin(admin.ModelAdmin):
-    list_display = ("name", "price", "duration", "category")
+    list_display = ("name", "price", "duration_min", "duration_max", "category")
     list_filter = ("category",)
     search_fields = ("name", "description")
     readonly_fields = ("created_at", "updated_at")
@@ -31,8 +31,11 @@ class MassageAdmin(admin.ModelAdmin):
                 "fields": (
                     "name",
                     "price",
+                    "order",
                     "description",
-                    "duration",
+                    "duration_min",
+                    "duration_max",
+                    "massage_type",
                     "category",
                     "image",
                 )
