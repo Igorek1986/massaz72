@@ -3,23 +3,48 @@
   &__card {
     display: grid;
     justify-items: center; /* Центрирует элементы по горизонтали */
-    grid-auto-rows: 300px;
+    grid-auto-rows: 200px;
     grid-template-columns: repeat(3, 1fr);
     gap: 30px;
   }
 
   &__image {
+    position: relative;
     width: 100%;
     height: 100%;
-     background-position: center;
-    background-size: contain;
+    background-position: center;
+    background-size: cover;
     background-repeat: no-repeat;
+    cursor: pointer;
   }
 
-  &__image:nth-child(4n):last-child,
-  &__image:nth-child(4n + 3):last-child {
-    grid-column: 1 / span 3;
+  &__name {
+    /* position: relative; */
+    left: 5px;
+    top: 5px;
+    margin: 0;
+    padding: 2px 5px;
+    background-color: var(--black);
   }
+
+  &__price {
+    position: relative;
+    left: 5px;
+    top: 5px;
+    margin: 0;
+  }
+
+  &__duration {
+    position: absolute;
+    left: 5px;
+    bottom: 5px;
+    margin: 0;
+  }
+
+  /* &__image:nth-child(4n):last-child, */
+  /* &__image:nth-child(4n + 3):last-child { */
+  /*   grid-column: 1 / span 3; */
+  /* } */
 
   /* &__image:nth-child(2):nth-last-child(-n+2), */
   /* &__image:nth-child(1):nth-last-child(-n+2) { */

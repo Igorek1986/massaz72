@@ -33,32 +33,30 @@
           <h3>Детские массажи</h3>
           <ul class="list-reset service__card">
             {% for massage in child_massages %}
-            <li class="service__image" style="background-image: url('{{ massage.image.url }}');">
-              <div class="service-info">
-                <h3 class="service-name">{{ massage.name }}</h3>
-                <p class="service-price">Price: {{ massage.price }}</p>
-              </div>
-            </li>
+            <!-- <li class="service__image" style="background-image: url('{{ massage.image.url }}');"> -->
+              <a href="{% url 'massage_detail' pk=massage.pk %}" class="service__image" style="background-image: url('{{ massage.image.url }}');">
+                <div class="service__info">
+                  <h3 class="service__name">{{ massage.name }}</h3>
+                  <p class="service__price">Стоимость: {{ massage.price }}</p>
+                  <p class="service__duration">Продолжительность от {{ massage.duration_min }} до {{ massage.duration_max  }}</p>
+                </div>
+              </a>
+            <!-- </li> -->
             {% endfor %}
           </ul>
-          <!-- <ul class="list-reset services__card"> -->
-          <!--   {% for massage in massages %} -->
-          <!--   <li> -->
-          <!--     {{ massage.name }} - {{ massage.price }} -->
-          <!--     <img src="{{ massage.image.url }}" alt="{{ massage.name }}"> -->
-          <!--   </li> -->
-          <!--   {% endfor %} -->
-          <!-- </ul> -->
           <h3>Взрослые массажи</h3>
           <ul class="list-reset service__card">
-              {% for massage in adult_massages %}
-              <li class="service__image" style="background-image: url('{{ massage.image.url }}');">
-                  <div class="service-info">
-                      <h3 class="service-name">{{ massage.name }}</h3>
-                      <p class="service-price">Цена: {{ massage.price }}</p>
-                  </div>
-              </li>
-              {% endfor %}
+            {% for massage in adult_massages %}
+            <!-- <li class="service__image" style="background-image: url('{{ massage.image.url }}');"> -->
+              <a href="{% url 'massage_detail' pk=massage.pk %}" class="service__image" style="background-image: url('{{ massage.image.url }}');">
+              <div class="service__info">
+                <h3 class="service__name">{{ massage.name }}</h3>
+                <p class="service__price">Стоимость: {{ massage.price }}</p>
+                <p class="service__duration">Продолжительность от {{ massage.duration_min }} до {{ massage.duration_max  }}</p>
+              </div>
+              </a>
+            <!-- </li> -->
+            {% endfor %}
           </ul>
         </div>
       </div>

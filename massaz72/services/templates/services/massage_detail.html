@@ -1,0 +1,26 @@
+{% extends "services/base.html" %}
+
+{% block title %}
+{{ massage.name }}
+{% endblock %}
+
+{% block body %}
+  <h1 class="massage__name">Массаж {{ massage.name }}</h1>
+  <div>
+    <div class="massage__name">
+      {{ message.name }}
+    </div>
+    <div class="massage__description">
+      {{ massage.description }}
+    </div>
+    <div class="massage_price">
+      Стоимость: {{ massage.price }}
+    </div>
+    <div class="massage__duration">
+      Продолжительность массажа {{ massage.duration_min }} - {{ massage.duration_max }} минут
+    </div>
+  </div>
+  <div class="massage__back">
+    <a href="{% url 'index' %}">Назад</a>
+  </div>
+{% endblock %}
