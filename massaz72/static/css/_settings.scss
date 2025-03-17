@@ -90,6 +90,10 @@ a {
   margin: 0 auto;
   padding: 0 var(--container-offset);
   max-width: var(--container-width);
+
+  @include mobile {
+    padding: 0;
+  }
 }
 
 .js-focus-visible :focus:not(.focus-visible) {
@@ -178,4 +182,34 @@ a {
     display: block;
   }
 
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  -ms-grid-rows: auto 1fr auto;
+
+  @include mobile {
+    min-height: -webkit-fill-available;
+  }
+}
+
+header {
+  -ms-grid-row: 1;
+  grid-row: 1;
+}
+
+.content {
+  -ms-grid-row: 2;
+  grid-row: 2;  /* Основное место под солнцем */
+  padding-top: var(--offset);
+  background-image: url("../img/background.jpeg");
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+footer {
+  -ms-grid-row: 3;
+  grid-row: 3;
 }

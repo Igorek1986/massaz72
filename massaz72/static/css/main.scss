@@ -1,25 +1,12 @@
 // базовые подключения
 @import "vars";
 @import "mixins";
-
-// @import "fonts";
+@import "fonts";
 @import "settings";
 
 // подключения компонентов страницы
-// @import "./components/btn";
-// @import "./components/placeholder";
 @import "./components/header";
 @import "./components/massage";
 @import "./components/service";
-
-// @import "./components/studios";
-// @import "./components/project";
-// @import "./components/contact";
-// @import "./components/footer";
-
-
-// тестовые стили
-body {
-  font-family: "Arial", sans-serif;
-  color: #fff;
-  background-color: #3498db; }
+@import "./components/contact";
+@import "./components/footer";

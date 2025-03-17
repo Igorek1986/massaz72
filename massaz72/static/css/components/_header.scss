@@ -1,22 +1,90 @@
 .header {
   padding: 23px 0;
-  background-color: #202020;
+  background-color: var(--main-color-bg);
 
   &__container {
-    align-items: center;
+            align-items: center;
+    -webkit-box-align: center;
+        -ms-flex-align: center;
+
+    @include mobile {
+      grid-template-columns: 50px 1fr;
+      gap: 15px;
+      -ms-grid-columns: 50px 15px 1fr;
+    }
   }
 
   &__logo {
-    grid-column: 2 span;
+    width: 50px;
+  }
+
+
+  &__logo-img:hover {
+    transform: scale(1.5);
+  }
+
+  &__logo-link {
+    display: inline-block;
+    outline: none;
+}
+
+  &__logo-img {
+      width: 50px;
+      transition: transform 0.3s ease-in-out;
   }
 
   &__nav {
-    grid-column: 4 / -1;
+    justify-items: center;
+    grid-column: 2 / -1;
+
+  }
+
+  &__logo-link:hover &__logo-img,
+  &__logo-link:focus &__logo-img {
+      transform: scale(1.5);
+  }
+
+  &__logo-link:active &__logo-img {
+      transform: scale(1.2);
   }
 }
 
 .nav {
   &__list {
     gap: 120px;
+
+    @include mobile {
+              align-items: center;
+      -webkit-box-align: center;
+          -ms-flex-align: center;
+      gap: 15px;
+    }
+  }
+
+  &__link {
+    font-family: var(--second-family);
+    font-weight: 400;
+    font-size: 16px;
+    color: var(--light-color-text);
+    -webkit-transition: color 0.3s ease-in-out;
+    -o-transition: color 0.3s ease-in-out;
+    transition: color 0.3s ease-in-out;
+
+    @include mobile {
+      font-size: 12px;
+    }
+  }
+
+  &__link:hover {
+    color: var(--interactive-color);
+  }
+
+  &__link:focus {
+    outline: none;
+    color: var(--interactive-color);
+  }
+
+  &__link:active {
+    color: var(--interactive-color);
   }
 }

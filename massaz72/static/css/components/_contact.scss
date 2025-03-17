@@ -1,0 +1,133 @@
+.contact {
+  padding-bottom: var(--offset);
+
+  &__title {
+    margin: 0;
+    margin-bottom: calc(var(--offset) / 2);
+    padding: 0;
+    font-family: var(--second-family);
+    font-weight: 700;
+    font-size: 24px;
+    color: var(--main-color-text);
+
+    @include tablet {
+      font-size: 20px;
+    }
+  }
+
+  &__container{
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+        -ms-flex-direction: column;
+            flex-direction: column;
+    -webkit-box-align: center;
+        -ms-flex-align: center;
+            align-items: center;
+    text-align: center;
+  }
+
+  &__icons {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    gap: var(--offset);
+  }
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.telegram {
+  outline: none;
+
+  &__icon {
+    fill: #37aee2;
+    -webkit-transition: fill 0.3s ease-in-out;
+    -o-transition: fill 0.3s ease-in-out;
+    transition: fill 0.3s ease-in-out;
+
+    &-path1 {
+      fill: #c8daea;
+    }
+
+    &-path2 {
+      fill: #a9c9dd;
+    }
+
+    &-path3 {
+      fill: #f6fbfe;
+    }
+
+    &:hover {
+      fill: var(--main-color-bg);
+    }
+  }
+
+  &:focus {
+    .telegram__icon {
+      fill: var(--main-color-bg);
+    }
+  }
+
+  &:active {
+    .telegram__icon {
+      fill: var(--main-color-bg);
+    }
+  }
+}
+
+.whatsapp {
+  outline: none;
+
+  &__icon {
+    fill: #25d366;
+    -webkit-transition: fill 0.3s ease-in-out;
+    -o-transition: fill 0.3s ease-in-out;
+    transition: fill 0.3s ease-in-out;
+
+    &-path1 {
+      fill: #25d366;
+      stroke: #fff;
+      -webkit-transition: fill 0.3s ease-in-out;
+      -o-transition: fill 0.3s ease-in-out;
+      transition: fill 0.3s ease-in-out;
+    }
+
+    &-path2 {
+      fill: #fff;
+    }
+
+    &:hover {
+      fill: var(--main-color-bg);
+
+      .whatsapp__icon-path1 {
+        fill: var(--main-color-bg);
+      }
+    }
+  }
+
+  &:focus {
+    .whatsapp__icon {
+      fill: var(--main-color-bg);
+    }
+
+    .whatsapp__icon-path1 {
+      fill: var(--main-color-bg);
+    }
+  }
+
+  &:active {
+    .whatsapp__icon {
+      fill: var(--main-color-bg);
+    }
+
+    .whatsapp__icon-path1 {
+      fill: var(--main-color-bg);
+    }
+  }
+}
