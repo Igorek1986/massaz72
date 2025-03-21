@@ -11,8 +11,6 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false && \
     poetry install --no-root --no-interaction --no-ansi
 
-RUN python manage.py collectstatic --noinput --clear
-
-COPY massaz72 ./massaz72/
+COPY massaz72 .
 
 CMD ["gunicorn", "massaz72.wsgi:application", "--bind", "0.0.0.0:8000"]
