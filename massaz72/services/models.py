@@ -58,6 +58,7 @@ class Massage(models.Model):
         blank=True,
         null=True,
     )
+    slug = models.SlugField(max_length=200, unique=True, blank=True, null=True, verbose_name="URL")
     image = models.ImageField(
         upload_to="massage_images/", verbose_name="Изображение", blank=True, null=True
     )

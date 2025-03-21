@@ -20,6 +20,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Massage)
 class MassageAdmin(admin.ModelAdmin):
+    prepopulated_fields = {"slug": ("name", )}
     list_display = ("name", "order", "price", "duration_min", "duration_max", "category")
     list_filter = ("category",)
     search_fields = ("name", "description")
@@ -30,6 +31,7 @@ class MassageAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "name",
+                    "slug",
                     "price",
                     "order",
                     "description",

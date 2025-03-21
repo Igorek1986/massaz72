@@ -42,7 +42,6 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 год
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
@@ -55,6 +54,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    "main",
     "services",
     "sass_processor",
 ]
@@ -82,6 +83,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+
+                "main.context_processors.common_context",
             ],
         },
     },
@@ -166,6 +169,8 @@ SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+TELEGRAM_USERNAME = getenv("TELEGRAM_USERNAME")
+WHATSAPP_NUMBER = getenv("WHATSAPP_NUMBER")
 
 LOGLEVEL = getenv("DJANGO_LOGLEVEL", "info").upper()
 logging.config.dictConfig(
