@@ -37,6 +37,8 @@ DEBUG = getenv("DJANGO_DEBUG", "0") == "1"
 
 ALLOWED_HOSTS = getenv("ALLOWED_HOSTS", "").split(",")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+
 
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 год
@@ -54,7 +56,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     "main",
     "services",
     "sass_processor",
@@ -83,13 +84,11 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-
                 "main.context_processors.common_context",
             ],
         },
     },
 ]
-
 
 
 WSGI_APPLICATION = "massaz72.wsgi.application"
@@ -99,7 +98,6 @@ WSGI_APPLICATION = "massaz72.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": getenv("DB_NAME"),
