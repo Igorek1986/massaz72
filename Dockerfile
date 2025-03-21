@@ -11,8 +11,6 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false && \
     poetry install --no-root --no-interaction --no-ansi
 
-RUN mkdir -p /app/staticfiles
-RUN python manage.py compilescss
 RUN python manage.py collectstatic --noinput --clear
 
 COPY massaz72 .
