@@ -1,9 +1,10 @@
 from django.urls import path
 
-from .views import MassageDetailView, home
+from .views import MassageDetailView
 
-appname = "services"
+app_name = "services"
 urlpatterns = [
-    path("", home, name="index"),
-    path("massage/<int:pk>/", MassageDetailView.as_view(), name="massage_detail"),
+    # path("<int:pk>/", MassageDetailView.as_view(), name="massage_detail"),
+    path("<slug:slug>/", MassageDetailView.as_view(), name="massage_detail"),
 ]
+

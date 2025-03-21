@@ -42,7 +42,6 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 год
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
@@ -55,6 +54,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    "main",
     "services",
     "sass_processor",
 ]
@@ -82,21 +83,14 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+
+                "main.context_processors.common_context",
             ],
         },
     },
 ]
 
 
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
-]
-
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    "sass_processor.finders.CssFinder",
-]
 
 WSGI_APPLICATION = "massaz72.wsgi.application"
 
@@ -105,10 +99,7 @@ WSGI_APPLICATION = "massaz72.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
+
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": getenv("DB_NAME"),
@@ -156,6 +147,16 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "sass_processor.finders.CssFinder",
+]
+
 MEDIA_URL = "media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 
@@ -168,6 +169,8 @@ SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+TELEGRAM_USERNAME = getenv("TELEGRAM_USERNAME")
+WHATSAPP_NUMBER = getenv("WHATSAPP_NUMBER")
 
 LOGLEVEL = getenv("DJANGO_LOGLEVEL", "info").upper()
 logging.config.dictConfig(
