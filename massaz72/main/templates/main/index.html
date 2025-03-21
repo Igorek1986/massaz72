@@ -1,0 +1,46 @@
+{% extends "main/base.html" %}
+{% load static %}
+{% block body %}
+  <section class="massage">
+    <div class="container">
+      <h1 class="massage__title">
+        Твой массажист
+      </h1>
+    </div>
+  </section>
+  <section class="service">
+    <div class="container">
+      <div class="">
+        <h2 class="service__title">Список массажей</h2>
+        {% if child_massages %}
+        <h3 class="service__subtitle">Детские массажи</h3>
+        <div class="service__card" id="cids">
+          {% for massage in child_massages %}
+          <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}');">
+            <div class="service__info">
+              <h3 class="service__name">{{ massage.name }}</h3>
+              <!-- <p class="service__price">Стоимость: {{ massage.price }}</p> -->
+              <!-- <p class="service__duration">Продолжительность&nbsp;от {{ massage.duration_min }} до {{ massage.duration_max  }}</p> -->
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if adult_massages %}
+        <h3 class="service__subtitle">Массаж</h3>
+        <div class="service__card" id="massage">
+          {% for massage in adult_massages %}
+          <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}');">
+            <div class="service__info">
+              <h3 class="service__name">{{ massage.name }}</h3>
+              <!-- <p class="service__price">Стоимость: {{ massage.price }}</p> -->
+              <!-- <p class="service__duration">Продолжительность&nbsp;от {{ massage.duration_min }} до {{ massage.duration_max  }}</p> -->
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}
