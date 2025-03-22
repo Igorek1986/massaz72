@@ -1,5 +1,8 @@
 from django.db import models
 from django.utils.safestring import mark_safe
+from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
+from django.utils.text import slugify
 
 
 class Category(models.Model):
@@ -11,6 +14,10 @@ class Category(models.Model):
         null=True,
     )
     description = models.TextField(verbose_name="Описание", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name="Дата последнего обновления"
+    )
 
     def __str__(self):
         return self.name
@@ -23,7 +30,6 @@ class Category(models.Model):
         return "Нет изображения"
 
     class Meta:
-
         verbose_name = "Категория"
         verbose_name_plural = "Категории"
 
@@ -77,7 +83,19 @@ class Massage(models.Model):
             )
         return "Нет изображения"
 
+    def clean(self):
+        """Валидация модели"""
+        if self.price < 0:
+            raise ValidationError({'price': 'Цена не может быть отрицательной'})
+        
+        if self.duration_min > self.duration_max:
+            raise ValidationError({'duration_max': 'Максимальная длительность должна быть больше минимальной'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     class Meta:
         verbose_name = "Массаж"
         verbose_name_plural = "Массажи"
-        ordering = ['massage_type', 'order']  # Сортировка по типу и очередности
+        ordering = ["massage_type", "order"]
