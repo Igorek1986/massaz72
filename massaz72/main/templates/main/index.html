@@ -1,5 +1,10 @@
 {% extends "main/base.html" %}
 {% load static %}
+
+{% block title %}
+  Услуги массажа
+{% endblock %}
+
 {% block body %}
   <section class="massage">
     <div class="container">
@@ -8,39 +13,96 @@
       </h1>
     </div>
   </section>
+  {% if about %}
+  <section class="about" id="about">
+    <div class="container">
+      <h2 class="about__title">Обо мне</h2>
+      <div class="about__content">
+        {% if about.photo %}
+        <div class="about__photo">
+          <img src="{{ about.photo.url }}" alt="{{ about.name }}">
+        </div>
+        {% endif %}
+        <div class="about__info">
+          {% if about.name %}
+          <h3>{{ about.name }}</h3>
+          {% endif %}
+          {% if about.start_date %}
+          <p class="about__experience">Опыт работы: {{ about.experience_text }}</p>
+          {% endif %}
+          {% if about.description %}
+          <p class="about__description">{{ about.description }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% if about.certificates.exists %}
+      <div class="about__certificates">
+        <h3 class="service__title">Сертификаты</h3>
+        <div class="service__card">
+          {% for certificate in about.certificates.all %}
+          <div class="service__image" style="background-image: url('{{ certificate.image.url }}')">
+            <div class="service__info">
+              <h4 class="service__name">{{ certificate.title }}</h4>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="certificate-modal">
+    <div class="certificate-modal__content">
+      <button class="certificate-modal__close">&times;</button>
+      <img class="certificate-modal__image" src="" alt="Сертификат">
+    </div>
+  </div>
+
   <section class="service">
     <div class="container">
-      <div class="">
-        <h2 class="service__title">Список массажей</h2>
-        {% if child_massages %}
-        <h3 class="service__subtitle">Детские массажи</h3>
-        <div class="service__card" id="cids">
-          {% for massage in child_massages %}
-          <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}');">
-            <div class="service__info">
-              <h3 class="service__name">{{ massage.name }}</h3>
-              <!-- <p class="service__price">Стоимость: {{ massage.price }}</p> -->
-              <!-- <p class="service__duration">Продолжительность&nbsp;от {{ massage.duration_min }} до {{ massage.duration_max  }}</p> -->
+      {% if child_massages %}
+      <h2 class="service__title" id="cids">Детские массажи</h2>
+      <div class="service__card">
+        {% for massage in child_massages %}
+        <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
+          <div class="service__info">
+            <h3 class="service__name">{{ massage.name }}</h3>
+          </div>
+          <div class="service__info service__info--bottom">
+            <div class="service__name service__name--more">
+              Подробнее 
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12 4l8 8-8 8v-6h-8v-4h8z"/>
+              </svg>
             </div>
-          </a>
-          {% endfor %}
-        </div>
-        {% endif %}
-        {% if adult_massages %}
-        <h3 class="service__subtitle">Массаж</h3>
-        <div class="service__card" id="massage">
-          {% for massage in adult_massages %}
-          <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}');">
-            <div class="service__info">
-              <h3 class="service__name">{{ massage.name }}</h3>
-              <!-- <p class="service__price">Стоимость: {{ massage.price }}</p> -->
-              <!-- <p class="service__duration">Продолжительность&nbsp;от {{ massage.duration_min }} до {{ massage.duration_max  }}</p> -->
-            </div>
-          </a>
-          {% endfor %}
-        </div>
-        {% endif %}
+          </div>
+        </a>
+        {% endfor %}
       </div>
+      {% endif %}
+
+      {% if adult_massages %}
+      <h2 class="service__title" id="massage">Массаж</h2>
+      <div class="service__card">
+        {% for massage in adult_massages %}
+        <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
+          <div class="service__info">
+            <h3 class="service__name">{{ massage.name }}</h3>
+          </div>
+          <div class="service__info service__info--bottom">
+            <div class="service__name service__name--more">
+              Подробнее 
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12 4l8 8-8 8v-6h-8v-4h8z"/>
+              </svg>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
   </section>
 {% endblock %}

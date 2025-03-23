@@ -72,6 +72,7 @@ class Massage(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True, verbose_name="Дата последнего обновления"
     )
+    is_archived = models.BooleanField('В архиве', default=False)
 
     def __str__(self) -> str:
         return self.name

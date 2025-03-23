@@ -133,7 +133,6 @@ a {
     grid-template-columns: repeat(6, 1fr);
   }
 
-
   @include mobile {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -189,10 +188,6 @@ body {
   grid-template-rows: auto 1fr auto;
   min-height: 100vh;
   -ms-grid-rows: auto 1fr auto;
-
-  @include mobile {
-    min-height: -webkit-fill-available;
-  }
 }
 
 header {
