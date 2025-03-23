@@ -26,27 +26,40 @@
       Услуги массажа
     {% endblock %}
   </title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
 <header class="header">
-  <div class="container header__container grid">
-    <div class="flex header__logo">
-      <a class="header__logo-link" href="{% url 'main:index' %}" aria-label="Логотип"><img class="header__logo-img"
-                                                                                           src="{% static '/img/logo.png' %}"
-                                                                                           alt="Logo"></a>
+  <div class="container header__container">
+    <div class="header__logo">
+      <a class="header__logo-link" href="{% url 'main:index' %}" aria-label="Логотип">
+        <img class="header__logo-img" src="{% static '/img/logo.png' %}" alt="Logo">
+      </a>
     </div>
-    <div class="header__nav">
-      <nav class="nav header__nav header__2 flex" aria-label="Главная" data-menu>
-        <ul class="flex list-reset nav__list">
-          <li class="nav__item"><a href="{% url 'main:index' %}#cids" class="nav__link">Детский массаж</a></li>
-          <li class="nav__item"><a href="{% url 'main:index' %}#massage" class="nav__link">Массаж</a></li>
-          <li class="nav__item"><a href="{% url 'main:index' %}#contacts" class="nav__link">Контакты</a></li>
-          <!-- <li class="nav__item"><a href="#studio" class="nav__link">О студии</a></li> -->
-        </ul>
-      </nav>
-    </div>
+    <button class="header__burger">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav class="header__nav">
+      <ul class="nav__list">
+        <li class="nav__item"><a href="{% url 'main:index' %}#cids" class="nav__link">Детский массаж</a></li>
+        <li class="nav__item"><a href="{% url 'main:index' %}#massage" class="nav__link">Массаж</a></li>
+        <li class="nav__item"><a href="{% url 'main:index' %}#about" class="nav__link">Обо мне</a></li>
+        <li class="nav__item"><a href="{% url 'main:index' %}#contacts" class="nav__link">Контакты</a></li>
+      </ul>
+    </nav>
   </div>
 </header>
+<div class="nav-overlay"></div>
+<a href="#" class="scroll-top" aria-label="Прокрутить вверх">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M12 4l-8 8h6v8h4v-8h6z"/>
+  </svg>
+</a>
+<a href="{% url 'main:index' %}#contacts" class="book-btn" aria-label="Записаться на массаж">
+  Записаться
+</a>
 <main class="content">
   {% block body %}
     Сайт находится в&nbsp;разработке
@@ -98,5 +111,69 @@
   </div>
   <div class="flex footer__wave-text">© Твой массажит 2021 - {{ year }}</div>
 </footer>
+<script src="{% static 'js/certificate-modal.js' %}" defer></script>
+<script>
+  // Бургер меню
+  const burger = document.querySelector('.header__burger');
+  const nav = document.querySelector('.header__nav');
+  const overlay = document.querySelector('.nav-overlay');
+  const body = document.body;
+  
+  function closeMenu() {
+    burger.classList.remove('active');
+    nav.classList.remove('active');
+    overlay.classList.remove('active');
+    body.classList.remove('no-scroll');
+  }
+
+  function openMenu() {
+    burger.classList.add('active');
+    nav.classList.add('active');
+    overlay.classList.add('active');
+    body.classList.add('no-scroll');
+  }
+  
+  burger.addEventListener('click', () => {
+    if (nav.classList.contains('active')) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  });
+
+  // Закрытие меню при клике на оверлей
+  overlay.addEventListener('click', closeMenu);
+
+  // Закрытие меню при клике на ссылку
+  document.querySelectorAll('.nav__link').forEach(link => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  // Закрытие меню при нажатии Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && nav.classList.contains('active')) {
+      closeMenu();
+    }
+  });
+
+  // Кнопка прокрутки вверх
+  const scrollTopBtn = document.querySelector('.scroll-top');
+  
+  window.addEventListener('scroll', () => {
+    if (window.pageYOffset > 300) {
+      scrollTopBtn.classList.add('visible');
+    } else {
+      scrollTopBtn.classList.remove('visible');
+    }
+  });
+
+  scrollTopBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  });
+</script>
 </body>
 </html>
