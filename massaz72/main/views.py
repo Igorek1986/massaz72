@@ -1,17 +1,18 @@
 from django.shortcuts import render
-
 from services.models import Massage
+from main.models import About, Certificate
 
 
-def home(request):
-    child_massages = Massage.objects.filter(massage_type=Massage.CHILD).order_by(
-        "order"
-    )
-    adult_massages = Massage.objects.filter(massage_type=Massage.ADULT).order_by(
-        "order"
-    )
+def index(request):
+    # about = About.objects.first()
+    child_massages = Massage.objects.filter(massage_type=Massage.CHILD, is_archived=False)
+    adult_massages = Massage.objects.filter(massage_type=Massage.ADULT, is_archived=False)
+    certificates = Certificate.objects.filter(is_archived=False).order_by('order')
+    
     context = {
-        "child_massages": child_massages,
-        "adult_massages": adult_massages,
+        # 'about': about,
+        'child_massages': child_massages,
+        'adult_massages': adult_massages,
+        'certificates': certificates,
     }
     return render(request, "main/index.html", context=context)
