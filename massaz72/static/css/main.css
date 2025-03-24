@@ -60,7 +60,8 @@
 
 /* stylelint-disable order/order */
 html {
-  box-sizing: border-box; }
+  box-sizing: border-box;
+  scroll-padding-top: 100px; }
 
 *,
 *::before,
