@@ -43,10 +43,10 @@
     </button>
     <nav class="header__nav">
       <ul class="nav__list">
-        <li class="nav__item"><a href="{% url 'main:index' %}#cids" class="nav__link">Детский массаж</a></li>
-        <li class="nav__item"><a href="{% url 'main:index' %}#massage" class="nav__link">Массаж</a></li>
-        <li class="nav__item"><a href="{% url 'main:index' %}#about" class="nav__link">Обо мне</a></li>
-        <li class="nav__item"><a href="{% url 'main:index' %}#contacts" class="nav__link">Контакты</a></li>
+        <li class="nav__item"><a href="{% url 'main:index' %}#cids" class="nav__link">{{ site_settings.child_massage_title }}</a></li>
+        <li class="nav__item"><a href="{% url 'main:index' %}#massage" class="nav__link">{{ site_settings.massage_title }}</a></li>
+        <li class="nav__item"><a href="{% url 'main:index' %}#about" class="nav__link">{{ site_settings.about_title }}</a></li>
+        <li class="nav__item"><a href="{% url 'main:index' %}#contacts" class="nav__link">{{ site_settings.contact_title }}</a></li>
       </ul>
     </nav>
   </div>
@@ -62,7 +62,7 @@
 </a>
 <main class="content">
   {% block body %}
-    Сайт находится в&nbsp;разработке
+
   {% endblock %}
   {% block contact %}
     <section class="contact" id="contacts">
@@ -109,7 +109,7 @@
             stroke="#F5F6F7" stroke-miterlimit="10" stroke-linecap="square"/>
     </svg>
   </div>
-  <div class="flex footer__wave-text">© Твой массажит 2021 - {{ year }}</div>
+  <div class="flex footer__wave-text">© {{ site_settings.main_title }} {{ site_settings.career_start_year }} - {{ year }}</div>
 </footer>
 <script src="{% static 'js/certificate-modal.js' %}" defer></script>
 <script>

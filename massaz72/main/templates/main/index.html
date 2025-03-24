@@ -2,21 +2,21 @@
 {% load static %}
 
 {% block title %}
-  Услуги массажа
+  {{ site_settings.head_title }}
 {% endblock %}
 
 {% block body %}
   <section class="massage">
     <div class="container">
       <h1 class="massage__title">
-        Твой массажист
+        {{ site_settings.main_title }}
       </h1>
     </div>
   </section>
   {% if about %}
   <section class="about" id="about">
     <div class="container">
-      <h2 class="about__title">Обо мне</h2>
+      <h2 class="about__title">{{ site_settings.about_title }}</h2>
       <div class="about__content">
         {% if about.photo %}
         <div class="about__photo">
@@ -63,7 +63,7 @@
   <section class="service">
     <div class="container">
       {% if child_massages %}
-      <h2 class="service__title" id="cids">Детские массажи</h2>
+      <h2 class="service__title" id="cids">{{ site_settings.child_massage_title }}</h2>
       <div class="service__card">
         {% for massage in child_massages %}
         <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
@@ -84,7 +84,7 @@
       {% endif %}
 
       {% if adult_massages %}
-      <h2 class="service__title" id="massage">Массаж</h2>
+      <h2 class="service__title" id="massage">{{ site_settings.massage_title }}</h2>
       <div class="service__card">
         {% for massage in adult_massages %}
         <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">

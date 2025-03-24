@@ -108,3 +108,20 @@ class About(models.Model):
             return f"{years} года"
         else:
             return f"{years} лет"
+
+
+class SiteSettings(models.Model):
+    head_title = models.CharField(verbose_name="Head Title", max_length=100, default="Услуги массажа")
+    main_title = models.CharField(verbose_name="Главный заголовок", max_length=100, default="Твой массажист")
+    child_massage_title = models.CharField(verbose_name="Детский массаж", max_length=100, default="Детский массаж")
+    massage_title = models.CharField(verbose_name="Массаж", max_length=100, default="Массаж")
+    about_title = models.CharField(verbose_name="Обо мне", max_length=100, default="Обо мне")
+    contact_title = models.CharField(verbose_name="Контакты", max_length=50, default="Контакты")
+    career_start_year = models.PositiveIntegerField(verbose_name="Год начала практики массажа", default=2021)
+
+    class Meta:
+        verbose_name = "Настройки сайта"
+        verbose_name_plural = "Настройки сайта"
+
+    def __str__(self):
+        return "Настройки"
