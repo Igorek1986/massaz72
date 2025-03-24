@@ -179,4 +179,4 @@ node_modules/
 .DS_Store
 /massaz72/staticfiles/
 .cursorrules
-.cursor/
+/.cursor/
