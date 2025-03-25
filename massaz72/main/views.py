@@ -16,3 +16,6 @@ def index(request):
         'certificates': certificates,
     }
     return render(request, "main/index.html", context=context)
+
+def cookies(request):
+    return render(request, 'main/cookies.html')

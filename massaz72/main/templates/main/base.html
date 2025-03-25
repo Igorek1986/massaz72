@@ -100,6 +100,14 @@
       </div>
     </section>
   {% endblock %}
+  <!-- Блок уведомления о cookies -->
+  <div class="cookie-notice" id="cookieNotice">
+    <p>Мы используем файлы cookie для улучшения работы сайта. Продолжая использовать сайт, вы соглашаетесь с использованием файлов cookie.</p>
+    <div class="cookie-buttons">
+      <button class="accept-cookies">Хорошо</button>
+      <button class="cookie-details" onclick="window.location.href='{% url 'main:cookies' %}'">Подробнее</button>
+    </div>
+  </div>
 </main>
 <footer class="footer">
   <div>
@@ -174,6 +182,21 @@
       behavior: 'smooth'
     });
   });
+
+  /* Управление cookies */
+  function acceptCookies() {
+    document.querySelector('.cookie-notice').style.display = 'none';
+    localStorage.setItem('cookiesAccepted', 'true');
+  }
+
+  window.addEventListener('load', function() {
+    if (!localStorage.getItem('cookiesAccepted')) {
+      document.querySelector('.cookie-notice').style.display = 'flex';
+    }
+  });
+
+  // Добавляем обработчик для кнопки "Хорошо"
+  document.querySelector('.accept-cookies').addEventListener('click', acceptCookies);
 </script>
 </body>
 </html>
