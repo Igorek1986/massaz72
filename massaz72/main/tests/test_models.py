@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from datetime import date, timedelta, datetime
-from main.models import About, Certificate
+from main.models import About, Certificate, SiteSettings
 import os
 from django.conf import settings
 import shutil
@@ -154,3 +154,51 @@ class CertificateModelTest(TestCase):
         certificates = Certificate.objects.all()
         self.assertEqual(certificates[0].title, "Второй сертификат")
         self.assertEqual(certificates[1].title, "Тестовый сертификат") 
+        
+
+class SiteSettingsTest(TestCase):
+    def setUp(self):
+        """Создаем тестовые данные"""
+        self.settings = SiteSettings.objects.create(
+            head_title="Тестовый заголовок",
+            main_title="Главный заголовок",
+            main_subtitle="Подзаголовок",
+            child_massage_title="Детский массаж",
+            massage_title="Массаж",
+            about_title="Обо мне",
+            contact_title="Контакты",
+            career_start_year=2021
+        )
+
+    def test_str_representation(self):
+        """Тест строкового представления модели"""
+        self.assertEqual(str(self.settings), "Настройки")
+
+    def test_default_values(self):
+        """Тест значений по умолчанию"""
+        settings = SiteSettings.objects.create()
+        self.assertEqual(settings.head_title, "Услуги массажа")
+        self.assertEqual(settings.main_title, "Твой массажист")
+        self.assertEqual(settings.main_subtitle, "Специалист по массажу")
+        self.assertEqual(settings.child_massage_title, "Детский массаж")
+        self.assertEqual(settings.massage_title, "Массаж")
+        self.assertEqual(settings.about_title, "Обо мне")
+        self.assertEqual(settings.contact_title, "Контакты")
+        self.assertEqual(settings.career_start_year, 2021)
+
+    def test_background_upload(self):
+        """Тест загрузки фонового изображения"""
+        test_image = SimpleUploadedFile(
+            name='test_background.jpg',
+            content=b'x' * 10,
+            content_type='image/jpeg'
+        )
+        self.settings.background = test_image
+        self.settings.save()
+        self.assertTrue(self.settings.background)
+        self.assertTrue(os.path.exists(self.settings.background.path))
+
+    def test_verbose_names(self):
+        """Тест verbose_names"""
+        self.assertEqual(SiteSettings._meta.verbose_name, "Настройки сайта")
+        self.assertEqual(SiteSettings._meta.verbose_name_plural, "Настройки сайта")

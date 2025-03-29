@@ -142,12 +142,14 @@
       align-items: center;
       justify-content: center;
       font-size: 10px;
-      gap: 5px;
+      gap: 1px;
 
       svg {
         width: 12px;
         height: 12px;
         fill: var(--light-color-text);
+        stroke: var(--light-color-text);
+        stroke-width: 1;
       }
     }
   }
