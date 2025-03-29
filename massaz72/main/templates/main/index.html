@@ -6,11 +6,13 @@
 {% endblock %}
 
 {% block body %}
-  <section class="massage">
+  <section class="massage" style="background-image: url('{{ site_settings.background.url }}')">
     <div class="container">
-      <h1 class="massage__title">
-        {{ site_settings.main_title }}
-      </h1>
+      <div class="massage__content">
+        <h1 class="massage__title">{{ site_settings.main_title }}</h1>
+        <p class="massage__subtitle">{{ site_settings.main_subtitle }}</p>
+        <a href="#contacts" class="massage__button">Записаться на массаж</a>
+      </div>
     </div>
   </section>
   {% if about %}
@@ -73,8 +75,8 @@
           <div class="service__info service__info--bottom">
             <div class="service__name service__name--more">
               Подробнее 
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M12 4l8 8-8 8v-6h-8v-4h8z"/>
+              <svg width="12" height="12" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M256 120.768L306.432 64 768 512l-461.568 448L256 903.232 659.072 512z"/>
               </svg>
             </div>
           </div>
@@ -94,8 +96,8 @@
           <div class="service__info service__info--bottom">
             <div class="service__name service__name--more">
               Подробнее 
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M12 4l8 8-8 8v-6h-8v-4h8z"/>
+              <svg width="12" height="12" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M256 120.768L306.432 64 768 512l-461.568 448L256 903.232 659.072 512z"/>
               </svg>
             </div>
           </div>

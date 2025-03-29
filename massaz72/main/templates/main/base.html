@@ -53,8 +53,8 @@
 </header>
 <div class="nav-overlay"></div>
 <a href="#" class="scroll-top" aria-label="Прокрутить вверх">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-    <path d="M12 4l-8 8h6v8h4v-8h6z"/>
+  <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <path d="M4 16L12 8L20 16" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
 </a>
 <a href="{% url 'main:index' %}#contacts" class="book-btn" aria-label="Записаться на массаж">
@@ -197,6 +197,38 @@
 
   // Добавляем обработчик для кнопки "Хорошо"
   document.querySelector('.accept-cookies').addEventListener('click', acceptCookies);
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const scrollTopBtn = document.querySelector('.scroll-top');
+    const bookBtn = document.querySelector('.book-btn');
+    let isVisible = false;
+    
+    function toggleButtons() {
+      const shouldBeVisible = window.pageYOffset > 300;
+      
+      if (shouldBeVisible !== isVisible) {
+        isVisible = shouldBeVisible;
+        if (shouldBeVisible) {
+          scrollTopBtn.classList.add('visible');
+          bookBtn.classList.add('visible');
+        } else {
+          scrollTopBtn.classList.remove('visible');
+          bookBtn.classList.remove('visible');
+        }
+      }
+    }
+
+    window.addEventListener('scroll', toggleButtons);
+    toggleButtons(); // Проверяем начальное состояние
+
+    scrollTopBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
+  });
 </script>
 </body>
 </html>

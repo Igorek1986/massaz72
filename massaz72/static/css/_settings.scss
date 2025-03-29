@@ -199,7 +199,6 @@ header {
 .content {
   -ms-grid-row: 2;
   grid-row: 2;  /* Основное место под солнцем */
-  padding-top: var(--offset);
   background-image: url("../img/background.jpeg");
   background-size: cover;
   background-repeat: no-repeat;

@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from services.models import Massage
 from main.models import About, Certificate
+from .models import SiteSettings
 
 
 def index(request):
@@ -11,9 +12,11 @@ def index(request):
     
     context = {
         # 'about': about,
+        'site_settings': SiteSettings.objects.first(),
         'child_massages': child_massages,
         'adult_massages': adult_massages,
         'certificates': certificates,
+        # 'banner': MainBanner.objects.first(),
     }
     return render(request, "main/index.html", context=context)
 
