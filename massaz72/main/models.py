@@ -111,13 +111,18 @@ class About(models.Model):
 
 
 class SiteSettings(models.Model):
+
+    """Модель для хранения основных настроек сайта."""
+    
     head_title = models.CharField(verbose_name="Head Title", max_length=100, default="Услуги массажа")
     main_title = models.CharField(verbose_name="Главный заголовок", max_length=100, default="Твой массажист")
+    main_subtitle = models.CharField(verbose_name="Главный подзаголовок", max_length=100, default="Специалист по массажу")
     child_massage_title = models.CharField(verbose_name="Детский массаж", max_length=100, default="Детский массаж")
     massage_title = models.CharField(verbose_name="Массаж", max_length=100, default="Массаж")
     about_title = models.CharField(verbose_name="Обо мне", max_length=100, default="Обо мне")
     contact_title = models.CharField(verbose_name="Контакты", max_length=50, default="Контакты")
     career_start_year = models.PositiveIntegerField(verbose_name="Год начала практики массажа", default=2021)
+    background = models.ImageField(upload_to='banners/', verbose_name='Фоновое изображение')
 
     class Meta:
         verbose_name = "Настройки сайта"
