@@ -21,7 +21,7 @@
       Продолжительность массажа {{ massage.duration_min }} - {{ massage.duration_max }} минут
     </div>
     <div class="massage__back">
-      <a class="massage__back-text" href="{% url 'main:index' %}">Назад</a>
+      <a class="massage__back-text" href="{% url 'main:index' %}#{{ massage.slug }}">Назад</a>
     </div>
   </div>
 </div>

@@ -116,7 +116,7 @@ class SiteSettings(models.Model):
     
     head_title = models.CharField(verbose_name="Head Title", max_length=100, default="Услуги массажа")
     main_title = models.CharField(verbose_name="Главный заголовок", max_length=100, default="Твой массажист")
-    main_subtitle = models.CharField(verbose_name="Главный подзаголовок", max_length=100, default="Специалист по массажу")
+    main_subtitle = models.CharField(verbose_name="Главный подзаголовок", max_length=100, default="Забота о Вашем здоровье")
     child_massage_title = models.CharField(verbose_name="Детский массаж", max_length=100, default="Детский массаж")
     massage_title = models.CharField(verbose_name="Массаж", max_length=100, default="Массаж")
     about_title = models.CharField(verbose_name="Обо мне", max_length=100, default="Обо мне")
