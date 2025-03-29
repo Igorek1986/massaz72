@@ -68,7 +68,7 @@
       <h2 class="service__title" id="cids">{{ site_settings.child_massage_title }}</h2>
       <div class="service__card">
         {% for massage in child_massages %}
-        <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
+        <a id="{{ massage.slug }}" href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
           <div class="service__info">
             <h3 class="service__name">{{ massage.name }}</h3>
           </div>
@@ -89,7 +89,7 @@
       <h2 class="service__title" id="massage">{{ site_settings.massage_title }}</h2>
       <div class="service__card">
         {% for massage in adult_massages %}
-        <a href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
+        <a id="{{ massage.slug }}" href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
           <div class="service__info">
             <h3 class="service__name">{{ massage.name }}</h3>
           </div>

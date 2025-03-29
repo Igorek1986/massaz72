@@ -9,6 +9,8 @@ services:
       - "0.0.0.0:8000"
     ports:
       - "8000:8000"
+    volumes:
+      - ./massaz72/media:/app/media
     restart: always
     env_file:
         - .env
