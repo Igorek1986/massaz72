@@ -1,15 +1,9 @@
 from django.db import models
-from django.core.exceptions import ValidationError
-from django.conf import settings
 from django.db.models import QuerySet
-import os
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
+from massaz72.utils import delete_old_file, validate_file_size, get_file_path
 
-def validate_file_size(value):
-    filesize = value.size
-    max_size_mb = int(os.getenv('MAX_UPLOAD_SIZE_MB', 5))  # По умолчанию 5MB
-    max_size_bytes = max_size_mb * 1024 * 1024  # Конвертируем MB в байты
-    if filesize > max_size_bytes:
-        raise ValidationError(f'Максимальный размер файла {max_size_mb}MB')
 
 class Certificate(models.Model):
     about = models.ForeignKey(
@@ -21,8 +15,8 @@ class Certificate(models.Model):
     title = models.CharField("Название", max_length=100)
     image = models.ImageField(
         "Изображение сертификата", 
-        upload_to='certificates/',
-        validators=[validate_file_size]
+        upload_to=get_file_path,
+        validators=[validate_file_size],
     )
     date_received = models.DateField("Дата получения", blank=True, null=True)
     order = models.PositiveIntegerField("Порядок отображения", default=0)
@@ -33,7 +27,12 @@ class Certificate(models.Model):
         verbose_name = "Сертификат"
         verbose_name_plural = "Сертификаты"
         ordering = ["order"]
-    
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            delete_old_file(self, 'image')
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.title
 
@@ -46,7 +45,7 @@ class About(models.Model):
     )
     photo = models.ImageField(
         "Фото массажиста",
-        upload_to='about/',
+        upload_to=get_file_path,
         blank=True,
         validators=[validate_file_size],
         help_text="Загрузите профессиональное фото массажиста"
@@ -85,6 +84,11 @@ class About(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if self.pk:
+            delete_old_file(self, 'photo')
+        super().save(*args, **kwargs)
+
     @property
     def experience(self):
         """Вычисляет количество лет опыта работы"""
@@ -114,15 +118,40 @@ class SiteSettings(models.Model):
 
     """Модель для хранения основных настроек сайта."""
     
-    head_title = models.CharField(verbose_name="Head Title", max_length=100, default="Услуги массажа")
-    main_title = models.CharField(verbose_name="Главный заголовок", max_length=100, default="Твой массажист")
-    main_subtitle = models.CharField(verbose_name="Главный подзаголовок", max_length=100, default="Забота о Вашем здоровье")
-    child_massage_title = models.CharField(verbose_name="Детский массаж", max_length=100, default="Детский массаж")
+    head_title = models.CharField(
+        verbose_name="Head Title",
+        max_length=100,
+        default="Услуги массажа",
+        )
+    main_title = models.CharField(
+        verbose_name="Главный заголовок",
+        max_length=100,
+        default="Твой массажист",
+        )
+    main_subtitle = models.CharField(
+        verbose_name="Главный подзаголовок",
+        max_length=100,
+        default="Забота о Вашем здоровье",
+        )
+    child_massage_title = models.CharField(
+        verbose_name="Детский массаж",
+        max_length=100,
+        default="Детский массаж",
+        )
     massage_title = models.CharField(verbose_name="Массаж", max_length=100, default="Массаж")
     about_title = models.CharField(verbose_name="Обо мне", max_length=100, default="Обо мне")
     contact_title = models.CharField(verbose_name="Контакты", max_length=50, default="Контакты")
-    career_start_year = models.PositiveIntegerField(verbose_name="Год начала практики массажа", default=2021)
-    background = models.ImageField(upload_to='banners/', verbose_name='Фоновое изображение')
+    career_start_year = models.PositiveIntegerField(
+        verbose_name="Год начала практики массажа",
+        default=2021,
+        )
+    background = models.ImageField(
+        upload_to=get_file_path,
+        verbose_name='Фоновое изображение',
+        validators=[validate_file_size],
+        blank=True,
+        null=True,
+        )
 
     class Meta:
         verbose_name = "Настройки сайта"
@@ -130,3 +159,29 @@ class SiteSettings(models.Model):
 
     def __str__(self):
         return "Настройки"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            delete_old_file(self, 'background')
+        super().save(*args, **kwargs)
+
+
+@receiver(pre_delete, sender=Certificate)
+def certificate_delete_file(sender, instance, **kwargs):
+    """Удаляет файл при удалении объекта Certificate"""
+    if instance.image:
+        instance.image.delete(False)
+
+
+@receiver(pre_delete, sender=About)
+def about_delete_file(sender, instance, **kwargs):
+    """Удаляет файл при удалении объекта About"""
+    if instance.photo:
+        instance.photo.delete(False)
+
+
+@receiver(pre_delete, sender=SiteSettings)
+def sitesettings_delete_file(sender, instance, **kwargs):
+    """Удаляет файл при удалении объекта SiteSettings"""
+    if instance.background:
+        instance.background.delete(False)

@@ -3,6 +3,8 @@
 import main.models
 from django.db import migrations, models
 
+import massaz72.utils
+
 
 class Migration(migrations.Migration):
 
@@ -43,11 +45,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='about',
             name='photo',
-            field=models.ImageField(blank=True, help_text='Загрузите профессиональное фото массажиста', upload_to='about/', validators=[main.models.validate_file_size], verbose_name='Фото массажиста'),
+            field=models.ImageField(blank=True, help_text='Загрузите профессиональное фото массажиста', upload_to='about/', validators=[
+                massaz72.utils.validate_file_size], verbose_name='Фото массажиста'),
         ),
         migrations.AlterField(
             model_name='certificate',
             name='image',
-            field=models.ImageField(upload_to='certificates/', validators=[main.models.validate_file_size], verbose_name='Изображение сертификата'),
+            field=models.ImageField(upload_to='certificates/', validators=[massaz72.utils.validate_file_size], verbose_name='Изображение сертификата'),
         ),
     ]
