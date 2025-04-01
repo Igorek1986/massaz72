@@ -43,8 +43,8 @@
         <div class="service__card">
           {% for certificate in about.certificates.all %}
           <div class="service__image" style="background-image: url('{{ certificate.image.url }}')">
-            <div class="service__info">
-              <h4 class="service__name">{{ certificate.title }}</h4>
+            <div class="service__info service__info--certificate">
+{#              <h4 class="service__name">{{ certificate.title }}</h4>#}
             </div>
           </div>
           {% endfor %}

@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from django.conf import settings
+
 from .models import About, SiteSettings
 
 
@@ -9,7 +11,7 @@ def common_context(request):
         "telegram_username": settings.TELEGRAM_USERNAME,
         "whatsapp_number": settings.WHATSAPP_NUMBER,
         "year": datetime.now().year,
-        'about': about,
+        "about": about,
     }
 
 

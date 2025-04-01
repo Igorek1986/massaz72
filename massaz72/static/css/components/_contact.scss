@@ -16,22 +16,18 @@
   }
 
   &__container{
-    display: -webkit-box;
-    display: -ms-flexbox;
     display: flex;
-    -webkit-box-orient: vertical;
-    -webkit-box-direction: normal;
         -ms-flex-direction: column;
             flex-direction: column;
-    -webkit-box-align: center;
-        -ms-flex-align: center;
             align-items: center;
     text-align: center;
+    -webkit-box-align: center;
+    -webkit-box-direction: normal;
+    -webkit-box-orient: vertical;
+        -ms-flex-align: center;
   }
 
   &__icons {
-    display: -webkit-box;
-    display: -ms-flexbox;
     display: flex;
     gap: var(--offset);
   }

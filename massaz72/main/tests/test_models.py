@@ -1,13 +1,14 @@
-from django.test import TestCase
+import os
+import shutil
+from datetime import date, datetime
+from unittest.mock import patch
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.utils import timezone
-from datetime import date, timedelta, datetime
+from django.test import TestCase
 from main.models import About, Certificate, SiteSettings
-import os
-from django.conf import settings
-import shutil
-from unittest.mock import patch
+
 
 class AboutModelTest(TestCase):
     def setUp(self):
@@ -17,7 +18,7 @@ class AboutModelTest(TestCase):
             description="Тестовое описание",
             start_date=date(2020, 1, 1),
             is_active=True,
-            order=1
+            order=1,
         )
 
     def test_str_representation(self):
@@ -26,23 +27,20 @@ class AboutModelTest(TestCase):
 
     def test_experience_calculation(self):
         """Тест расчета опыта работы"""
-        with patch('datetime.date') as mock_date:
+        with patch("datetime.date") as mock_date:
             mock_date.today.return_value = date(2024, 3, 23)
             self.assertEqual(self.about.experience, 4)
 
     def test_experience_without_start_date(self):
         """Тест опыта работы без даты начала"""
-        about = About.objects.create(
-            name="Без опыта",
-            description="Тестовое описание"
-        )
+        about = About.objects.create(name="Без опыта", description="Тестовое описание")
         self.assertEqual(about.experience, 0)
 
     def test_experience_text_formatting(self):
         """Тест форматирования текста опыта работы"""
         # Фиксируем текущую дату для теста
         fixed_date = date(2024, 3, 23)  # используем фиксированную дату
-        
+
         test_cases = [
             (date(2023, 3, 23), "1 год"),
             (date(2022, 3, 23), "2 года"),
@@ -50,15 +48,15 @@ class AboutModelTest(TestCase):
             (date(2013, 3, 23), "11 лет"),
             (date(2003, 3, 23), "21 год"),
             (date(2002, 3, 23), "22 года"),
-            (date(1999, 3, 23), "25 лет")
+            (date(1999, 3, 23), "25 лет"),
         ]
-        
+
         for test_date, expected in test_cases:
             with self.subTest(test_date=test_date):
                 self.about.start_date = test_date
                 self.about.save()
                 # Подменяем date.today() на нашу фиксированную дату
-                with patch('datetime.date') as mock_date:
+                with patch("datetime.date") as mock_date:
                     mock_date.today.return_value = fixed_date
                     self.assertEqual(self.about.experience_text, expected)
 
@@ -70,12 +68,13 @@ class AboutModelTest(TestCase):
         self.assertIsInstance(about.created_at, datetime)
         self.assertIsInstance(about.updated_at, datetime)
 
+
 class CertificateModelTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         # Создаем временную директорию для медиафайлов
-        settings.MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'test_media')
+        settings.MEDIA_ROOT = os.path.join(settings.BASE_DIR, "test_media")
         os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
 
     @classmethod
@@ -87,23 +86,22 @@ class CertificateModelTest(TestCase):
     def setUp(self):
         """Создаем тестовые данные"""
         self.about = About.objects.create(
-            name="Тест Тестович",
-            description="Тестовое описание"
+            name="Тест Тестович", description="Тестовое описание"
         )
-        
+
         # Создаем тестовый файл
         self.test_image = SimpleUploadedFile(
-            name='test_image.jpg',
-            content=b'x' * 10,  # маленький тестовый файл
-            content_type='image/jpeg'
+            name="test_image.jpg",
+            content=b"x" * 10,  # маленький тестовый файл
+            content_type="image/jpeg",
         )
-        
+
         self.certificate = Certificate.objects.create(
             about=self.about,
             title="Тестовый сертификат",
             image=self.test_image,
             date_received=date(2022, 1, 1),
-            order=1
+            order=1,
         )
 
     def test_str_representation(self):
@@ -113,9 +111,7 @@ class CertificateModelTest(TestCase):
     def test_default_values(self):
         """Тест значений по умолчанию"""
         certificate = Certificate.objects.create(
-            about=self.about,
-            title="Тест",
-            image=self.test_image
+            about=self.about, title="Тест", image=self.test_image
         )
         self.assertEqual(certificate.order, 0)
         self.assertFalse(certificate.is_archived)
@@ -125,16 +121,14 @@ class CertificateModelTest(TestCase):
         """Тест валидации размера файла"""
         # Создаем файл большего размера, чем разрешено
         large_file = SimpleUploadedFile(
-            name='large_file.jpg',
-            content=b'x' * (6 * 1024 * 1024),  # 6MB
-            content_type='image/jpeg'
+            name="large_file.jpg",
+            content=b"x" * (6 * 1024 * 1024),  # 6MB
+            content_type="image/jpeg",
         )
-        
+
         with self.assertRaises(ValidationError):
             certificate = Certificate(
-                about=self.about,
-                title="Большой файл",
-                image=large_file
+                about=self.about, title="Большой файл", image=large_file
             )
             certificate.full_clean()
 
@@ -146,15 +140,12 @@ class CertificateModelTest(TestCase):
     def test_ordering(self):
         """Тест сортировки сертификатов"""
         Certificate.objects.create(
-            about=self.about,
-            title="Второй сертификат",
-            image=self.test_image,
-            order=0
+            about=self.about, title="Второй сертификат", image=self.test_image, order=0
         )
         certificates = Certificate.objects.all()
         self.assertEqual(certificates[0].title, "Второй сертификат")
-        self.assertEqual(certificates[1].title, "Тестовый сертификат") 
-        
+        self.assertEqual(certificates[1].title, "Тестовый сертификат")
+
 
 class SiteSettingsTest(TestCase):
     def setUp(self):
@@ -167,7 +158,7 @@ class SiteSettingsTest(TestCase):
             massage_title="Массаж",
             about_title="Обо мне",
             contact_title="Контакты",
-            career_start_year=2021
+            career_start_year=2021,
         )
 
     def test_str_representation(self):
@@ -189,9 +180,7 @@ class SiteSettingsTest(TestCase):
     def test_background_upload(self):
         """Тест загрузки фонового изображения"""
         test_image = SimpleUploadedFile(
-            name='test_background.jpg',
-            content=b'x' * 10,
-            content_type='image/jpeg'
+            name="test_background.jpg", content=b"x" * 10, content_type="image/jpeg"
         )
         self.settings.background = test_image
         self.settings.save()
