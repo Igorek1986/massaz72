@@ -11,6 +11,7 @@ services:
       - "8000:8000"
     volumes:
       - ./massaz72/media:/app/media
+      - ./massaz72/logs:/app/logs
     restart: always
     env_file:
         - .env
