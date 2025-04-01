@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import About, Certificate, SiteSettings
 
 
@@ -16,4 +17,6 @@ class AboutAdmin(admin.ModelAdmin):
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
-    list_display = ["head_title", ]
+    list_display = [
+        "head_title",
+    ]

@@ -44,6 +44,11 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 30px;
 
+    &--certificates {
+      grid-auto-rows: unset;
+      margin-bottom: var(--offset);
+    }
+
     @include tablet {
       grid-auto-rows: 250px;
       grid-template-columns: repeat(2, 1fr);
@@ -55,10 +60,6 @@
       gap: 15px;
     }
 
-    &--certificates {
-      grid-auto-rows: unset;
-      margin-bottom: var(--offset);
-    }
   }
 
   &__card:not(:last-child) {
@@ -72,9 +73,9 @@
   &__image {
     position: relative;
     overflow: hidden;
-    border: none;
     outline: 3px solid var(--main-color-bg);
     outline-offset: -1px;
+    border: none;
     border-radius: 10px;
     width: 100%;
     height: 100%;
@@ -88,8 +89,8 @@
   }
 
   &__image--certificate {
-    height: 0;
     padding-bottom: 141.4%; // Соотношение сторон А4
+    height: 0;
   }
 
   &__image:hover {
@@ -111,8 +112,8 @@
   &__info {
     position: absolute;
     left: 0;
-    top: 0;
     right: 0;
+    top: 0;
     padding: 4px 10px;
     background-color: var(--main-color-bg);
     -webkit-transition: background-color 0.3s ease-in-out;
@@ -123,6 +124,10 @@
       top: auto;
       bottom: 0;
     }
+
+    &--certificate {
+      padding: 0;
+    }
   }
 
   &__name {
@@ -132,10 +137,6 @@
     font-size: 24px;
     line-height: 100%;
     color: var(--light-color-text);
-
-    @include tablet {
-      font-size: 20px;
-    }
 
     &--more {
       display: flex;
@@ -152,6 +153,11 @@
         stroke-width: 1;
       }
     }
+
+    @include tablet {
+      font-size: 20px;
+    }
+
   }
 
   &__price {

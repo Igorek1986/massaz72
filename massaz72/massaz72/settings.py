@@ -14,6 +14,7 @@ import logging.config
 import os
 from os import getenv
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
 
@@ -171,20 +172,36 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 TELEGRAM_USERNAME = getenv("TELEGRAM_USERNAME")
 WHATSAPP_NUMBER = getenv("WHATSAPP_NUMBER")
 
+
+logs_dir = BASE_DIR / "logs"
+logs_dir.mkdir(parents=True, exist_ok=True)
+
 LOGLEVEL = getenv("DJANGO_LOGLEVEL", "info").upper()
+LOGFILE = getenv("LOGFILE_NAME", "log.txt")
+LOGFILE_SIZE = int(getenv("LOGFILE_SIZE", "10485760"))
+LOGFILE_COUNT = getenv("LOGFILE_COUNT", "3")
+LOGFILE_PATH = BASE_DIR / "logs" / LOGFILE
+
 logging.config.dictConfig(
     {
         "version": 1,
         "disable_existing_loggers": False,
         "formatters": {
-            "console": {
+            "verbose": {
                 "format": "%(asctime)s %(levelname)s [%(name)s:%(lineno)s] %(module)s %(message)s",
             },
         },
         "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
-                "formatter": "console",
+                "formatter": "verbose",
+            },
+            "logfile": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": LOGFILE_PATH,
+                "maxBytes": LOGFILE_SIZE,
+                "backupCount": LOGFILE_COUNT,
+                "formatter": "verbose",
             },
         },
         "loggers": {
@@ -192,6 +209,7 @@ logging.config.dictConfig(
                 "level": LOGLEVEL,
                 "handlers": [
                     "console",
+                    "logfile",
                 ],
             },
         },
