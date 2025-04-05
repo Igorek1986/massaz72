@@ -16,7 +16,6 @@
 
 /* stylelint-disable */
 /* stylelint-disable */
-/* stylelint-disable */
 @font-face {
   font-family: "Muller";
   src: url("../fonts/../fonts/MullerRegular.woff2") format("woff2");
@@ -62,7 +61,8 @@
 /* stylelint-disable order/order */
 html {
   box-sizing: border-box;
-  scroll-padding-top: 100px; }
+  scroll-padding-top: 100px;
+  background-color: #000; }
 
 *,
 *::before,

@@ -24,15 +24,15 @@ class MassageAdmin(admin.ModelAdmin):
     def image_tag(self, obj):
         return obj.image_tag()
 
+    @admin.action(description="Архивировать выбранные массажи")
     def archive_massages(self, request, queryset):
         queryset.update(is_archived=True)
         self.message_user(request, f'Архивировано массажей: {queryset.count()}')
-    archive_massages.short_description = 'Архивировать выбранные массажи'
 
+    @admin.action(description="Разархивировать выбранные массажи")
     def unarchive_massages(self, request, queryset):
         queryset.update(is_archived=False)
         self.message_user(request, f'Разархивировано массажей: {queryset.count()}')
-    unarchive_massages.short_description = 'Разархивировать выбранные массажи'
 
     fieldsets = (
         (
