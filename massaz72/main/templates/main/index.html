@@ -65,7 +65,7 @@
   <section class="service">
     <div class="container">
       {% if child_massages %}
-      <h2 class="service__title" id="cids">{{ site_settings.child_massage_title }}</h2>
+        <h2 class="service__title" id="cids"><strong>{{ site_settings.child_massage_title }} в Тюмени</strong></h2>
       <div class="service__card">
         {% for massage in child_massages %}
         <a id="{{ massage.slug }}" href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
@@ -86,7 +86,7 @@
       {% endif %}
 
       {% if adult_massages %}
-      <h2 class="service__title" id="massage">{{ site_settings.massage_title }}</h2>
+      <h2 class="service__title" id="massage"><strong>{{ site_settings.massage_title }} в Тюмени</strong></h2>
       <div class="service__card">
         {% for massage in adult_massages %}
         <a id="{{ massage.slug }}" href="{% url 'services:massage_detail' slug=massage.slug %}" class="service__image" style="background-image: url('{{ massage.image.url }}')">
