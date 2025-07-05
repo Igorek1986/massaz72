@@ -28,3 +28,13 @@ def index(request):
 
 def cookies(request):
     return render(request, "main/cookies.html")
+
+
+def custom_404(request, exception):
+    """Обработчик ошибки 404"""
+    return render(request, "errors/404.html", status=404)
+
+
+def custom_500(request):
+    """Обработчик ошибки 500"""
+    return render(request, "errors/500.html", status=500)

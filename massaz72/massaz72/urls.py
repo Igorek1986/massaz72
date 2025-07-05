@@ -22,6 +22,9 @@ from django.urls import include, path
 from django.contrib.sitemaps.views import sitemap
 from services.sitemaps import MassageSitemap
 
+# Обработчики ошибок
+handler404 = 'main.views.custom_404'
+handler500 = 'main.views.custom_500'
 
 sitemaps = {
     "services": MassageSitemap,

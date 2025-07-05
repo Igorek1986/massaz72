@@ -1,0 +1,8 @@
+{% extends "main/base.html" %}
+
+{% block title %}Ошибка сервера (500){% endblock %}
+{% block body %}
+<h1>Ошибка 500</h1>
+    <p>Произошла внутренняя ошибка сервера.</p>
+<p><a href="{% url 'main:index' %}">Вернуться на главную</a></p>
+{% endblock %} 
