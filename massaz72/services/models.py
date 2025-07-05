@@ -24,6 +24,7 @@ class Massage(models.Model):
     duration_max = models.PositiveIntegerField(
         verbose_name="Максимальная продолжительность (в минутах)"
     )
+    location = models.CharField(max_length=255, verbose_name="Место проведения")
     massage_type = models.CharField(
         max_length=5,
         choices=MASSAGE_TYPE_CHOICES,
