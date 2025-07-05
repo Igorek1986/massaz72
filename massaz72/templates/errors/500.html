@@ -2,7 +2,15 @@
 
 {% block title %}Ошибка сервера (500){% endblock %}
 {% block body %}
-<h1>Ошибка 500</h1>
-    <p>Произошла внутренняя ошибка сервера.</p>
-<p><a href="{% url 'main:index' %}">Вернуться на главную</a></p>
-{% endblock %} 
+  <div class="container">
+    <h1 class="error__title">Ошибка 500</h1>
+    <p class="error__description">Произошла внутренняя ошибка сервера.</p>
+{#    <p><a href="{% url 'main:index' %}">Вернуться на главную</a></p>#}
+  </div>
+{% endblock %}
+
+{% block button_back %}
+  <div class="container massage__back massage__center">
+    <a class="massage__back-text" href="{% url 'main:index' %}">Вернуться на главную</a>
+  </div>
+{% endblock %}
