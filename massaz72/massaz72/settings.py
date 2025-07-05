@@ -12,9 +12,9 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 import logging.config
 import os
+from logging.handlers import RotatingFileHandler
 from os import getenv
 from pathlib import Path
-from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
 
@@ -57,9 +57,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "main",
-    "services",
     "sass_processor",
+    # my app
+    "main.apps.MainConfig",
+    "services.apps.ServicesConfig",
 ]
 
 MIDDLEWARE = [
