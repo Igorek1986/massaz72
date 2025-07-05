@@ -48,6 +48,9 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
+
+SITE_ID = 1
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -60,6 +63,8 @@ INSTALLED_APPS = [
     "main",
     "services",
     "sass_processor",
+    "django.contrib.sites",
+    "django.contrib.sitemaps",
 ]
 
 MIDDLEWARE = [
