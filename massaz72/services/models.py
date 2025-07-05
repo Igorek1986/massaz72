@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.safestring import mark_safe
+from django.urls import reverse
 
 from massaz72.utils import delete_old_file, get_file_path, validate_file_size
 
@@ -79,3 +80,6 @@ class Massage(models.Model):
         if self.pk:
             delete_old_file(self, "image")
         super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse('services:massage_detail', kwargs={'slug': self.slug})
