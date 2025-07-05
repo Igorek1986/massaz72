@@ -6,7 +6,7 @@
 
 {% block body %}
 <div class="container massage__center">
-  <h1 class="massage__name">{{ massage.name }}</h1>
+  <h1 class="massage__name"><strong>{{ massage.name }}</strong></h1>
   <div class="massage__center">
     <div class="massage__name">
       {{ message.name }}
@@ -19,6 +19,9 @@
     </div>
     <div class="massage__duration">
       Продолжительность массажа {% if massage.duration_min %} {{ massage.duration_min }} - {% endif %} {{ massage.duration_max }} минут
+    </div>
+    <div class="massage__location">
+      Место проведения: <strong>{{ massage.location }}</strong>
     </div>
   </div>
 </div>

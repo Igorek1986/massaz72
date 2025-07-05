@@ -605,6 +605,13 @@ footer {
     font-size: 16px;
     line-height: 137%;
     color: var(--main-color-text); }
+  .massage__location {
+    margin-bottom: calc(var(--offset) / 2);
+    font-family: var(--font-family);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 137%;
+    color: var(--main-color-text); }
   .massage__back {
     display: flex;
     align-items: center;

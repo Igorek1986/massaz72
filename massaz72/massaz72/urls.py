@@ -19,12 +19,24 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.contrib.sitemaps.views import sitemap
+from services.sitemaps import MassageSitemap
 
+
+sitemaps = {
+    "services": MassageSitemap,
+}
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("main.urls", "main")),
 
     path("services/", include("services.urls", "services")),
+    path(
+        "sitemap.xml",
+        sitemap,
+        {"sitemaps": sitemaps},
+        name="django.contrib.sitemaps.views.sitemap",
+    )
 ]
 
 
