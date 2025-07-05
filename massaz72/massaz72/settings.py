@@ -60,11 +60,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "main",
-    "services",
-    "sass_processor",
     "django.contrib.sites",
     "django.contrib.sitemaps",
+    "sass_processor",
+    # my app
+    "main.apps.MainConfig",
+    "services.apps.ServicesConfig",
 ]
 
 MIDDLEWARE = [
