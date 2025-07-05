@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from main.models import About, Certificate
+from main.models import Certificate
 from services.models import Massage
 
 from .models import SiteSettings
