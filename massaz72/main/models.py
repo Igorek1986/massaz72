@@ -122,17 +122,27 @@ class SiteSettings(models.Model):
     head_title = models.CharField(
         verbose_name="Head Title",
         max_length=100,
-        default="Услуги массажа",
+        default="Детский массаж в Тюмени | Женский массаж",
     )
     main_title = models.CharField(
         verbose_name="Главный заголовок",
         max_length=100,
-        default="Твой массажист",
+        default="Детский и женский массаж в Тюмени",
     )
     main_subtitle = models.CharField(
         verbose_name="Главный подзаголовок",
         max_length=100,
-        default="Забота о Вашем здоровье",
+        default="Твой массажист - забота о Вашем здоровье",
+    )
+    meta_description = models.CharField(
+        verbose_name="Описание страницы сайта",
+        max_length=255,
+        default="✅ Детский и женский массаж в Тюмени. Безопасно для детей, расслабляющие процедуры для женщин. Онлайн-запись. Выезд на дом."
+    )
+    meta_keywords = models.CharField(
+        verbose_name="Ключевые слова для поисковых систем",
+        max_length=255,
+        default="массаж Тюмень, детский массаж, женский массаж, массаж для детей, массаж для женщин, массаж в Тюмени, онлайн запись, Массаж72, детский массаж Тюмень, женский массаж Тюмень, Тюмень массаж"
     )
     child_massage_title = models.CharField(
         verbose_name="Детский массаж",
