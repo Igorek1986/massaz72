@@ -4,6 +4,7 @@ from .models import Massage
 
 class MassageSitemap(Sitemap):
     changefreq = "monthly"
+    protocol = "https"
     priority = 0.9
 
     def items(self):
