@@ -38,22 +38,22 @@
   font-style: normal; }
 
 @font-face {
-  font-family: "TTFirsNeue";
-  src: url("../fonts/../fonts/TTFirsNeueRegular.woff2") format("woff2");
+  font-family: "OpenSans";
+  src: url("../fonts/../fonts/OpenSans-Regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
   font-style: normal; }
 
 @font-face {
-  font-family: "TTFirsNeue";
-  src: url("../fonts/../fonts/TTFirsNeueMedium.woff2") format("woff2");
+  font-family: "OpenSans";
+  src: url("../fonts/../fonts/OpenSans-Medium.woff2") format("woff2");
   font-weight: 500;
   font-display: swap;
   font-style: normal; }
 
 @font-face {
-  font-family: "TTFirsNeue";
-  src: url("../fonts/../fonts/TTFirsNeueBold.woff2") format("woff2");
+  font-family: "OpenSans";
+  src: url("../fonts/../fonts/OpenSans-Bold.woff2") format("woff2");
   font-weight: 700;
   font-display: swap;
   font-style: normal; }
