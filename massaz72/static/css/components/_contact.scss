@@ -127,3 +127,24 @@
     }
   }
 }
+
+.max {
+  outline: none;
+  display: inline-block;
+
+  &:hover &__icon-path,
+  &:focus &__icon-path,
+  &:active &__icon-path {
+    fill: var(--main-color-bg);
+  }
+
+  &__icon {
+
+    &-path {
+      fill: #8f3fff;
+      -webkit-transition: fill 0.3s ease-in-out;
+      -o-transition: fill 0.3s ease-in-out;
+      transition: fill 0.3s ease-in-out;
+    }
+  }
+}
