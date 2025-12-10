@@ -10,6 +10,7 @@ def common_context(request):
     return {
         "telegram_username": settings.TELEGRAM_USERNAME,
         "whatsapp_number": settings.WHATSAPP_NUMBER,
+        "max_messanger": settings.MAX_MESSANGER,
         "year": datetime.now().year,
         "about": about,
     }

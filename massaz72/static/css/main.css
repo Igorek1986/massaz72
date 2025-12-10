@@ -896,6 +896,17 @@ footer {
   .whatsapp:active .whatsapp__icon-path1 {
     fill: var(--main-color-bg); }
 
+.max {
+  outline: none;
+  display: inline-block; }
+  .max:hover .max__icon-path, .max:focus .max__icon-path, .max:active .max__icon-path {
+    fill: var(--main-color-bg); }
+  .max__icon-path {
+    fill: #8f3fff;
+    -webkit-transition: fill 0.3s ease-in-out;
+    -o-transition: fill 0.3s ease-in-out;
+    transition: fill 0.3s ease-in-out; }
+
 .footer {
   padding-top: 55px;
   background-color: var(--main-color-bg); }
