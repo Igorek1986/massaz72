@@ -9,7 +9,10 @@
     height: 16px;
 
     &-text {
+      display: flex;
       justify-content: center;
+      align-items: center;
+      gap: 20px;
       padding-bottom: 10px;
       font-family: var(--font-family);
       font-weight: 400;
@@ -17,12 +20,23 @@
       font-size: 16px;
       line-height: 137%;
       color: var(--main-color-text);
-      -webkit-box-pack: center;
-      -ms-flex-pack: center;
 
       @include tablet {
         font-size: 14px;
       }
+    }
+  }
+
+  &__cookie-link {
+    font-family: var(--font-family);
+    font-size: 14px;
+    color: var(--main-color-text);
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 1;
     }
   }
 }

@@ -79,6 +79,7 @@
     border-radius: 10px;
     width: 100%;
     height: 100%;
+    background-color: var(--main-color-bg);
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
@@ -91,6 +92,28 @@
   &__image--certificate {
     padding-bottom: 141.4%; // Соотношение сторон А4
     height: 0;
+  }
+
+  &__image--empty {
+    background: linear-gradient(135deg, #ede0d4 0%, #dac2ac 50%, #c4a48a 100%);
+
+    .service__info:not(.service__info--bottom) {
+      top: 50%;
+      transform: translateY(-50%);
+      text-align: center;
+      background-color: transparent;
+    }
+
+    .service__name {
+      font-size: 28px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+
+    &:hover {
+      .service__info:not(.service__info--bottom) {
+        background-color: transparent;
+      }
+    }
   }
 
   &__image:hover {
