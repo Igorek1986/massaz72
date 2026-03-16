@@ -200,9 +200,7 @@ header {
 .content {
   -ms-grid-row: 2;
   grid-row: 2;  /* Основное место под солнцем */
-  background-image: url("../img/background.jpeg");
-  background-size: cover;
-  background-repeat: no-repeat;
+  background: linear-gradient(160deg, #fff9f5 0%, #f5e8dc 55%, #ede0d4 100%);
 }
 
 footer {
