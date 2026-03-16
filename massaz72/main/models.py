@@ -60,6 +60,24 @@ class About(models.Model):
         null=True,
         help_text="Укажите дату начала работы массажистом",
     )
+    telegram_username = models.CharField(
+        "Telegram (username без @)",
+        max_length=100,
+        blank=True,
+        default="",
+    )
+    whatsapp_number = models.CharField(
+        "WhatsApp (номер с кодом страны, без +)",
+        max_length=20,
+        blank=True,
+        default="",
+    )
+    max_messanger = models.CharField(
+        "MAX Messenger (номер или ссылка)",
+        max_length=100,
+        blank=True,
+        default="",
+    )
     is_active = models.BooleanField(
         "Активный массажист",
         default=True,
@@ -139,9 +157,8 @@ class SiteSettings(models.Model):
         max_length=255,
         default="✅ Детский и женский массаж в Тюмени. Безопасно для детей, расслабляющие процедуры для женщин. Онлайн-запись. Выезд на дом."
     )
-    meta_keywords = models.CharField(
+    meta_keywords = models.TextField(
         verbose_name="Ключевые слова для поисковых систем",
-        max_length=255,
         default="массаж Тюмень, детский массаж, женский массаж, массаж для детей, массаж для женщин, массаж в Тюмени, онлайн запись, Массаж72, детский массаж Тюмень, женский массаж Тюмень, Тюмень массаж"
     )
     child_massage_title = models.CharField(
@@ -157,10 +174,6 @@ class SiteSettings(models.Model):
     )
     contact_title = models.CharField(
         verbose_name="Контакты", max_length=50, default="Контакты"
-    )
-    career_start_year = models.PositiveIntegerField(
-        verbose_name="Год начала практики массажа",
-        default=2021,
     )
     background = models.ImageField(
         upload_to=get_file_path,

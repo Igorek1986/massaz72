@@ -1,16 +1,14 @@
 from datetime import datetime
 
-from django.conf import settings
-
 from .models import About, SiteSettings
 
 
 def common_context(request):
     about = About.objects.filter(is_active=True).first()
     return {
-        "telegram_username": settings.TELEGRAM_USERNAME,
-        "whatsapp_number": settings.WHATSAPP_NUMBER,
-        "max_messanger": settings.MAX_MESSANGER,
+        "telegram_username": about.telegram_username if about else "",
+        "whatsapp_number": about.whatsapp_number if about else "",
+        "max_messanger": about.max_messanger if about else "",
         "year": datetime.now().year,
         "about": about,
     }

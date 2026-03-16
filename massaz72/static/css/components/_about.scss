@@ -54,6 +54,10 @@
     }
   }
 
+  &__info:only-child {
+    grid-column: 1 / -1;
+  }
+
   &__info {
     h3 {
       margin: 0;

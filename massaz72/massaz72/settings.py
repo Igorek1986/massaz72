@@ -175,11 +175,6 @@ SASS_PROCESSOR_ROOT = STATIC_ROOT
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-TELEGRAM_USERNAME = getenv("TELEGRAM_USERNAME")
-WHATSAPP_NUMBER = getenv("WHATSAPP_NUMBER")
-MAX_MESSANGER = getenv("MAX_MESSANGER")
-
-
 logs_dir = BASE_DIR / "logs"
 logs_dir.mkdir(parents=True, exist_ok=True)
 
