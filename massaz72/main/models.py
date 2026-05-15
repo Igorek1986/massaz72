@@ -66,18 +66,26 @@ class About(models.Model):
         blank=True,
         default="",
     )
+    telegram_active = models.BooleanField("Telegram активен", default=True)
     whatsapp_number = models.CharField(
         "WhatsApp (номер с кодом страны, без +)",
         max_length=20,
         blank=True,
         default="",
     )
+    whatsapp_active = models.BooleanField("WhatsApp активен", default=True)
     max_messanger = models.CharField(
-        "MAX Messenger (номер или ссылка)",
-        max_length=100,
+        "MAX Messenger (ссылка профиля)",
+        max_length=255,
         blank=True,
         default="",
+        help_text=(
+            "Полная ссылка профиля из приложения MAX. "
+            "Как получить: откройте MAX → Настройки → QR-код профиля → Поделиться → Скопировать ссылку. "
+            "Ссылка выглядит так: https://max.ru/u/xxxxxxxx"
+        ),
     )
+    max_messanger_active = models.BooleanField("MAX активен", default=True)
     is_active = models.BooleanField(
         "Активный массажист",
         default=True,

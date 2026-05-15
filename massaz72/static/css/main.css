@@ -1182,6 +1182,31 @@ footer {
     @media (max-width: 1024px) {
       .cookies-content p {
         font-size: 15px; } }
+  .cookies-content table {
+    margin-bottom: 20px;
+    border-collapse: collapse;
+    width: 100%;
+    font-family: var(--font-family);
+    font-size: 16px;
+    color: var(--main-color-text); }
+    .cookies-content table td {
+      padding: 10px 15px;
+      border: 1px solid var(--main-color-bg);
+      vertical-align: top;
+      line-height: 1.5; }
+      .cookies-content table td:first-child {
+        width: 35%;
+        font-weight: 600; }
+    @media (max-width: 576px) {
+      .cookies-content table {
+        font-size: 14px; }
+        .cookies-content table td:first-child {
+          width: 40%; } }
+  .cookies-content a {
+    color: var(--interactive-color);
+    text-decoration: none; }
+    .cookies-content a:hover {
+      text-decoration: underline; }
   .cookies-content ul {
     list-style: none;
     margin-bottom: 20px;

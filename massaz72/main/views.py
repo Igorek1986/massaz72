@@ -30,6 +30,10 @@ def cookies(request):
     return render(request, "main/cookies.html")
 
 
+def privacy(request):
+    return render(request, "main/privacy.html")
+
+
 def custom_404(request, exception):
     """Обработчик ошибки 404"""
     return render(request, "errors/404.html", status=404)

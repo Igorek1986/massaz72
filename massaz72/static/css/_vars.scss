@@ -1,19 +1,87 @@
-// если вы хотите использовать sass-переменные - удалите root
-// colors
 :root {
-  // base
-  --font-family: "Roboto", sans-serif;
-  --second-family: "OpenSans", sans-serif;
-  --third-family: "Montserrat", sans-serif;
-  --content-width: 1290px;
-  --container-offset: 15px;
+  --font-family: "Inter", -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  --content-width: 1280px;
+  --container-offset: 24px;
   --container-width: calc(var(--content-width) + (var(--container-offset) * 2));
-  --offset: 30px;
-  --main-color-bg: #dac2ac;
-  --main-color-text: #686b62;
-  --interactive-color: #4CAF50;  /* Material Design Green */
-  --light-color-text: #fff;
-  --footer-color-text: #cacaca;
+  --offset: 32px;
+
+  // Airbnb color tokens
+  --color-primary:          #ff385c;
+  --color-primary-active:   #e00b41;
+  --color-primary-disabled: #ffd1da;
+  --color-ink:              #222222;
+  --color-body:             #3f3f3f;
+  --color-muted:            #6a6a6a;
+  --color-muted-soft:       #929292;
+  --color-canvas:           #ead8c8;
+  --color-canvas-card:      #ffffff;
+  --color-surface-soft:     #dfcab6;
+  --color-surface-strong:   #d4b8a2;
+  --color-hairline:         #c2a48a;
+  --color-hairline-soft:    #cbb098;
+  --color-on-primary:       #ffffff;
+
+  // Scroll-to-top FAB
+  --color-fab-bg:    #222222;
+  --color-fab-icon:  #ffffff;
+  --color-fab-hover: #3d3d3d;
+
+  // Header — light mode
+  --color-header-bg:        #dac2ac;
+  --color-header-border:    var(--color-hairline);
+  --color-header-text:      var(--color-ink);
+  --color-header-text-hover: #000000;
+  --color-header-btn-border: var(--color-hairline);
+  --color-header-hover-bg:  rgba(0, 0, 0, 0.06);
+  --color-header-logo-filter: brightness(0);
+
+  // Legacy aliases (used by existing components)
+  --main-color-bg:    #ead8c8;
+  --main-color-text:  #222222;
+  --interactive-color: #ff385c;
+  --light-color-text: #ffffff;
+  --footer-color-text: #6a6a6a;
+  --second-family: var(--font-family);
+  --third-family:  var(--font-family);
 }
 
-$primary-color: #4CAF50;
+$primary-color: #ff385c;
+$shadow-card: rgba(0, 0, 0, 0.02) 0 0 0 1px, rgba(0, 0, 0, 0.04) 0 2px 6px 0, rgba(0, 0, 0, 0.1) 0 4px 8px 0;
+
+:root {
+  --shadow-card: #{$shadow-card};
+}
+
+[data-theme="dark"] {
+  // Warm dark — тёплые тёмно-коричневые, не чисто чёрные
+  --color-canvas:         #1e1a17;
+  --color-ink:            #ede8e3;
+  --color-body:           #b8ada4;
+  --color-muted:          #8a8078;
+  --color-muted-soft:     #6a6058;
+  --color-surface-soft:   #26211d;
+  --color-surface-strong: #2e2822;
+  --color-hairline:       #3d3530;
+  --color-hairline-soft:  #332d28;
+
+  --main-color-bg:        #1e1a17;
+  --main-color-text:      #ede8e3;
+  --footer-color-text:    #8a8078;
+  --light-color-text:     #ffffff;
+
+  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.6), 0 4px 20px rgba(0, 0, 0, 0.45);
+
+  // Scroll-to-top FAB — dark mode (инвертированный: светлая кнопка на тёмном фоне)
+  --color-fab-bg:    #e8d4be;
+  --color-fab-icon:  #222222;
+  --color-fab-hover: #d4b8a2;
+
+  // Header — dark mode
+  --color-header-bg:         #191512;
+  --color-header-border:     rgba(255, 255, 255, 0.07);
+  --color-header-text:       rgba(255, 255, 255, 0.82);
+  --color-header-text-hover: #ffffff;
+  --color-header-btn-border: rgba(255, 255, 255, 0.18);
+  --color-header-hover-bg:   rgba(255, 255, 255, 0.08);
+  --color-header-logo-filter: none;
+}
