@@ -13,4 +13,12 @@ RUN poetry config virtualenvs.create false && \
 
 COPY massaz72 .
 
-CMD ["gunicorn", "massaz72.wsgi:application", "--bind", "0.0.0.0:8000"]
+ENV DJANGO_SECRET_KEY=build-only-dummy-key
+ENV ALLOWED_HOSTS=localhost
+RUN python manage.py compilescss
+RUN python manage.py collectstatic --noinput
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

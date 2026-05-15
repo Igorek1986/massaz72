@@ -60,19 +60,19 @@
     }
 
     &:hover {
-      fill: var(--main-color-bg);
+      fill: var(--color-primary);
     }
   }
 
   &:focus {
     .telegram__icon {
-      fill: var(--main-color-bg);
+      fill: var(--color-primary);
     }
   }
 
   &:active {
     .telegram__icon {
-      fill: var(--main-color-bg);
+      fill: var(--color-primary);
     }
   }
 }
@@ -99,31 +99,31 @@
     }
 
     &:hover {
-      fill: var(--main-color-bg);
+      fill: var(--color-primary);
 
       .whatsapp__icon-path1 {
-        fill: var(--main-color-bg);
+        fill: var(--color-primary);
       }
     }
   }
 
   &:focus {
     .whatsapp__icon {
-      fill: var(--main-color-bg);
+      fill: var(--color-primary);
     }
 
     .whatsapp__icon-path1 {
-      fill: var(--main-color-bg);
+      fill: var(--color-primary);
     }
   }
 
   &:active {
     .whatsapp__icon {
-      fill: var(--main-color-bg);
+      fill: var(--color-primary);
     }
 
     .whatsapp__icon-path1 {
-      fill: var(--main-color-bg);
+      fill: var(--color-primary);
     }
   }
 }
@@ -135,7 +135,7 @@
   &:hover &__icon-path,
   &:focus &__icon-path,
   &:active &__icon-path {
-    fill: var(--main-color-bg);
+    fill: var(--color-primary);
   }
 
   &__icon {
