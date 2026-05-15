@@ -22,6 +22,7 @@ services:
     volumes:
       - ./massaz72/media:/app/media
       - ./massaz72/logs:/app/logs
+      - ./massaz72/staticfiles:/app/staticfiles
     restart: always
     env_file:
       - .env
