@@ -142,7 +142,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "ru-ru"
 
-TIME_ZONE = "UTC"
+# Тюмень — Екатеринбургское время (UTC+5). Даты/время на сайте и в админке
+# считаются по этой зоне; смена цен происходит в полночь по Тюмени.
+TIME_ZONE = "Asia/Yekaterinburg"
 
 USE_I18N = True
 

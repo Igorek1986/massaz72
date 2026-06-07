@@ -40,7 +40,7 @@
             <div class="service-card__photo{% if not massage.image %} service-card__photo--empty{% endif %}"
                  {% if massage.image %}style="background-image: url('{{ massage.image.url }}')"{% endif %}></div>
             <div class="service-card__meta">
-              <h3 class="service-card__name">{{ massage.name }}</h3>
+              <h3 class="service-card__name">{{ massage.name|capfirst }}</h3>
               </div>
           </a>
           {% endfor %}
@@ -55,7 +55,7 @@
             <div class="service-card__photo{% if not massage.image %} service-card__photo--empty{% endif %}"
                  {% if massage.image %}style="background-image: url('{{ massage.image.url }}')"{% endif %}></div>
             <div class="service-card__meta">
-              <h3 class="service-card__name">{{ massage.name }}</h3>
+              <h3 class="service-card__name">{{ massage.name|capfirst }}</h3>
               </div>
           </a>
           {% endfor %}

@@ -1,13 +1,13 @@
 {% extends "main/base.html" %}
 {% load main_tags %}
 
-{% block title %}{{ massage.name }}{% endblock %}
+{% block title %}{{ massage.name|capfirst }}{% endblock %}
 
 {% block body %}
 <div class="container">
   <div class="massage__detail">
     <div class="massage__detail-header">
-      <h1 class="massage__detail-title">{{ massage.name }}</h1>
+      <h1 class="massage__detail-title">{{ massage.name|capfirst }}</h1>
     </div>
 
     <div class="massage__card">

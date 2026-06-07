@@ -182,3 +182,6 @@ node_modules/
 /.cursor/
 /massaz72/media/
 /massaz72/logs/
+
+# Claude Code
+CLAUDE.md
