@@ -1,13 +1,32 @@
 import os
 import shutil
+import tempfile
 from datetime import date, datetime
 from unittest.mock import patch
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from main.models import About, Certificate, SiteSettings
+
+
+class TempMediaRootMixin:
+    """Подменяет MEDIA_ROOT на временную папку только для своего класса
+    и удаляет её после тестов: файлы не попадают в media/ и в репозиторий,
+    а подмена не «протекает» в другие тесты."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._media_root = tempfile.mkdtemp()
+        cls._media_override = override_settings(MEDIA_ROOT=cls._media_root)
+        cls._media_override.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._media_override.disable()
+        shutil.rmtree(cls._media_root, ignore_errors=True)
+        super().tearDownClass()
 
 
 class AboutModelTest(TestCase):
@@ -69,20 +88,7 @@ class AboutModelTest(TestCase):
         self.assertIsInstance(about.updated_at, datetime)
 
 
-class CertificateModelTest(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        # Создаем временную директорию для медиафайлов
-        settings.MEDIA_ROOT = os.path.join(settings.BASE_DIR, "test_media")
-        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
-
-    @classmethod
-    def tearDownClass(cls):
-        # Удаляем временную директорию
-        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
-        super().tearDownClass()
-
+class CertificateModelTest(TempMediaRootMixin, TestCase):
     def setUp(self):
         """Создаем тестовые данные"""
         self.about = About.objects.create(
@@ -147,7 +153,7 @@ class CertificateModelTest(TestCase):
         self.assertEqual(certificates[1].title, "Тестовый сертификат")
 
 
-class SiteSettingsTest(TestCase):
+class SiteSettingsTest(TempMediaRootMixin, TestCase):
     def setUp(self):
         """Создаем тестовые данные"""
         self.settings = SiteSettings.objects.create(
