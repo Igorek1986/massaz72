@@ -190,6 +190,16 @@ class SiteSettings(models.Model):
         blank=True,
         null=True,
     )
+    price_change_date = models.DateField(
+        "Дата изменения цен",
+        blank=True,
+        null=True,
+        help_text=(
+            "Дата, с которой новые цены массажей вступают в силу. "
+            "До этой даты на сайте показывается плашка о предстоящем изменении, "
+            "а в карточках — текущие цены. Оставьте пустым, если изменение цен не планируется."
+        ),
+    )
 
     class Meta:
         verbose_name = "Настройки сайта"

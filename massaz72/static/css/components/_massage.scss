@@ -179,6 +179,15 @@
   &-value {
     color: var(--color-body);
   }
+
+  // Строка с будущей ценой (до наступления даты изменения)
+  &-row--upcoming {
+    .massage__card-label,
+    .massage__card-value {
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+  }
 }
 
 // Book block (service detail)

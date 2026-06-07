@@ -158,7 +158,6 @@ class SiteSettingsTest(TestCase):
             massage_title="Массаж",
             about_title="Обо мне",
             contact_title="Контакты",
-            career_start_year=2021,
         )
 
     def test_str_representation(self):
@@ -168,14 +167,14 @@ class SiteSettingsTest(TestCase):
     def test_default_values(self):
         """Тест значений по умолчанию"""
         settings = SiteSettings.objects.create()
-        self.assertEqual(settings.head_title, "Услуги массажа")
-        self.assertEqual(settings.main_title, "Твой массажист")
-        self.assertEqual(settings.main_subtitle, "Специалист по массажу")
+        self.assertEqual(settings.head_title, "Детский массаж в Тюмени | Женский массаж")
+        self.assertEqual(settings.main_title, "Детский и женский массаж в Тюмени")
+        self.assertEqual(settings.main_subtitle, "Твой массажист - забота о Вашем здоровье")
         self.assertEqual(settings.child_massage_title, "Детский массаж")
         self.assertEqual(settings.massage_title, "Массаж")
         self.assertEqual(settings.about_title, "Обо мне")
         self.assertEqual(settings.contact_title, "Контакты")
-        self.assertEqual(settings.career_start_year, 2021)
+        self.assertIsNone(settings.price_change_date)
 
     def test_background_upload(self):
         """Тест загрузки фонового изображения"""

@@ -18,6 +18,18 @@
     </div>
   </section>
 
+  {% if price_change_pending and has_upcoming_prices %}
+  <div class="price-notice">
+    <div class="container">
+      <p class="price-notice__text">
+        <span class="price-notice__icon" aria-hidden="true">ℹ</span>
+        Обратите внимание: цены изменятся с {{ price_change_date|date:"d.m.Y" }}.
+        До этой даты действуют текущие цены.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
   <section class="service">
     <div class="container">
       {% if child_massages %}

@@ -7,7 +7,7 @@ from .models import Massage
 @admin.register(Massage)
 class MassageAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name", )}
-    list_display = ("name", "price", "duration_min", "duration_max", "massage_type", "order", "is_archived")
+    list_display = ("name", "price", "new_price", "duration_min", "duration_max", "massage_type", "order", "is_archived")
     list_filter = ("massage_type", "is_archived")
     search_fields = ("name", "description")
     readonly_fields = ("created_at", "updated_at", "image_tag")
@@ -43,6 +43,7 @@ class MassageAdmin(admin.ModelAdmin):
                     "slug",
                     "is_archived",
                     "price",
+                    "new_price",
                     "order",
                     "description",
                     "duration_min",

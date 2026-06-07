@@ -18,6 +18,17 @@ class Massage(models.Model):
     price = models.DecimalField(
         max_digits=10, decimal_places=2, verbose_name="Стоимость"
     )
+    new_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name="Новая цена",
+        help_text=(
+            "Будущая цена. Вступит в силу автоматически после даты изменения цен, "
+            "заданной в «Настройках сайта». До этой даты на сайте показывается текущая цена."
+        ),
+    )
     description = models.TextField(verbose_name="Описание", blank=True, null=True)
     duration_min = models.PositiveIntegerField(
         verbose_name="Минимальная продолжительность (в минутах)"
@@ -68,6 +79,9 @@ class Massage(models.Model):
         """Валидация модели"""
         if self.price < 0:
             raise ValidationError({"price": "Цена не может быть отрицательной"})
+
+        if self.new_price is not None and self.new_price < 0:
+            raise ValidationError({"new_price": "Цена не может быть отрицательной"})
 
         if self.duration_min > self.duration_max:
             raise ValidationError(

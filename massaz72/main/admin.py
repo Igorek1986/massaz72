@@ -27,4 +27,5 @@ class AboutAdmin(admin.ModelAdmin):
 class SiteSettingsAdmin(admin.ModelAdmin):
     list_display = [
         "head_title",
+        "price_change_date",
     ]

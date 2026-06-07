@@ -19,8 +19,16 @@
       {% endif %}
       <div class="massage__card-row">
         <span class="massage__card-label">Стоимость</span>
-        <span class="massage__card-value">{{ massage.price }}</span>
+        <span class="massage__card-value">
+          {% if new_prices_active %}{{ massage.new_price|default_if_none:massage.price }}{% else %}{{ massage.price }}{% endif %}
+        </span>
       </div>
+      {% if price_change_pending and massage.new_price != None %}
+      <div class="massage__card-row massage__card-row--upcoming">
+        <span class="massage__card-label">Цена с {{ price_change_date|date:"d.m.Y" }}</span>
+        <span class="massage__card-value">{{ massage.new_price }}</span>
+      </div>
+      {% endif %}
       <div class="massage__card-row">
         <span class="massage__card-label">Продолжительность</span>
         <span class="massage__card-value">{% if massage.duration_min and massage.duration_min != massage.duration_max %}{{ massage.duration_min }} — {% endif %}{{ massage.duration_max }} минут</span>

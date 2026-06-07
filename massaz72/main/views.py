@@ -15,12 +15,18 @@ def index(request):
     )
     certificates = Certificate.objects.filter(is_archived=False).order_by("order")
 
+    # Есть ли массажи с запланированной новой ценой (для плашки об изменении цен)
+    has_upcoming_prices = Massage.objects.filter(
+        is_archived=False, new_price__isnull=False
+    ).exists()
+
     context = {
         # 'about': about,
         "site_settings": SiteSettings.objects.first(),
         "child_massages": child_massages,
         "adult_massages": adult_massages,
         "certificates": certificates,
+        "has_upcoming_prices": has_upcoming_prices,
         # 'banner': MainBanner.objects.first(),
     }
     return render(request, "main/index.html", context=context)
