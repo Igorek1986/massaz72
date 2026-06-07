@@ -200,6 +200,26 @@ class SiteSettings(models.Model):
             "а в карточках — текущие цены. Оставьте пустым, если изменение цен не планируется."
         ),
     )
+    yandex_verification = models.CharField(
+        "Код подтверждения Яндекс.Вебмастер",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text=(
+            "Только значение content из мета-тега (без самого тега). "
+            "Яндекс.Вебмастер → добавить сайт → способ «Мета-тег»."
+        ),
+    )
+    google_verification = models.CharField(
+        "Код подтверждения Google Search Console",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text=(
+            "Только значение content из HTML-тега (без самого тега). "
+            "Search Console → ресурс с префиксом URL → способ «Тег HTML»."
+        ),
+    )
 
     class Meta:
         verbose_name = "Настройки сайта"

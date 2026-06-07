@@ -8,7 +8,7 @@ class MassageSitemap(Sitemap):
     priority = 0.9
 
     def items(self):
-        return Massage.objects.all()
+        return Massage.objects.filter(is_archived=False)
 
     def lastmod(self, item):
         return item.updated_at

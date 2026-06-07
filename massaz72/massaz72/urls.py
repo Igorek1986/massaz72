@@ -21,12 +21,14 @@ from django.contrib import admin
 from django.urls import include, path
 from django.contrib.sitemaps.views import sitemap
 from services.sitemaps import MassageSitemap
+from main.sitemaps import StaticViewSitemap
 
 # Обработчики ошибок
 handler404 = 'main.views.custom_404'
 handler500 = 'main.views.custom_500'
 
 sitemaps = {
+    "static": StaticViewSitemap,
     "services": MassageSitemap,
 }
 urlpatterns = [
