@@ -212,6 +212,25 @@ def _bk_type_keyboard() -> types.InlineKeyboardMarkup | None:
     return kb
 
 
+def _bk_massage_list_text(massage_type: str) -> str:
+    """Текст сообщения со списком массажей (цена + длительность) над клавиатурой."""
+    from services.models import Massage
+
+    massages = list(
+        Massage.objects.filter(is_archived=False, massage_type=massage_type).order_by("order")
+    )
+    lines = ["📝 <b>Запись на массаж</b>\n\nВыберите вид массажа:\n"]
+    for m in massages:
+        price = f"{int(m.price)} ₽"
+        dur = (
+            f"{m.duration_min} мин"
+            if m.duration_min == m.duration_max
+            else f"{m.duration_min}–{m.duration_max} мин"
+        )
+        lines.append(f"• {html.escape(m.name)} — {price} · {dur}")
+    return "\n".join(lines)
+
+
 def _bk_massage_keyboard(massage_type: str) -> types.InlineKeyboardMarkup | None:
     from services.models import Massage
 
@@ -222,15 +241,7 @@ def _bk_massage_keyboard(massage_type: str) -> types.InlineKeyboardMarkup | None
         return None
     kb = types.InlineKeyboardMarkup()
     for m in massages:
-        price = f"{int(m.price)} ₽"
-        dur = (
-            f"{m.duration_min} мин"
-            if m.duration_min == m.duration_max
-            else f"{m.duration_min}–{m.duration_max} мин"
-        )
-        kb.add(types.InlineKeyboardButton(
-            f"{m.name} — {price} · {dur}", callback_data=f"bk_m_{m.id}"
-        ))
+        kb.add(types.InlineKeyboardButton(m.name, callback_data=f"bk_m_{m.id}"))
     kb.add(types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_type"))
     kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"))
     return kb
@@ -684,7 +695,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             kb = _bk_massage_keyboard(mtype) if mtype else None
             if kb:
                 bot.edit_message_text(
-                    "📝 <b>Запись на массаж</b>\n\nВыберите вид массажа:",
+                    _bk_massage_list_text(mtype),
                     chat_id, msg_id, reply_markup=kb,
                 )
             return
@@ -723,7 +734,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 )
                 return
             bot.edit_message_text(
-                "📝 <b>Запись на массаж</b>\n\nВыберите вид массажа:",
+                _bk_massage_list_text(mtype),
                 chat_id, msg_id, reply_markup=kb,
             )
             return
