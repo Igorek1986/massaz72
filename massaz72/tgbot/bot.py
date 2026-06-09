@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Кнопки меню
 BTN_SERVICES = "💰 Услуги и цены"
 BTN_BOOK = "📝 Записаться"
+BTN_BROADCAST = "📢 Рассылка"
 
 # Типы обновлений, которые запрашиваем у Telegram (и для polling, и для webhook).
 ALLOWED_UPDATES = ["message", "callback_query"]
@@ -142,11 +143,24 @@ def _today() -> date:
 
 
 def main_keyboard() -> types.ReplyKeyboardMarkup:
-    """Постоянная нижняя клавиатура с кнопками меню."""
+    """Постоянная нижняя клавиатура для клиентов."""
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(types.KeyboardButton(BTN_SERVICES))
     kb.add(types.KeyboardButton(BTN_BOOK))
     return kb
+
+
+def admin_keyboard() -> types.ReplyKeyboardMarkup:
+    """Клавиатура для администраторов — добавляет кнопку рассылки."""
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add(types.KeyboardButton(BTN_SERVICES))
+    kb.add(types.KeyboardButton(BTN_BOOK))
+    kb.add(types.KeyboardButton(BTN_BROADCAST))
+    return kb
+
+
+def get_keyboard(telegram_id: int) -> types.ReplyKeyboardMarkup:
+    return admin_keyboard() if _is_admin(telegram_id) else main_keyboard()
 
 
 def build_services_text() -> str:
@@ -653,6 +667,13 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         telebot.types.BotCommand("start", "Начало работы / восстановить меню"),
     ])
 
+    def _start_broadcast_flow(chat_id: int, uid: int) -> None:
+        _pending_broadcasts[uid] = {"state": "awaiting_subject"}
+        bot.send_message(
+            chat_id,
+            "📢 <b>Новая рассылка</b>\n\nВведите тему сообщения (или «-» чтобы пропустить):",
+        )
+
     @bot.message_handler(commands=["start"])
     def on_start(message):
         _pending_bookings.pop(message.from_user.id, None)
@@ -661,23 +682,22 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         bot.send_message(
             message.chat.id,
             settings.welcome_text or "",
-            reply_markup=main_keyboard(),
+            reply_markup=get_keyboard(message.from_user.id),
         )
 
     @bot.message_handler(commands=["broadcast"], func=lambda m: _is_admin(m.from_user.id))
     def on_broadcast_start(message):
-        uid = message.from_user.id
-        _pending_broadcasts[uid] = {"state": "awaiting_subject"}
-        bot.send_message(
-            message.chat.id,
-            "📢 <b>Новая рассылка</b>\n\nВведите тему сообщения (или «-» чтобы пропустить):",
-        )
+        _start_broadcast_flow(message.chat.id, message.from_user.id)
+
+    @bot.message_handler(func=lambda m: m.text == BTN_BROADCAST and _is_admin(m.from_user.id))
+    def on_broadcast_button(message):
+        _start_broadcast_flow(message.chat.id, message.from_user.id)
 
     @bot.message_handler(func=lambda m: m.text == BTN_SERVICES)
     def on_services(message):
         _pending_bookings.pop(message.from_user.id, None)
         bot.send_message(
-            message.chat.id, build_services_text(), reply_markup=main_keyboard()
+            message.chat.id, build_services_text(), reply_markup=get_keyboard(message.from_user.id)
         )
 
     @bot.message_handler(func=lambda m: m.text == BTN_BOOK)
@@ -699,7 +719,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             bot.send_message(
                 message.chat.id,
                 "Список услуг пока не заполнен. Напишите нам — ответим лично.",
-                reply_markup=main_keyboard(),
+                reply_markup=get_keyboard(uid),
             )
             return
         sent = bot.send_message(
@@ -729,7 +749,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         if data == "bk_cancel":
             _pending_bookings.pop(uid, None)
             _bk_delete_or_edit(bot, chat_id, msg_id)
-            bot.send_message(chat_id, "Запись отменена.", reply_markup=main_keyboard())
+            bot.send_message(chat_id, "Запись отменена.", reply_markup=get_keyboard(uid))
             return
 
         # ── Навигация по календарю ───────────────────────────────────────────
@@ -930,7 +950,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             bot.send_message(
                 chat_id,
                 "✅ <b>Заявка отправлена!</b>\n\nЭто предварительная запись — ожидайте подтверждения от администратора.",
-                reply_markup=main_keyboard(),
+                reply_markup=get_keyboard(uid),
             )
             return
 
