@@ -67,7 +67,12 @@ INSTALLED_APPS = [
     "main.apps.MainConfig",
     "services.apps.ServicesConfig",
     "tgbot.apps.TgbotConfig",
+    "cabinet.apps.CabinetConfig",
 ]
+
+LOGIN_URL = "/cabinet/login/"
+LOGIN_REDIRECT_URL = "/cabinet/"
+LOGOUT_REDIRECT_URL = "/cabinet/login/"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

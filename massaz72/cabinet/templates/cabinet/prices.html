@@ -1,0 +1,26 @@
+{% extends "cabinet/base.html" %}
+
+{% block title %}Цены{% endblock %}
+{% block nav_prices %}sidebar__link--active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Цены</h1>
+</div>
+
+<div class="settings-layout">
+
+  <div id="price-list-section" class="settings-card">
+    {% include "cabinet/partials/price_list_section.html" %}
+  </div>
+
+  <div id="price-change-section" class="settings-card">
+    {% include "cabinet/partials/price_change_section.html" %}
+  </div>
+
+  <div id="discounts-section" class="settings-card">
+    {% include "cabinet/partials/discount_section.html" %}
+  </div>
+
+</div>
+{% endblock %}

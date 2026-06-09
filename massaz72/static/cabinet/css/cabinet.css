@@ -1,0 +1,776 @@
+:root {
+  --cab-bg:             #f5f5f5;
+  --cab-surface:        #ffffff;
+  --cab-sidebar:        #1e293b;
+  --cab-sidebar-hover:  #334155;
+  --cab-sidebar-active: #3b82f6;
+  --cab-text:           #1e293b;
+  --cab-muted:          #64748b;
+  --cab-border:         #e2e8f0;
+  --cab-primary:        #3b82f6;
+  --cab-primary-hover:  #2563eb;
+  --cab-danger:         #ef4444; }
+
+[data-theme="dark"] {
+  --cab-bg:        #0f172a;
+  --cab-surface:   #1e293b;
+  --cab-sidebar:   #0f172a;
+  --cab-sidebar-hover: #1e293b;
+  --cab-text:      #f1f5f9;
+  --cab-muted:     #94a3b8;
+  --cab-border:    #334155; }
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0; }
+
+body.cabinet-body {
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--cab-bg);
+  color: var(--cab-text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5; }
+
+.cabinet-layout {
+  display: flex;
+  min-height: 100vh; }
+
+.cabinet-sidebar {
+  width: 220px;
+  background: var(--cab-sidebar);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 100;
+  color: #f1f5f9; }
+
+.sidebar__logo {
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+  .sidebar__logo a {
+    color: #f1f5f9;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.02em; }
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px;
+  flex: 1; }
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s; }
+  .sidebar__link svg {
+    flex-shrink: 0;
+    opacity: 0.8; }
+  .sidebar__link:hover {
+    background: var(--cab-sidebar-hover);
+    color: #f1f5f9; }
+  .sidebar__link--active {
+    background: var(--cab-sidebar-active);
+    color: #fff; }
+    .sidebar__link--active svg {
+      opacity: 1; }
+
+.sidebar__bottom {
+  padding: 12px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08); }
+
+.sidebar__logout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: "Inter", system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s; }
+  .sidebar__logout:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5; }
+
+.cabinet-main {
+  flex: 1;
+  margin-left: 220px;
+  min-width: 0; }
+
+.cabinet-content {
+  padding: 28px 32px;
+  max-width: 1200px; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap; }
+  .page-header__title {
+    font-size: 22px;
+    font-weight: 700; }
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cab-bg);
+  padding: 16px; }
+
+.login-card {
+  background: var(--cab-surface);
+  border: 1px solid var(--cab-border);
+  border-radius: 12px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 380px;
+  text-align: center; }
+  .login-card__logo {
+    margin-bottom: 16px; }
+    .login-card__logo img {
+      border-radius: 50%; }
+  .login-card__title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 24px; }
+  .login-card__error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--cab-danger);
+    font-size: 13px;
+    margin-bottom: 16px;
+    text-align: left; }
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left; }
+  .login-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px; }
+    .login-form__field input {
+      padding: 10px 12px;
+      border: 1px solid var(--cab-border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: "Inter", system-ui, sans-serif;
+      color: var(--cab-text);
+      background: var(--cab-surface);
+      transition: border-color 0.15s;
+      outline: none; }
+      .login-form__field input:focus {
+        border-color: var(--cab-primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+  .login-form__label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cab-muted); }
+  .login-form__field-error {
+    font-size: 12px;
+    color: var(--cab-danger); }
+  .login-form__submit {
+    margin-top: 4px;
+    padding: 11px;
+    background: var(--cab-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: "Inter", system-ui, sans-serif;
+    cursor: pointer;
+    transition: background 0.15s; }
+    .login-form__submit:hover {
+      background: var(--cab-primary-hover); }
+
+.schedule-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start; }
+
+.calendar-wrap {
+  background: var(--cab-surface);
+  border: 1px solid var(--cab-border);
+  border-radius: 12px;
+  padding: 16px; }
+
+.day-panel-wrap {
+  position: sticky;
+  top: 24px; }
+
+.fc {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 13px; }
+  .fc .fc-toolbar-title {
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: capitalize; }
+  .fc .fc-button {
+    background: var(--cab-surface);
+    border-color: var(--cab-border);
+    color: var(--cab-text);
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 13px;
+    padding: 5px 10px;
+    box-shadow: none; }
+    .fc .fc-button:hover {
+      background: var(--cab-border); }
+    .fc .fc-button:focus {
+      box-shadow: none; }
+  .fc .fc-button-primary:not(:disabled).fc-button-active,
+  .fc .fc-button-primary:not(:disabled):active {
+    background: var(--cab-primary);
+    border-color: var(--cab-primary);
+    color: #fff; }
+  .fc .fc-day-today {
+    background: rgba(59, 130, 246, 0.06) !important; }
+  .fc .fc-day-selected {
+    background: rgba(59, 130, 246, 0.12) !important; }
+  .fc .fc-apt-count {
+    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: 4px; }
+  .fc .fc-daygrid-day-number {
+    font-size: 12px;
+    color: var(--cab-muted); }
+  .fc .fc-col-header-cell-cushion {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cab-muted);
+    text-transform: uppercase;
+    text-decoration: none; }
+  .fc .fc-daygrid-day-number {
+    text-decoration: none; }
+
+.day-panel {
+  background: var(--cab-surface);
+  border: 1px solid var(--cab-border);
+  border-radius: 12px;
+  overflow: hidden; }
+  .day-panel__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--cab-border); }
+  .day-panel__title {
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: capitalize; }
+  .day-panel__empty {
+    padding: 24px 16px;
+    color: var(--cab-muted);
+    font-size: 13px;
+    text-align: center; }
+  .day-panel__error {
+    padding: 16px;
+    color: var(--cab-danger);
+    font-size: 13px; }
+
+.day-panel-loading {
+  padding: 24px 16px;
+  color: var(--cab-muted);
+  font-size: 13px;
+  text-align: center; }
+
+.day-badge {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px; }
+  .day-badge--off {
+    background: #fef2f2;
+    color: #dc2626; }
+
+.apt-list {
+  list-style: none;
+  border-bottom: 1px solid var(--cab-border); }
+
+.apt-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--cab-border);
+  transition: background 0.1s; }
+  .apt-card:last-child {
+    border-bottom: none; }
+  .apt-card:hover {
+    background: var(--cab-bg); }
+  .apt-card--completed {
+    opacity: 0.6; }
+  .apt-card--cancelled {
+    opacity: 0.4;
+    text-decoration: line-through; }
+  .apt-card__time {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cab-primary);
+    min-width: 40px;
+    padding-top: 2px; }
+  .apt-card__body {
+    flex: 1;
+    min-width: 0; }
+  .apt-card__name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px; }
+  .apt-card__service, .apt-card__address, .apt-card__series, .apt-card__notes {
+    font-size: 12px;
+    color: var(--cab-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; }
+  .apt-card__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0; }
+  .apt-card__cost {
+    font-weight: 600;
+    font-size: 14px; }
+  .apt-card__actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px; }
+
+.apt-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em; }
+  .apt-badge--scheduled {
+    background: #dbeafe;
+    color: #1d4ed8; }
+  .apt-badge--completed {
+    background: #dcfce7;
+    color: #15803d; }
+  .apt-badge--cancelled {
+    background: #f3f4f6;
+    color: #6b7280; }
+
+.apt-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--cab-border);
+  border-radius: 6px;
+  background: var(--cab-surface);
+  color: var(--cab-muted);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s; }
+  .apt-btn--done:hover {
+    background: #dcfce7;
+    color: #15803d;
+    border-color: #86efac; }
+  .apt-btn--edit:hover {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #93c5fd; }
+  .apt-btn--del:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fca5a5; }
+
+.blocked-list {
+  padding: 12px 16px;
+  border-top: 1px solid var(--cab-border); }
+  .blocked-list__title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cab-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px; }
+
+.blocked-slot {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  padding: 4px 0; }
+  .blocked-slot__time {
+    font-weight: 500;
+    color: var(--cab-text);
+    min-width: 100px; }
+  .blocked-slot__note {
+    color: var(--cab-muted); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: "Inter", system-ui, sans-serif;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-decoration: none; }
+  .btn--primary {
+    background: var(--cab-primary);
+    color: #fff; }
+    .btn--primary:hover {
+      background: var(--cab-primary-hover); }
+  .btn--ghost {
+    background: transparent;
+    border-color: var(--cab-border);
+    color: var(--cab-text); }
+    .btn--ghost:hover {
+      background: var(--cab-bg); }
+  .btn--sm {
+    padding: 5px 10px;
+    font-size: 13px; }
+
+.apt-form {
+  padding: 16px;
+  border-top: 1px solid var(--cab-border); }
+  .apt-form__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px; }
+  .apt-form__title {
+    font-size: 14px;
+    font-weight: 600; }
+  .apt-form__close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--cab-muted);
+    font-size: 16px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center; }
+    .apt-form__close:hover {
+      background: var(--cab-bg);
+      color: var(--cab-text); }
+  .apt-form__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px; }
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px; }
+  .form-field--full {
+    grid-column: 1 / -1; }
+
+.form-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cab-muted); }
+
+.form-req {
+  color: var(--cab-danger);
+  margin-left: 2px; }
+
+.form-input {
+  padding: 8px 10px;
+  border: 1px solid var(--cab-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--cab-text);
+  background: var(--cab-surface);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s; }
+  .form-input:focus {
+    border-color: var(--cab-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
+
+.form-error {
+  font-size: 11px;
+  color: var(--cab-danger); }
+
+.form-hint {
+  font-size: 11px;
+  color: var(--cab-muted); }
+
+.form-error--block {
+  padding: 8px 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  margin-top: 4px; }
+
+.settings-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 720px; }
+
+.settings-card {
+  background: var(--cab-surface);
+  border: 1px solid var(--cab-border);
+  border-radius: 12px;
+  overflow: hidden; }
+  .settings-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--cab-border); }
+  .settings-card__title {
+    font-size: 15px;
+    font-weight: 600; }
+  .settings-card__footer {
+    padding: 12px 20px 16px; }
+
+.settings-saved {
+  font-size: 12px;
+  font-weight: 500;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 3px 10px;
+  border-radius: 20px; }
+
+.work-days {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 16px 20px 0; }
+
+.day-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer; }
+  .day-toggle input[type="checkbox"] {
+    display: none; }
+  .day-toggle__label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: 2px solid var(--cab-border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cab-muted);
+    background: var(--cab-bg);
+    transition: all 0.15s;
+    user-select: none; }
+  .day-toggle:has(input:checked) .day-toggle__label {
+    background: var(--cab-primary);
+    border-color: var(--cab-primary);
+    color: #fff; }
+  .day-toggle:hover .day-toggle__label {
+    border-color: var(--cab-primary);
+    color: var(--cab-primary); }
+  .day-toggle:has(input:checked):hover .day-toggle__label {
+    background: var(--cab-primary-hover);
+    border-color: var(--cab-primary-hover);
+    color: #fff; }
+
+.settings-list {
+  list-style: none; }
+  .settings-list__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--cab-border);
+    font-size: 13px; }
+    .settings-list__item:last-child {
+      border-bottom: none; }
+  .settings-list__badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0; }
+    .settings-list__badge--day_off {
+      background: #fef9c3;
+      color: #854d0e; }
+    .settings-list__badge--vacation {
+      background: #fce7f3;
+      color: #9d174d; }
+  .settings-list__dates, .settings-list__date, .settings-list__time {
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0; }
+  .settings-list__note {
+    color: var(--cab-muted);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; }
+  .settings-list__actions {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+    flex-shrink: 0; }
+
+.settings-empty {
+  padding: 16px 20px;
+  color: var(--cab-muted);
+  font-size: 13px; }
+
+.settings-inline-form {
+  padding: 16px 20px;
+  border-top: 1px solid var(--cab-border);
+  background: var(--cab-bg); }
+
+.form-grid--3 {
+  grid-template-columns: 1fr 1fr 1fr; }
+
+.price-list {
+  list-style: none; }
+  .price-list__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--cab-border);
+    font-size: 13px; }
+    .price-list__item:last-child {
+      border-bottom: none; }
+  .price-list__name {
+    flex: 1;
+    font-weight: 500; }
+  .price-list__type {
+    font-size: 11px;
+    color: var(--cab-muted);
+    background: var(--cab-bg);
+    padding: 2px 7px;
+    border-radius: 20px;
+    white-space: nowrap; }
+  .price-list__current {
+    font-size: 12px;
+    color: var(--cab-muted);
+    white-space: nowrap; }
+  .price-list__input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px; }
+  .price-list__input {
+    width: 90px;
+    text-align: right; }
+  .price-list__currency {
+    font-size: 13px;
+    color: var(--cab-muted); }
+  .price-list__discounted {
+    font-size: 12px;
+    color: #16a34a;
+    font-weight: 600;
+    white-space: nowrap; }
+
+.price-change-date {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--cab-border);
+  flex-wrap: wrap; }
+  .price-change-date .form-label {
+    margin: 0;
+    min-width: 180px; }
+  .price-change-date .form-input {
+    width: auto; }
+  .price-change-date .form-hint {
+    width: 100%;
+    margin-top: -4px; }
+
+.price-change-footer {
+  display: flex;
+  gap: 8px; }
+
+.price-due-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: #b45309;
+  background: #fef9c3;
+  padding: 3px 10px;
+  border-radius: 20px; }
+
+.discount-active-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 3px 10px;
+  border-radius: 20px; }
+
+@media (max-width: 768px) {
+  .cabinet-layout {
+    flex-direction: column; }
+  .cabinet-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap; }
+  .sidebar__nav {
+    flex-direction: row;
+    flex: none;
+    padding: 8px; }
+  .sidebar__bottom {
+    border-top: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px; }
+  .cabinet-main {
+    margin-left: 0; }
+  .cabinet-content {
+    padding: 16px; }
+  .schedule-layout {
+    grid-template-columns: 1fr; }
+  .day-panel-wrap {
+    position: static; }
+  .form-grid,
+  .form-grid--3 {
+    grid-template-columns: 1fr; } }

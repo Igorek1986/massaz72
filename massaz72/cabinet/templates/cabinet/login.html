@@ -1,0 +1,39 @@
+{% extends "cabinet/base.html" %}
+{% load static %}
+
+{% block title %}Вход{% endblock %}
+
+{% block body %}
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-card__logo">
+      <img src="{% static 'img/logo.png' %}" alt="Массаж72" width="64" height="64">
+    </div>
+    <h1 class="login-card__title">Личный кабинет</h1>
+
+    {% if form.non_field_errors %}
+      <div class="login-card__error">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="post" class="login-form" novalidate>
+      {% csrf_token %}
+      <div class="login-form__field">
+        <label for="{{ form.username.id_for_label }}" class="login-form__label">Логин</label>
+        {{ form.username }}
+        {% if form.username.errors %}
+          <span class="login-form__field-error">{{ form.username.errors.0 }}</span>
+        {% endif %}
+      </div>
+      <div class="login-form__field">
+        <label for="{{ form.password.id_for_label }}" class="login-form__label">Пароль</label>
+        {{ form.password }}
+        {% if form.password.errors %}
+          <span class="login-form__field-error">{{ form.password.errors.0 }}</span>
+        {% endif %}
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="login-form__submit">Войти</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

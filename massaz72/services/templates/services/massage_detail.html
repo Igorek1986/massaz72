@@ -1,6 +1,7 @@
 {% extends "main/base.html" %}
 {% load main_tags %}
 
+
 {% block title %}{{ massage.name|capfirst }}{% endblock %}
 
 {% block body %}
@@ -20,7 +21,12 @@
       <div class="massage__card-row">
         <span class="massage__card-label">Стоимость</span>
         <span class="massage__card-value">
-          {% if new_prices_active %}{{ massage.new_price|default_if_none:massage.price }}{% else %}{{ massage.price }}{% endif %}
+          {% if active_discount %}
+            <span class="price-original">{% if new_prices_active %}{{ massage.new_price|default_if_none:massage.price }}{% else %}{{ massage.price }}{% endif %} ₽</span>
+            <span class="price-discounted">{{ massage.price|apply_discount:active_discount }} ₽</span>
+          {% else %}
+            {% if new_prices_active %}{{ massage.new_price|default_if_none:massage.price }}{% else %}{{ massage.price }}{% endif %} ₽
+          {% endif %}
         </span>
       </div>
       {% if price_change_pending and massage.new_price != None %}

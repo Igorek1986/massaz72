@@ -1,0 +1,30 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Рабочие дни</h2>
+  {% if saved %}<span class="settings-saved">Сохранено ✓</span>{% endif %}
+</div>
+
+<form hx-post="{% url 'cabinet:schedule_save' %}"
+      hx-target="#schedule-section"
+      hx-swap="innerHTML">
+  {% csrf_token %}
+  <div class="work-days">
+    {% for field in schedule_form %}
+    {% if field.field.widget.input_type == 'checkbox' %}
+    <label class="day-toggle">
+      {{ field }}
+      <span class="day-toggle__label">{{ field.label }}</span>
+    </label>
+    {% endif %}
+    {% endfor %}
+  </div>
+  <div class="schedule-break">
+    <label class="form-label">{{ schedule_form.break_between_minutes.label }}</label>
+    <div class="schedule-break__row">
+      {{ schedule_form.break_between_minutes }}
+      <span class="form-hint">мин. после окончания массажа</span>
+    </div>
+  </div>
+  <div class="settings-card__footer">
+    <button type="submit" class="btn btn--primary btn--sm">Сохранить</button>
+  </div>
+</form>

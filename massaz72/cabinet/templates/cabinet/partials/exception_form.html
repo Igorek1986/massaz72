@@ -1,0 +1,43 @@
+<div class="settings-inline-form">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">{% if exception %}Редактировать{% else %}Добавить исключение{% endif %}</h3>
+    <button type="button" class="apt-form__close"
+            hx-get=""
+            hx-target="#exception-form-container"
+            hx-swap="innerHTML"
+            onclick="document.getElementById('exception-form-container').innerHTML=''">✕</button>
+  </div>
+  <form hx-post="{% if exception %}{% url 'cabinet:exception_edit' exception.pk %}{% else %}{% url 'cabinet:exception_add' %}{% endif %}"
+        hx-target="#exception-form-container"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="form-grid form-grid--3">
+      <div class="form-field">
+        <label class="form-label">{{ form.date_from.label }}<span class="form-req">*</span></label>
+        {{ form.date_from }}
+        {% if form.date_from.errors %}<span class="form-error">{{ form.date_from.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.date_to.label }}<span class="form-req">*</span></label>
+        {{ form.date_to }}
+        {% if form.date_to.errors %}<span class="form-error">{{ form.date_to.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.exception_type.label }}</label>
+        {{ form.exception_type }}
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.note.label }}</label>
+        {{ form.note }}
+      </div>
+    </div>
+    {% if form.non_field_errors %}
+    <div class="form-error form-error--block">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('exception-form-container').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--primary">Сохранить</button>
+    </div>
+  </form>
+</div>

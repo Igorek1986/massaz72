@@ -1,0 +1,37 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Текущие цены</h2>
+  {% if active_discount %}
+  <span class="discount-active-badge">Скидка активна</span>
+  {% endif %}
+</div>
+
+<form hx-post="{% url 'cabinet:prices_save_current' %}"
+      hx-target="#price-list-section"
+      hx-swap="innerHTML">
+  {% csrf_token %}
+  <ul class="price-list">
+    {% load main_tags %}
+    {% for massage in massages %}
+    <li class="price-list__item">
+      <span class="price-list__name">{{ massage.name }}</span>
+      <span class="price-list__type">{{ massage.get_massage_type_display }}</span>
+      <div class="price-list__input-wrap">
+        <input type="number"
+               name="price_{{ massage.pk }}"
+               value="{{ massage.price|floatformat:0 }}"
+               min="0" step="50"
+               class="form-input price-list__input">
+        <span class="price-list__currency">₽</span>
+      </div>
+      {% if active_discount %}
+      <span class="price-list__discounted">→ {{ massage.price|apply_discount:active_discount }} ₽</span>
+      {% endif %}
+    </li>
+    {% empty %}
+    <li class="settings-empty">Нет услуг</li>
+    {% endfor %}
+  </ul>
+  <div class="settings-card__footer">
+    <button type="submit" class="btn btn--primary btn--sm">Сохранить цены</button>
+  </div>
+</form>

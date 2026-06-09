@@ -1,0 +1,39 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Выходные и отпуск</h2>
+  <button class="btn btn--ghost btn--sm"
+          hx-get="{% url 'cabinet:exception_add' %}"
+          hx-target="#exception-form-container"
+          hx-swap="innerHTML">+ Добавить</button>
+</div>
+
+{% if exceptions %}
+<ul class="settings-list">
+  {% for exc in exceptions %}
+  <li class="settings-list__item">
+    <span class="settings-list__badge settings-list__badge--{{ exc.exception_type }}">
+      {{ exc.get_exception_type_display }}
+    </span>
+    <span class="settings-list__dates">
+      {{ exc.date_from|date:"d.m.Y" }}
+      {% if exc.date_from != exc.date_to %} – {{ exc.date_to|date:"d.m.Y" }}{% endif %}
+    </span>
+    {% if exc.note %}<span class="settings-list__note">{{ exc.note }}</span>{% endif %}
+    <div class="settings-list__actions">
+      <button class="apt-btn apt-btn--edit" title="Редактировать"
+              hx-get="{% url 'cabinet:exception_edit' exc.pk %}"
+              hx-target="#exception-form-container"
+              hx-swap="innerHTML">✎</button>
+      <button class="apt-btn apt-btn--del" title="Удалить"
+              hx-post="{% url 'cabinet:exception_delete' exc.pk %}"
+              hx-target="#exceptions-section"
+              hx-swap="innerHTML"
+              hx-confirm="Удалить исключение?">✕</button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="settings-empty">Нет исключений</p>
+{% endif %}
+
+<div id="exception-form-container"></div>

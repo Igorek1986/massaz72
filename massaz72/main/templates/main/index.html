@@ -18,6 +18,17 @@
     </div>
   </section>
 
+  {% if active_discount %}
+  <div class="price-notice price-notice--discount">
+    <div class="container">
+      <p class="price-notice__text">
+        <span class="price-notice__icon" aria-hidden="true">%</span>
+        {{ active_discount.banner_text }}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
   {% if price_change_pending and has_upcoming_prices %}
   <div class="price-notice">
     <div class="container">

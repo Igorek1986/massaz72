@@ -1,0 +1,80 @@
+{% if error %}
+<div class="day-panel__error">Неверная дата.</div>
+{% else %}
+<div class="day-panel">
+  <div class="day-panel__header">
+    <div>
+      <h2 class="day-panel__title">{{ selected_date|date:"l, j F Y" }}</h2>
+      {% if not is_working %}
+        <span class="day-badge day-badge--off">
+          {% if exceptions %}{{ exceptions.0.get_exception_type_display }}{% else %}Выходной{% endif %}
+        </span>
+      {% endif %}
+    </div>
+    <button class="btn btn--primary btn--sm"
+            hx-get="{% url 'cabinet:appointment_add' %}?date={{ date_str }}"
+            hx-target="#add-form-container"
+            hx-swap="innerHTML">
+      + Запись
+    </button>
+  </div>
+
+  {% if appointments %}
+  <ul class="apt-list">
+    {% for apt in appointments %}
+    <li class="apt-card apt-card--{{ apt.status }}">
+      <div class="apt-card__time">{{ apt.time_start|time:"H:i" }}</div>
+      <div class="apt-card__body">
+        <div class="apt-card__name">{{ apt.client_name }}</div>
+        {% if apt.service %}<div class="apt-card__service">{{ apt.service.name }}</div>{% endif %}
+        {% if apt.address %}<div class="apt-card__address">{{ apt.address }}</div>{% endif %}
+        {% if apt.series %}<div class="apt-card__series">Серия #{{ apt.series_id }}, {{ apt.series.total_sessions }} сеансов</div>{% endif %}
+        {% if apt.notes %}<div class="apt-card__notes">{{ apt.notes }}</div>{% endif %}
+      </div>
+      <div class="apt-card__right">
+        <div class="apt-card__cost">{{ apt.cost }} ₽</div>
+        {% if apt.transport_cost %}
+        <div class="apt-card__transport">+ {{ apt.transport_cost }} ₽ дорога</div>
+        {% endif %}
+        <span class="apt-badge apt-badge--{{ apt.status }}">{{ apt.get_status_display }}</span>
+        <div class="apt-card__actions">
+          {% if apt.status == 'scheduled' %}
+          <button class="apt-btn apt-btn--done" title="Выполнено"
+                  hx-post="{% url 'cabinet:appointment_status' apt.pk %}"
+                  hx-vals='{"status": "completed"}'
+                  hx-target="#day-panel"
+                  hx-swap="innerHTML">✓</button>
+          {% endif %}
+          <button class="apt-btn apt-btn--edit" title="Редактировать"
+                  hx-get="{% url 'cabinet:appointment_edit' apt.pk %}"
+                  hx-target="#add-form-container"
+                  hx-swap="innerHTML">✎</button>
+          <button class="apt-btn apt-btn--del" title="Удалить"
+                  hx-post="{% url 'cabinet:appointment_delete' apt.pk %}"
+                  hx-target="#day-panel"
+                  hx-swap="innerHTML"
+                  hx-confirm="Удалить запись «{{ apt.client_name }}»?">✕</button>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="day-panel__empty">Записей нет</p>
+  {% endif %}
+
+  {% if blocked_slots %}
+  <div class="blocked-list">
+    <h3 class="blocked-list__title">Заблокированное время</h3>
+    {% for slot in blocked_slots %}
+    <div class="blocked-slot">
+      <span class="blocked-slot__time">{{ slot.time_start|time:"H:i" }}–{{ slot.time_end|time:"H:i" }}</span>
+      {% if slot.note %}<span class="blocked-slot__note">{{ slot.note }}</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div id="add-form-container"></div>
+</div>
+{% endif %}

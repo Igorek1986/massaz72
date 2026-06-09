@@ -1,0 +1,41 @@
+<div class="settings-inline-form">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">{% if slot %}Редактировать{% else %}Заблокировать время{% endif %}</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('blocked-slot-form-container').innerHTML=''">✕</button>
+  </div>
+  <form hx-post="{% if slot %}{% url 'cabinet:blocked_slot_edit' slot.pk %}{% else %}{% url 'cabinet:blocked_slot_add' %}{% endif %}"
+        hx-target="#blocked-slot-form-container"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="form-grid form-grid--3">
+      <div class="form-field">
+        <label class="form-label">{{ form.date.label }}<span class="form-req">*</span></label>
+        {{ form.date }}
+        {% if form.date.errors %}<span class="form-error">{{ form.date.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.time_start.label }}<span class="form-req">*</span></label>
+        {{ form.time_start }}
+        {% if form.time_start.errors %}<span class="form-error">{{ form.time_start.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.time_end.label }}<span class="form-req">*</span></label>
+        {{ form.time_end }}
+        {% if form.time_end.errors %}<span class="form-error">{{ form.time_end.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.note.label }}</label>
+        {{ form.note }}
+      </div>
+    </div>
+    {% if form.non_field_errors %}
+    <div class="form-error form-error--block">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('blocked-slot-form-container').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--primary">Сохранить</button>
+    </div>
+  </form>
+</div>

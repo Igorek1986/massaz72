@@ -1,0 +1,40 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Скидки</h2>
+  <button class="btn btn--ghost btn--sm"
+          hx-get="{% url 'cabinet:discount_add' %}"
+          hx-target="#discount-form-container"
+          hx-swap="innerHTML">+ Добавить</button>
+</div>
+
+{% if discounts %}
+<ul class="settings-list">
+  {% for d in discounts %}
+  <li class="settings-list__item">
+    {% if active_discount.pk == d.pk %}
+    <span class="settings-list__badge" style="background:#dcfce7;color:#15803d">Активна</span>
+    {% endif %}
+    <span class="settings-list__dates">{{ d.date_from|date:"d.m.Y" }} – {{ d.date_to|date:"d.m.Y" }}</span>
+    <span class="settings-list__note">
+      {% if d.discount_type == 'percentage' %}{{ d.value|floatformat:0 }}%
+      {% else %}{{ d.value|floatformat:0 }} ₽{% endif %}
+      {% if d.description %} — {{ d.description }}{% endif %}
+    </span>
+    <div class="settings-list__actions">
+      <button class="apt-btn apt-btn--edit" title="Редактировать"
+              hx-get="{% url 'cabinet:discount_edit' d.pk %}"
+              hx-target="#discount-form-container"
+              hx-swap="innerHTML">✎</button>
+      <button class="apt-btn apt-btn--del" title="Удалить"
+              hx-post="{% url 'cabinet:discount_delete' d.pk %}"
+              hx-target="#discounts-section"
+              hx-swap="innerHTML"
+              hx-confirm="Удалить скидку?">✕</button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="settings-empty">Нет скидок</p>
+{% endif %}
+
+<div id="discount-form-container"></div>

@@ -1,0 +1,34 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Заблокированное время</h2>
+  <button class="btn btn--ghost btn--sm"
+          hx-get="{% url 'cabinet:blocked_slot_add' %}"
+          hx-target="#blocked-slot-form-container"
+          hx-swap="innerHTML">+ Добавить</button>
+</div>
+
+{% if blocked_slots %}
+<ul class="settings-list">
+  {% for slot in blocked_slots %}
+  <li class="settings-list__item">
+    <span class="settings-list__date">{{ slot.date|date:"d.m.Y" }}</span>
+    <span class="settings-list__time">{{ slot.time_start|time:"H:i" }} – {{ slot.time_end|time:"H:i" }}</span>
+    {% if slot.note %}<span class="settings-list__note">{{ slot.note }}</span>{% endif %}
+    <div class="settings-list__actions">
+      <button class="apt-btn apt-btn--edit" title="Редактировать"
+              hx-get="{% url 'cabinet:blocked_slot_edit' slot.pk %}"
+              hx-target="#blocked-slot-form-container"
+              hx-swap="innerHTML">✎</button>
+      <button class="apt-btn apt-btn--del" title="Удалить"
+              hx-post="{% url 'cabinet:blocked_slot_delete' slot.pk %}"
+              hx-target="#blocked-slots-section"
+              hx-swap="innerHTML"
+              hx-confirm="Удалить заблокированное время?">✕</button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="settings-empty">Нет заблокированного времени</p>
+{% endif %}
+
+<div id="blocked-slot-form-container"></div>

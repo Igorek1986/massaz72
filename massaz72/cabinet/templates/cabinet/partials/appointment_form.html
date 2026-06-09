@@ -1,0 +1,154 @@
+{% load i18n %}
+<div class="apt-form">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">{% if appointment %}Редактировать запись{% else %}Новая запись{% endif %}</h3>
+    <button type="button" class="apt-form__close"
+            hx-get="{% url 'cabinet:day_schedule' date_str %}"
+            hx-target="#day-panel"
+            hx-swap="innerHTML">✕</button>
+  </div>
+
+  <form hx-post="{% if appointment %}{% url 'cabinet:appointment_edit' appointment.pk %}{% else %}{% url 'cabinet:appointment_add' %}{% endif %}"
+        hx-target="#add-form-container"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ date_str }}">
+
+    {% if form.non_field_errors %}
+    <div class="form-error--block">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="form-label">{{ form.client_name.label }}<span class="form-req">*</span></label>
+        {{ form.client_name }}
+        {% if form.client_name.errors %}<span class="form-error">{{ form.client_name.errors.0 }}</span>{% endif %}
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">{{ form.client_phone.label }}</label>
+        {{ form.client_phone }}
+      </div>
+
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.address.label }}</label>
+        {{ form.address }}
+      </div>
+
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.service.label }}</label>
+        {{ form.service }}
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">{{ form.date.label }}<span class="form-req">*</span></label>
+        {{ form.date }}
+        {% if form.date.errors %}<span class="form-error">{{ form.date.errors.0 }}</span>{% endif %}
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">{{ form.time_start.label }}<span class="form-req">*</span></label>
+        {{ form.time_start }}
+        {% if form.time_start.errors %}<span class="form-error">{{ form.time_start.errors.0 }}</span>{% endif %}
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">{{ form.cost.label }}<span class="form-req">*</span></label>
+        {{ form.cost }}
+        {% if form.cost.errors %}<span class="form-error">{{ form.cost.errors.0 }}</span>{% endif %}
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">{{ form.transport_cost.label }}</label>
+        {{ form.transport_cost }}
+        <span class="form-hint">Проезд до клиента, необязательно</span>
+      </div>
+
+      {% if not appointment %}
+      <div class="form-field">
+        <label class="form-label">{{ form.sessions.label }}</label>
+        {{ form.sessions }}
+        {% if form.sessions.help_text %}<span class="form-hint">{{ form.sessions.help_text }}</span>{% endif %}
+      </div>
+      {% endif %}
+
+      <div class="form-field form-field--full">
+        <div id="apt-cost-summary" class="apt-cost-summary"></div>
+      </div>
+
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.notes.label }}</label>
+        {{ form.notes }}
+      </div>
+    </div>
+
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              hx-get="{% url 'cabinet:day_schedule' date_str %}"
+              hx-target="#day-panel"
+              hx-swap="innerHTML">Отмена</button>
+      <button type="submit" class="btn btn--primary">Сохранить</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var prices = {{ service_prices|default:"{}" }};
+  var serviceEl   = document.getElementById('id_service');
+  var costEl      = document.getElementById('id_cost');
+  var sessionsEl  = document.getElementById('id_sessions');
+  var transportEl = document.getElementById('id_transport_cost');
+  var summaryEl   = document.getElementById('apt-cost-summary');
+  if (!serviceEl || !costEl) return;
+
+  function plural(n) {
+    if (n % 10 === 1 && n % 100 !== 11) return '';
+    if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return 'а';
+    return 'ов';
+  }
+
+  function updateSummary() {
+    if (!summaryEl) return;
+    var price     = parseInt(costEl.value) || 0;
+    var sessions  = sessionsEl ? (parseInt(sessionsEl.value) || 1) : 1;
+    var transport = transportEl ? (parseInt(transportEl.value) || 0) : 0;
+    if (!price) { summaryEl.innerHTML = ''; return; }
+
+    var perSession = price + transport;
+    var total = perSession * sessions;
+    var html = '';
+
+    if (sessions > 1) {
+      html += '<span class="apt-cost-summary__line">1 сеанс — ' + perSession.toLocaleString('ru') + ' ₽';
+      if (transport > 0) {
+        html += ' (массаж ' + price.toLocaleString('ru') + ' + дорога ' + transport.toLocaleString('ru') + ')';
+      }
+      html += '</span>';
+      html += '<span class="apt-cost-summary__line apt-cost-summary__line--total">Итого за ' + sessions + ' сеанс' + plural(sessions) + ' — ' + total.toLocaleString('ru') + ' ₽</span>';
+    } else {
+      html += '<span class="apt-cost-summary__line apt-cost-summary__line--total">Итого — ' + perSession.toLocaleString('ru') + ' ₽</span>';
+      if (transport > 0) {
+        html += '<span class="apt-cost-summary__line apt-cost-summary__line--muted">массаж ' + price.toLocaleString('ru') + ' + дорога ' + transport.toLocaleString('ru') + ' ₽</span>';
+      }
+    }
+    summaryEl.innerHTML = html;
+  }
+
+  function fillPrice() {
+    var id = serviceEl.value;
+    var price = prices[id];
+    if (price) costEl.value = price;
+    updateSummary();
+  }
+
+  serviceEl.addEventListener('change', fillPrice);
+  if (sessionsEl)  sessionsEl.addEventListener('input', updateSummary);
+  if (transportEl) transportEl.addEventListener('input', updateSummary);
+
+  if (!costEl.value) fillPrice();
+  else updateSummary();
+})();
+</script>

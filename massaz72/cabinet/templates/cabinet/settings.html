@@ -1,0 +1,26 @@
+{% extends "cabinet/base.html" %}
+
+{% block title %}Настройки{% endblock %}
+{% block nav_settings %}sidebar__link--active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Настройки</h1>
+</div>
+
+<div class="settings-layout">
+
+  <div id="schedule-section" class="settings-card">
+    {% include "cabinet/partials/schedule_section.html" %}
+  </div>
+
+  <div id="exceptions-section" class="settings-card">
+    {% include "cabinet/partials/exception_section.html" %}
+  </div>
+
+  <div id="blocked-slots-section" class="settings-card">
+    {% include "cabinet/partials/blocked_slot_section.html" %}
+  </div>
+
+</div>
+{% endblock %}

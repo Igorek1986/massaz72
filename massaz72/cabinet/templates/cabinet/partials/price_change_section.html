@@ -1,0 +1,50 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Запланированное изменение цен</h2>
+  {% if prices_due %}
+  <span class="price-due-badge">Дата наступила</span>
+  {% endif %}
+</div>
+
+<form hx-post="{% url 'cabinet:prices_save_change' %}"
+      hx-target="#price-change-section"
+      hx-swap="innerHTML">
+  {% csrf_token %}
+  <div class="price-change-date">
+    <label class="form-label">Дата вступления в силу</label>
+    <input type="date" name="price_change_date" class="form-input"
+           value="{{ site_settings.price_change_date|date:'Y-m-d' }}">
+    <span class="form-hint">Оставьте пустым, чтобы отменить запланированное изменение</span>
+  </div>
+
+  <ul class="price-list price-list--change">
+    {% for massage in massages %}
+    <li class="price-list__item">
+      <span class="price-list__name">{{ massage.name }}</span>
+      <span class="price-list__current">сейчас {{ massage.price|floatformat:0 }} ₽</span>
+      <div class="price-list__input-wrap">
+        <input type="number"
+               name="new_price_{{ massage.pk }}"
+               value="{{ massage.new_price|floatformat:0 }}"
+               min="0" step="50" placeholder="новая цена"
+               class="form-input price-list__input">
+        <span class="price-list__currency">₽</span>
+      </div>
+    </li>
+    {% empty %}
+    <li class="settings-empty">Нет услуг</li>
+    {% endfor %}
+  </ul>
+
+  <div class="settings-card__footer price-change-footer">
+    <button type="submit" class="btn btn--ghost btn--sm">Сохранить план</button>
+    {% if prices_due %}
+    <button type="button" class="btn btn--primary btn--sm"
+            hx-post="{% url 'cabinet:prices_apply_change' %}"
+            hx-target="body"
+            hx-swap="innerHTML"
+            hx-confirm="Применить новые цены прямо сейчас?">
+      Применить сейчас
+    </button>
+    {% endif %}
+  </div>
+</form>

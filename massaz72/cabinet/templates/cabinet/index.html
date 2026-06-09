@@ -1,0 +1,70 @@
+{% extends "cabinet/base.html" %}
+
+{% block title %}Расписание{% endblock %}
+{% block nav_calendar %}sidebar__link--active{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Расписание</h1>
+</div>
+
+<div class="schedule-layout">
+  <div class="calendar-wrap">
+    <div id="calendar"></div>
+  </div>
+  <div class="day-panel-wrap">
+    <div id="day-panel"
+         hx-get="{% url 'cabinet:day_schedule' today %}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="day-panel-loading">Загрузка...</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/ru.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const calendarEl = document.getElementById('calendar');
+  const eventsUrl = '{% url "cabinet:calendar_events" %}';
+  const dayUrl = '{% url "cabinet:day_schedule" "DATE" %}';
+
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+    locale: 'ru',
+    initialView: 'dayGridMonth',
+    firstDay: 1,
+    height: 'auto',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: ''
+    },
+    events: eventsUrl,
+    dateClick: function(info) {
+      const url = dayUrl.replace('DATE', info.dateStr);
+      htmx.ajax('GET', url, { target: '#day-panel', swap: 'innerHTML' });
+
+      // Подсветка выбранного дня
+      calendarEl.querySelectorAll('.fc-day-selected').forEach(function(el) {
+        el.classList.remove('fc-day-selected');
+      });
+      info.dayEl.classList.add('fc-day-selected');
+    },
+  });
+
+  calendar.render();
+
+  // Перезагрузка событий после изменения записи
+  document.body.addEventListener('appointmentChanged', function() {
+    calendar.refetchEvents();
+  });
+});
+</script>
+{% endblock %}

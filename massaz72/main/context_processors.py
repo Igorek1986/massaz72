@@ -39,11 +39,17 @@ def site_settings(request):
     site_setting = SiteSettings.objects.first()
     change_date = site_setting.price_change_date if site_setting else None
     today = timezone.localdate()
+
+    try:
+        from cabinet.models import Discount
+        active_discount = Discount.objects.filter(date_from__lte=today, date_to__gte=today).first()
+    except Exception:
+        active_discount = None
+
     return {
         "site_settings": site_setting,
         "price_change_date": change_date,
-        # Новые цены уже вступили в силу
         "new_prices_active": bool(change_date and change_date <= today),
-        # Изменение цен запланировано, но дата ещё не наступила
         "price_change_pending": bool(change_date and change_date > today),
+        "active_discount": active_discount,
     }

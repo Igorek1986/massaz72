@@ -190,6 +190,19 @@
   }
 }
 
+// Цена со скидкой
+.price-original {
+  color: var(--color-muted);
+  text-decoration: line-through;
+  margin-right: 6px;
+  font-size: 0.9em;
+}
+
+.price-discounted {
+  color: #16a34a;
+  font-weight: 700;
+}
+
 // Book block (service detail)
 .massage__book {
   display: flex;
