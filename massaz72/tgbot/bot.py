@@ -253,7 +253,6 @@ def _bk_massage_page(
         types.InlineKeyboardButton(str(num), callback_data=f"bk_m_{m.id}")
         for num, m in zip(global_nums, page_massages)
     ])
-    # Разделитель сразу после кнопок выбора
     kb.row(types.InlineKeyboardButton("─────────────────", callback_data="bk_x"))
 
     # Пагинация (только если больше одной страницы)
@@ -397,10 +396,9 @@ def _bk_confirm_keyboard() -> types.InlineKeyboardMarkup:
 def _bk_confirm_text(state: dict) -> str:
     lines = ["📋 <b>Подтвердите запись</b>\n"]
     if state.get("massage_name"):
-        line = f"Массаж: <b>{html.escape(state['massage_name'])}</b>"
-        if state.get("massage_price"):
-            line += f" — {int(float(state['massage_price']))} ₽"
-        lines.append(line)
+        lines.append(f"Массаж: <b>{html.escape(state['massage_name'])}</b>")
+    if state.get("massage_price"):
+        lines.append(f"Стоимость: <b>{int(float(state['massage_price']))} ₽</b>")
     if state.get("therapist_name"):
         lines.append(f"Массажист: <b>{html.escape(state['therapist_name'])}</b>")
     if state.get("sessions_label"):
@@ -536,10 +534,9 @@ def _send_booking_to_admins(bot: telebot.TeleBot, user: TelegramUser, state: dic
 
     header = f"📅 <b>Заявка на запись</b>\n{name}{username}\nID: <code>{user.telegram_id}</code>\n\n"
     if state.get("massage_name"):
-        line = f"Массаж: <b>{html.escape(state['massage_name'])}</b>"
-        if state.get("massage_price"):
-            line += f" — {int(float(state['massage_price']))} ₽"
-        header += line + "\n"
+        header += f"Массаж: <b>{html.escape(state['massage_name'])}</b>\n"
+    if state.get("massage_price"):
+        header += f"Стоимость: <b>{int(float(state['massage_price']))} ₽</b>\n"
     if state.get("therapist_name"):
         header += f"Массажист: <b>{html.escape(state['therapist_name'])}</b>\n"
     if state.get("sessions_label"):
@@ -657,14 +654,12 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 reply_markup=main_keyboard(),
             )
             return
-        # Отправляем с ReplyKeyboardRemove, чтобы скрыть нижнюю клавиатуру,
-        # затем редактируем — добавляем inline-клавиатуру
         sent = bot.send_message(
             message.chat.id,
             "📝 <b>Запись на массаж</b>\n\nВыберите тип массажа:",
-            reply_markup=types.ReplyKeyboardRemove(),
+            parse_mode="HTML",
+            reply_markup=kb,
         )
-        bot.edit_message_reply_markup(message.chat.id, sent.message_id, reply_markup=kb)
         _pending_bookings[uid] = {"msg_id": sent.message_id}
 
     @bot.callback_query_handler(func=lambda c: c.data.startswith("bk_"))
@@ -884,7 +879,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             _send_booking_to_admins(bot, user, state)
             _pending_bookings.pop(uid, None)
             bot.edit_message_text(
-                "✅ <b>Заявка отправлена!</b>\n\nМассажист свяжется с вами в ближайшее время.",
+                "✅ <b>Заявка отправлена!</b>\n\nЭто предварительная запись — ожидайте подтверждения от администратора.",
                 chat_id, msg_id, reply_markup=None,
             )
             return
