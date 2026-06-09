@@ -23,7 +23,7 @@ from datetime import date, timedelta
 import telebot
 from telebot import types
 
-from .models import AdminForward, BotAdmin, BotSettings, DialogMessage, TelegramUser
+from .models import AdminForward, BotAdmin, BotSettings, Broadcast, DialogMessage, TelegramUser
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,10 @@ _bots: dict[str, telebot.TeleBot] = {}
 #              therapist_id?, therapist_name?, sessions?, sessions_label?,
 #              date_iso?, timeslot_id?, timeslot_label?
 _pending_bookings: dict[int, dict] = {}
+
+# Состояние мастера рассылки (для администраторов): telegram_id → state dict
+# Ключи state: state (awaiting_subject | awaiting_text | awaiting_confirm), subject?, text?
+_pending_broadcasts: dict[int, dict] = {}
 
 
 def get_bot(token: str | None = None) -> telebot.TeleBot | None:
@@ -190,6 +194,33 @@ def _build_header(user: TelegramUser, text: str) -> str:
         f"{body}\n\n"
         "↩️ Ответьте на это сообщение (Reply), чтобы написать клиенту."
     )
+
+
+# ─── Рассылка ─────────────────────────────────────────────────────────────────
+
+
+def _format_broadcast_text(subject: str, text: str) -> str:
+    if subject:
+        return f"<b>{html.escape(subject)}</b>\n\n{text}"
+    return text
+
+
+def do_broadcast(bot: telebot.TeleBot, broadcast: Broadcast) -> tuple[int, int]:
+    """Отправляет рассылку всем пользователям. Возвращает (sent, failed)."""
+    msg = _format_broadcast_text(broadcast.subject, broadcast.text)
+    sent = failed = 0
+    for user in TelegramUser.objects.all():
+        try:
+            bot.send_message(user.telegram_id, msg)
+            sent += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("broadcast %s: ошибка %s: %s", broadcast.pk, user.telegram_id, exc)
+            failed += 1
+    broadcast.sent_count = sent
+    broadcast.failed_count = failed
+    broadcast.is_sent = True
+    broadcast.save(update_fields=["sent_count", "failed_count", "is_sent"])
+    return sent, failed
 
 
 # ─── Мастер записи: клавиатуры ────────────────────────────────────────────────
@@ -633,6 +664,15 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             reply_markup=main_keyboard(),
         )
 
+    @bot.message_handler(commands=["broadcast"], func=lambda m: _is_admin(m.from_user.id))
+    def on_broadcast_start(message):
+        uid = message.from_user.id
+        _pending_broadcasts[uid] = {"state": "awaiting_subject"}
+        bot.send_message(
+            message.chat.id,
+            "📢 <b>Новая рассылка</b>\n\nВведите тему сообщения (или «-» чтобы пропустить):",
+        )
+
     @bot.message_handler(func=lambda m: m.text == BTN_SERVICES)
     def on_services(message):
         _pending_bookings.pop(message.from_user.id, None)
@@ -893,6 +933,82 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 reply_markup=main_keyboard(),
             )
             return
+
+    @bot.callback_query_handler(func=lambda c: c.data.startswith("bc_"))
+    def cb_broadcast(call):
+        uid = call.from_user.id
+        if not _is_admin(uid):
+            bot.answer_callback_query(call.id, "Нет доступа.")
+            return
+        bot.answer_callback_query(call.id)
+        state = _pending_broadcasts.pop(uid, None)
+
+        if call.data == "bc_cancel" or state is None:
+            try:
+                bot.edit_message_text("Рассылка отменена.", call.message.chat.id, call.message.message_id)
+            except Exception:  # noqa: BLE001
+                pass
+            return
+
+        if call.data == "bc_confirm" and state.get("state") == "awaiting_confirm":
+            broadcast = Broadcast.objects.create(
+                subject=state.get("subject", ""),
+                text=state["text"],
+            )
+            try:
+                bot.edit_message_text("⏳ Отправляю…", call.message.chat.id, call.message.message_id)
+            except Exception:  # noqa: BLE001
+                pass
+            sent, failed = do_broadcast(bot, broadcast)
+            level = "✅" if failed == 0 else "⚠️"
+            try:
+                bot.edit_message_text(
+                    f"{level} Рассылка завершена.\nДоставлено: {sent}, ошибок: {failed}.",
+                    call.message.chat.id, call.message.message_id,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+
+    @bot.message_handler(
+        func=lambda m: _is_admin(m.from_user.id)
+        and _pending_broadcasts.get(m.from_user.id, {}).get("state") in ("awaiting_subject", "awaiting_text"),
+        content_types=["text"],
+    )
+    def on_broadcast_input(message):
+        uid = message.from_user.id
+        text = (message.text or "").strip()
+        state = _pending_broadcasts.get(uid, {})
+
+        if text == "/cancel":
+            _pending_broadcasts.pop(uid, None)
+            bot.send_message(message.chat.id, "Рассылка отменена.")
+            return
+
+        if state.get("state") == "awaiting_subject":
+            subject = "" if text == "-" else text
+            _pending_broadcasts[uid] = {"state": "awaiting_text", "subject": subject}
+            bot.send_message(message.chat.id, "Введите текст рассылки:")
+            return
+
+        if state.get("state") == "awaiting_text":
+            if not text:
+                bot.send_message(message.chat.id, "Текст не может быть пустым. Попробуйте ещё раз:")
+                return
+            subject = state.get("subject", "")
+            user_count = TelegramUser.objects.count()
+            _pending_broadcasts[uid] = {"state": "awaiting_confirm", "subject": subject, "text": text}
+            preview = _format_broadcast_text(subject, text)
+            kb = types.InlineKeyboardMarkup()
+            kb.row(
+                types.InlineKeyboardButton("✅ Отправить", callback_data="bc_confirm"),
+                types.InlineKeyboardButton("❌ Отмена", callback_data="bc_cancel"),
+            )
+            bot.send_message(
+                message.chat.id,
+                f"Рассылка будет отправлена {user_count} получ.:\n\n"
+                f"———\n{preview}\n———\n\nПодтвердить?",
+                reply_markup=kb,
+            )
 
     @bot.message_handler(
         func=lambda m: m.reply_to_message is not None and _is_admin(m.from_user.id),

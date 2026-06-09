@@ -248,6 +248,13 @@ class BookingTimeSlot(models.Model):
 class Broadcast(models.Model):
     """Массовая рассылка текстового сообщения всем пользователям бота."""
 
+    subject = models.CharField(
+        "Тема",
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Жирный заголовок над текстом. Можно оставить пустым.",
+    )
     text = models.TextField("Текст сообщения")
     created_at = models.DateTimeField("Создана", auto_now_add=True)
     sent_count = models.PositiveIntegerField("Доставлено", default=0)
