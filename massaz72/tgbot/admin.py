@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import admin, messages
 
 from .bot import ALLOWED_UPDATES, get_bot
@@ -7,9 +9,12 @@ from .models import (
     BotSettings,
     BookingSessionOption,
     BookingTimeSlot,
+    Broadcast,
     DialogMessage,
     TelegramUser,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(BotSettings)
@@ -123,6 +128,54 @@ class BookingSessionOptionAdmin(admin.ModelAdmin):
 class BookingTimeSlotAdmin(admin.ModelAdmin):
     list_display = ["label", "is_active", "order"]
     list_editable = ["is_active", "order"]
+
+
+@admin.register(Broadcast)
+class BroadcastAdmin(admin.ModelAdmin):
+    list_display = ["short_text", "created_at", "is_sent", "sent_count", "failed_count"]
+    readonly_fields = ["sent_count", "failed_count", "is_sent", "created_at"]
+    actions = ["action_send"]
+
+    @admin.display(description="Текст")
+    def short_text(self, obj):
+        return obj.text[:80] + ("…" if len(obj.text) > 80 else "")
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.is_sent:
+            return ["text", "sent_count", "failed_count", "is_sent", "created_at"]
+        return self.readonly_fields
+
+    @admin.action(description="Разослать всем пользователям бота")
+    def action_send(self, request, queryset):
+        for broadcast in queryset.filter(is_sent=False):
+            self._do_send(request, broadcast)
+
+    def _do_send(self, request, broadcast: Broadcast) -> None:
+        settings = BotSettings.load()
+        if not settings.token:
+            self.message_user(request, "Токен бота не задан.", level=messages.ERROR)
+            return
+        bot = get_bot(settings.token)
+        if bot is None:
+            self.message_user(request, "Не удалось получить экземпляр бота.", level=messages.ERROR)
+            return
+
+        sent = failed = 0
+        for user in TelegramUser.objects.all():
+            try:
+                bot.send_message(user.telegram_id, broadcast.text)
+                sent += 1
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("broadcast %s: ошибка отправки %s: %s", broadcast.pk, user.telegram_id, exc)
+                failed += 1
+
+        broadcast.sent_count = sent
+        broadcast.failed_count = failed
+        broadcast.is_sent = True
+        broadcast.save(update_fields=["sent_count", "failed_count", "is_sent"])
+
+        level = messages.SUCCESS if failed == 0 else messages.WARNING
+        self.message_user(request, f"Разослано: {sent}, ошибок: {failed}.", level=level)
 
 
 @admin.register(DialogMessage)

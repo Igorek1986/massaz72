@@ -245,6 +245,25 @@ class BookingTimeSlot(models.Model):
         return self.label
 
 
+class Broadcast(models.Model):
+    """Массовая рассылка текстового сообщения всем пользователям бота."""
+
+    text = models.TextField("Текст сообщения")
+    created_at = models.DateTimeField("Создана", auto_now_add=True)
+    sent_count = models.PositiveIntegerField("Доставлено", default=0)
+    failed_count = models.PositiveIntegerField("Ошибок", default=0)
+    is_sent = models.BooleanField("Отправлена", default=False)
+
+    class Meta:
+        verbose_name = "Рассылка"
+        verbose_name_plural = "Рассылки"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        preview = self.text[:60]
+        return f"{preview}…" if len(self.text) > 60 else preview
+
+
 class AdminForward(models.Model):
     """
     Связь «сообщение, доставленное администратору» → «клиент».
