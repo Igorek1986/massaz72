@@ -236,10 +236,9 @@ def _bk_massage_keyboard(massage_type: str, page: int = 0) -> types.InlineKeyboa
             if m.duration_min == m.duration_max
             else f"{m.duration_min}–{m.duration_max} мин"
         )
-        details = f"{price} · {dur}"
-        one_line = f"{m.name} — {details}"
-        btn_text = one_line if len(one_line) <= 32 else f"{m.name}\n{details}"
-        kb.add(types.InlineKeyboardButton(btn_text, callback_data=f"bk_m_{m.id}"))
+        kb.add(types.InlineKeyboardButton(
+            f"{m.name}\n{price} · {dur}", callback_data=f"bk_m_{m.id}"
+        ))
 
     # Пагинация (только если больше одной страницы)
     if total > _BK_MASSAGE_PAGE_SIZE:
