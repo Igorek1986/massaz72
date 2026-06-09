@@ -212,26 +212,10 @@ def _bk_type_keyboard() -> types.InlineKeyboardMarkup | None:
     return kb
 
 
-def _bk_massage_list_text(massage_type: str) -> str:
-    """Текст сообщения со списком массажей (цена + длительность) над клавиатурой."""
-    from services.models import Massage
-
-    massages = list(
-        Massage.objects.filter(is_archived=False, massage_type=massage_type).order_by("order")
-    )
-    lines = ["📝 <b>Запись на массаж</b>\n\nВыберите вид массажа:\n"]
-    for m in massages:
-        price = f"{int(m.price)} ₽"
-        dur = (
-            f"{m.duration_min} мин"
-            if m.duration_min == m.duration_max
-            else f"{m.duration_min}–{m.duration_max} мин"
-        )
-        lines.append(f"• {html.escape(m.name)} — {price} · {dur}")
-    return "\n".join(lines)
+_BK_MASSAGE_PAGE_SIZE = 3
 
 
-def _bk_massage_keyboard(massage_type: str) -> types.InlineKeyboardMarkup | None:
+def _bk_massage_keyboard(massage_type: str, page: int = 0) -> types.InlineKeyboardMarkup | None:
     from services.models import Massage
 
     massages = list(
@@ -239,9 +223,40 @@ def _bk_massage_keyboard(massage_type: str) -> types.InlineKeyboardMarkup | None
     )
     if not massages:
         return None
+
+    total = len(massages)
+    start = page * _BK_MASSAGE_PAGE_SIZE
+    end = min(start + _BK_MASSAGE_PAGE_SIZE, total)
+
     kb = types.InlineKeyboardMarkup()
-    for m in massages:
-        kb.add(types.InlineKeyboardButton(m.name, callback_data=f"bk_m_{m.id}"))
+    for m in massages[start:end]:
+        price = f"{int(m.price)} ₽"
+        dur = (
+            f"{m.duration_min} мин"
+            if m.duration_min == m.duration_max
+            else f"{m.duration_min}–{m.duration_max} мин"
+        )
+        kb.add(types.InlineKeyboardButton(
+            f"{m.name} — {price} · {dur}", callback_data=f"bk_m_{m.id}"
+        ))
+
+    # Пагинация (только если больше одной страницы)
+    if total > _BK_MASSAGE_PAGE_SIZE:
+        total_pages = (total + _BK_MASSAGE_PAGE_SIZE - 1) // _BK_MASSAGE_PAGE_SIZE
+        nav = []
+        if page > 0:
+            nav.append(types.InlineKeyboardButton(
+                "← Пред.", callback_data=f"bk_mp_{massage_type}_{page - 1}"
+            ))
+        nav.append(types.InlineKeyboardButton(
+            f"{page + 1}/{total_pages}", callback_data="bk_x"
+        ))
+        if end < total:
+            nav.append(types.InlineKeyboardButton(
+                "Далее →", callback_data=f"bk_mp_{massage_type}_{page + 1}"
+            ))
+        kb.row(*nav)
+
     kb.add(types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_type"))
     kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"))
     return kb
@@ -695,7 +710,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             kb = _bk_massage_keyboard(mtype) if mtype else None
             if kb:
                 bot.edit_message_text(
-                    _bk_massage_list_text(mtype),
+                    "📝 <b>Запись на массаж</b>\n\nВыберите вид массажа:",
                     chat_id, msg_id, reply_markup=kb,
                 )
             return
@@ -721,6 +736,23 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             _bk_show_timeslot(bot, chat_id, msg_id)
             return
 
+        # ── Пагинация списка массажей ────────────────────────────────────────
+        if data.startswith("bk_mp_"):
+            # формат: bk_mp_{massage_type}_{page}
+            parts = data[6:].rsplit("_", 1)
+            if len(parts) == 2:
+                mtype, page_str = parts
+                try:
+                    kb = _bk_massage_keyboard(mtype, int(page_str))
+                    if kb:
+                        bot.edit_message_text(
+                            "📝 <b>Запись на массаж</b>\n\nВыберите вид массажа:",
+                            chat_id, msg_id, reply_markup=kb,
+                        )
+                except (ValueError, Exception):  # noqa: BLE001
+                    pass
+            return
+
         # ── Выбор типа массажа ───────────────────────────────────────────────
         if data.startswith("bk_t_"):
             mtype = data[5:]
@@ -734,7 +766,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 )
                 return
             bot.edit_message_text(
-                _bk_massage_list_text(mtype),
+                "📝 <b>Запись на массаж</b>\n\nВыберите вид массажа:",
                 chat_id, msg_id, reply_markup=kb,
             )
             return
