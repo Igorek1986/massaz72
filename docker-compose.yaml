@@ -36,15 +36,21 @@ services:
         max-file: "10"
         max-size: "200k"
 
-  # Telegram-бот в режиме polling. Запускается только при необходимости:
-  #   docker compose --profile polling up -d
-  # В режиме webhook этот сервис не нужен (обновления принимает app через URL).
+  # Telegram-бот. Режим определяется переменной BOT_MODE в .env:
+  #   BOT_MODE=polling  — запускает long polling (нужен, если webhook недоступен)
+  #   BOT_MODE=webhook  — сервис сразу завершается; обновления принимает app через URL
+  # После изменения BOT_MODE пересоздать контейнер: docker compose up -d bot
   bot:
     image: massaz72_django-app
-    profiles: ["polling"]
-    command: ["python", "manage.py", "runbot"]
-    entrypoint: []
-    restart: always
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ "$BOT_MODE" = "polling" ]; then
+          exec python manage.py runbot
+        else
+          echo "BOT_MODE=${BOT_MODE}, polling не запущен."
+        fi
+    restart: on-failure
     env_file:
       - .env
     volumes:
