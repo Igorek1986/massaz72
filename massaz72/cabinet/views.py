@@ -1,52 +1,79 @@
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
+from functools import wraps
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.http import HttpRequest, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from main.models import SiteSettings
 from services.models import Massage
 
-from .forms import AppointmentForm, BlockedSlotForm, DiscountForm, ScheduleExceptionForm, WorkScheduleForm, find_time_conflicts
-from .models import Appointment, AppointmentSeries, BlockedSlot, Discount, ScheduleException, WorkSchedule
+from .forms import (
+    AppointmentForm, BlockedSlotForm, DiscountForm,
+    ScheduleExceptionForm, WorkScheduleForm,
+    find_time_conflicts, _conflict_message,
+)
+from .models import (
+    Appointment, AppointmentSeries, BlockedSlot,
+    Discount, ScheduleException, Specialist, WorkSchedule,
+)
+
+
+# ---------------------------------------------------------------------------
+# Decorator
+# ---------------------------------------------------------------------------
+
+def specialist_required(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapper(request: HttpRequest, *args, **kwargs):
+        try:
+            request.specialist = request.user.specialist
+        except Specialist.DoesNotExist:
+            return redirect("admin:index")
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _is_working_day(d: date, schedule: WorkSchedule) -> bool:
+def _is_working_day(d: date, schedule: WorkSchedule, specialist: Specialist) -> bool:
     if d.weekday() not in schedule.working_weekdays():
         return False
-    return not ScheduleException.objects.filter(date_from__lte=d, date_to__gte=d).exists()
+    return not ScheduleException.objects.filter(
+        specialist=specialist, date_from__lte=d, date_to__gte=d
+    ).exists()
 
 
-def _series_dates(start: date, count: int, schedule: WorkSchedule) -> list[date]:
-    """Возвращает list из count рабочих дней начиная с start (включительно)."""
+def _series_dates(start: date, count: int, schedule: WorkSchedule, specialist: Specialist) -> list[date]:
     dates: list[date] = []
     current = start
     limit = start + timedelta(days=365)
     while len(dates) < count and current <= limit:
-        if _is_working_day(current, schedule):
+        if _is_working_day(current, schedule, specialist):
             dates.append(current)
         current += timedelta(days=1)
     return dates
 
 
-def _day_context(selected_date: date) -> dict:
+def _day_context(selected_date: date, specialist: Specialist) -> dict:
     appointments = (
-        Appointment.objects.filter(date=selected_date)
+        Appointment.objects.filter(date=selected_date, specialist=specialist)
         .select_related("service", "series")
         .order_by("time_start")
     )
-    blocked_slots = BlockedSlot.objects.filter(date=selected_date)
-    schedule = WorkSchedule.get_solo()
-    is_working = _is_working_day(selected_date, schedule)
-    exceptions = ScheduleException.objects.filter(date_from__lte=selected_date, date_to__gte=selected_date)
+    blocked_slots = BlockedSlot.objects.filter(date=selected_date, specialist=specialist)
+    schedule = WorkSchedule.for_specialist(specialist)
+    is_working = _is_working_day(selected_date, schedule, specialist)
+    exceptions = ScheduleException.objects.filter(
+        specialist=specialist, date_from__lte=selected_date, date_to__gte=selected_date
+    )
     return {
         "selected_date": selected_date,
         "date_str": selected_date.isoformat(),
@@ -61,19 +88,20 @@ def _day_context(selected_date: date) -> dict:
 # Pages
 # ---------------------------------------------------------------------------
 
-@login_required
+@specialist_required
 def index(request):
     today = date.today()
     return render(request, "cabinet/index.html", {"today": today.isoformat()})
 
 
-@login_required
+@specialist_required
 def settings(request):
-    schedule = WorkSchedule.get_solo()
+    specialist = request.specialist
+    schedule = WorkSchedule.for_specialist(specialist)
     return render(request, "cabinet/settings.html", {
         "schedule_form": WorkScheduleForm(instance=schedule),
-        "exceptions": ScheduleException.objects.all(),
-        "blocked_slots": BlockedSlot.objects.order_by("date", "time_start"),
+        "exceptions": ScheduleException.objects.filter(specialist=specialist),
+        "blocked_slots": BlockedSlot.objects.filter(specialist=specialist).order_by("date", "time_start"),
     })
 
 
@@ -81,17 +109,21 @@ def settings(request):
 # HTMX partials
 # ---------------------------------------------------------------------------
 
-@login_required
+@specialist_required
 def day_schedule(request, date_str: str):
     try:
         selected_date = date.fromisoformat(date_str)
     except ValueError:
         return render(request, "cabinet/partials/day_schedule.html", {"error": True})
-    return render(request, "cabinet/partials/day_schedule.html", _day_context(selected_date))
+    return render(
+        request, "cabinet/partials/day_schedule.html",
+        _day_context(selected_date, request.specialist),
+    )
 
 
-@login_required
+@specialist_required
 def appointment_add(request):
+    specialist = request.specialist
     date_str = request.GET.get("date") or request.POST.get("date", "")
     try:
         initial_date = date.fromisoformat(date_str)
@@ -99,23 +131,27 @@ def appointment_add(request):
         initial_date = date.today()
         date_str = initial_date.isoformat()
 
+    service_prices = {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)}
+
     if request.method == "POST":
-        form = AppointmentForm(request.POST)
+        form = AppointmentForm(request.POST, specialist=specialist)
         if form.is_valid():
             sessions = form.cleaned_data.pop("sessions")
             apt: Appointment = form.save(commit=False)
-            schedule = WorkSchedule.get_solo()
+            apt.specialist = specialist
+            schedule = WorkSchedule.for_specialist(specialist)
 
             if sessions > 1:
-                dates = _series_dates(apt.date, sessions, schedule)
+                dates = _series_dates(apt.date, sessions, schedule, specialist)
                 break_minutes = schedule.break_between_minutes
                 conflict_dates = []
                 for d in dates:
-                    day_conflicts = find_time_conflicts(d, apt.time_start, apt.service, break_minutes)
+                    day_conflicts = find_time_conflicts(
+                        d, apt.time_start, apt.service, break_minutes, specialist=specialist
+                    )
                     if day_conflicts:
                         conflict_dates.append((d, day_conflicts))
                 if conflict_dates:
-                    from .forms import _conflict_message
                     lines = []
                     for d, day_conflicts in conflict_dates:
                         lines.append(
@@ -123,18 +159,19 @@ def appointment_add(request):
                         )
                     form.add_error(None, " | ".join(lines))
                     response = render(request, "cabinet/partials/appointment_form.html", {
-                        "form": form, "date_str": date_str,
-                        "service_prices": {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)},
+                        "form": form, "date_str": date_str, "service_prices": service_prices,
                     })
                     response["HX-Retarget"] = "#add-form-container"
                     return response
 
                 series = AppointmentSeries.objects.create(
+                    specialist=specialist,
                     service=apt.service,
                     total_sessions=sessions,
                 )
                 for d in dates:
                     Appointment.objects.create(
+                        specialist=specialist,
                         client_name=apt.client_name,
                         client_phone=apt.client_phone,
                         address=apt.address,
@@ -149,37 +186,43 @@ def appointment_add(request):
             else:
                 apt.save()
 
-            response = render(request, "cabinet/partials/day_schedule.html", _day_context(apt.date))
+            response = render(
+                request, "cabinet/partials/day_schedule.html",
+                _day_context(apt.date, specialist),
+            )
             response["HX-Retarget"] = "#day-panel"
             response["HX-Reswap"] = "innerHTML"
             response["HX-Trigger"] = "appointmentChanged"
             return response
 
         response = render(request, "cabinet/partials/appointment_form.html", {
-            "form": form, "date_str": date_str,
-            "service_prices": {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)},
+            "form": form, "date_str": date_str, "service_prices": service_prices,
         })
         response["HX-Retarget"] = "#add-form-container"
         return response
 
-    form = AppointmentForm(initial={"date": initial_date})
-    service_prices = {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)}
+    form = AppointmentForm(initial={"date": initial_date}, specialist=specialist)
     return render(request, "cabinet/partials/appointment_form.html", {
         "form": form, "date_str": date_str, "service_prices": service_prices,
     })
 
 
-@login_required
+@specialist_required
 def appointment_edit(request, pk: int):
-    appointment = get_object_or_404(Appointment, pk=pk)
+    specialist = request.specialist
+    appointment = get_object_or_404(Appointment, pk=pk, specialist=specialist)
     date_str = appointment.date.isoformat()
+    service_prices = {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)}
 
     if request.method == "POST":
-        form = AppointmentForm(request.POST, instance=appointment)
+        form = AppointmentForm(request.POST, instance=appointment, specialist=specialist)
         if form.is_valid():
             form.cleaned_data.pop("sessions", None)
             form.save()
-            response = render(request, "cabinet/partials/day_schedule.html", _day_context(appointment.date))
+            response = render(
+                request, "cabinet/partials/day_schedule.html",
+                _day_context(appointment.date, specialist),
+            )
             response["HX-Retarget"] = "#day-panel"
             response["HX-Reswap"] = "innerHTML"
             response["HX-Trigger"] = "appointmentChanged"
@@ -187,39 +230,46 @@ def appointment_edit(request, pk: int):
 
         response = render(request, "cabinet/partials/appointment_form.html", {
             "form": form, "date_str": date_str, "appointment": appointment,
-            "service_prices": {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)},
+            "service_prices": service_prices,
         })
         response["HX-Retarget"] = "#add-form-container"
         return response
 
-    form = AppointmentForm(instance=appointment)
-    service_prices = {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)}
+    form = AppointmentForm(instance=appointment, specialist=specialist)
     return render(request, "cabinet/partials/appointment_form.html", {
         "form": form, "date_str": date_str, "appointment": appointment,
         "service_prices": service_prices,
     })
 
 
-@login_required
+@specialist_required
 @require_POST
 def appointment_status(request, pk: int):
-    appointment = get_object_or_404(Appointment, pk=pk)
+    specialist = request.specialist
+    appointment = get_object_or_404(Appointment, pk=pk, specialist=specialist)
     new_status = request.POST.get("status")
     if new_status in (Appointment.SCHEDULED, Appointment.COMPLETED, Appointment.CANCELLED):
         appointment.status = new_status
         appointment.save()
-    response = render(request, "cabinet/partials/day_schedule.html", _day_context(appointment.date))
+    response = render(
+        request, "cabinet/partials/day_schedule.html",
+        _day_context(appointment.date, specialist),
+    )
     response["HX-Trigger"] = "appointmentChanged"
     return response
 
 
-@login_required
+@specialist_required
 @require_POST
 def appointment_delete(request, pk: int):
-    appointment = get_object_or_404(Appointment, pk=pk)
+    specialist = request.specialist
+    appointment = get_object_or_404(Appointment, pk=pk, specialist=specialist)
     saved_date = appointment.date
     appointment.delete()
-    response = render(request, "cabinet/partials/day_schedule.html", _day_context(saved_date))
+    response = render(
+        request, "cabinet/partials/day_schedule.html",
+        _day_context(saved_date, specialist),
+    )
     response["HX-Trigger"] = "appointmentChanged"
     return response
 
@@ -228,23 +278,29 @@ def appointment_delete(request, pk: int):
 # Settings helpers
 # ---------------------------------------------------------------------------
 
-def _exception_section_ctx() -> dict:
-    return {"exceptions": ScheduleException.objects.all()}
+def _exception_section_ctx(specialist: Specialist) -> dict:
+    return {"exceptions": ScheduleException.objects.filter(specialist=specialist)}
 
 
-def _blocked_slot_section_ctx() -> dict:
-    return {"blocked_slots": BlockedSlot.objects.order_by("date", "time_start")}
+def _blocked_slot_section_ctx(specialist: Specialist) -> dict:
+    return {"blocked_slots": BlockedSlot.objects.filter(specialist=specialist).order_by("date", "time_start")}
 
 
 def _exception_section_response(request):
-    response = render(request, "cabinet/partials/exception_section.html", _exception_section_ctx())
+    response = render(
+        request, "cabinet/partials/exception_section.html",
+        _exception_section_ctx(request.specialist),
+    )
     response["HX-Retarget"] = "#exceptions-section"
     response["HX-Reswap"] = "innerHTML"
     return response
 
 
 def _blocked_slot_section_response(request):
-    response = render(request, "cabinet/partials/blocked_slot_section.html", _blocked_slot_section_ctx())
+    response = render(
+        request, "cabinet/partials/blocked_slot_section.html",
+        _blocked_slot_section_ctx(request.specialist),
+    )
     response["HX-Retarget"] = "#blocked-slots-section"
     response["HX-Reswap"] = "innerHTML"
     return response
@@ -254,10 +310,11 @@ def _blocked_slot_section_response(request):
 # Settings views
 # ---------------------------------------------------------------------------
 
-@login_required
+@specialist_required
 @require_POST
 def schedule_save(request):
-    schedule = WorkSchedule.get_solo()
+    specialist = request.specialist
+    schedule = WorkSchedule.for_specialist(specialist)
     form = WorkScheduleForm(request.POST, instance=schedule)
     saved = False
     if form.is_valid():
@@ -271,12 +328,15 @@ def schedule_save(request):
     return response
 
 
-@login_required
+@specialist_required
 def exception_add(request):
+    specialist = request.specialist
     if request.method == "POST":
         form = ScheduleExceptionForm(request.POST)
         if form.is_valid():
-            form.save()
+            exc = form.save(commit=False)
+            exc.specialist = specialist
+            exc.save()
             return _exception_section_response(request)
         response = render(request, "cabinet/partials/exception_form.html", {"form": form})
         response["HX-Retarget"] = "#exception-form-container"
@@ -284,9 +344,9 @@ def exception_add(request):
     return render(request, "cabinet/partials/exception_form.html", {"form": ScheduleExceptionForm()})
 
 
-@login_required
+@specialist_required
 def exception_edit(request, pk: int):
-    exc = get_object_or_404(ScheduleException, pk=pk)
+    exc = get_object_or_404(ScheduleException, pk=pk, specialist=request.specialist)
     if request.method == "POST":
         form = ScheduleExceptionForm(request.POST, instance=exc)
         if form.is_valid():
@@ -300,19 +360,22 @@ def exception_edit(request, pk: int):
     })
 
 
-@login_required
+@specialist_required
 @require_POST
 def exception_delete(request, pk: int):
-    get_object_or_404(ScheduleException, pk=pk).delete()
+    get_object_or_404(ScheduleException, pk=pk, specialist=request.specialist).delete()
     return _exception_section_response(request)
 
 
-@login_required
+@specialist_required
 def blocked_slot_add(request):
+    specialist = request.specialist
     if request.method == "POST":
         form = BlockedSlotForm(request.POST)
         if form.is_valid():
-            form.save()
+            slot = form.save(commit=False)
+            slot.specialist = specialist
+            slot.save()
             return _blocked_slot_section_response(request)
         response = render(request, "cabinet/partials/blocked_slot_form.html", {"form": form})
         response["HX-Retarget"] = "#blocked-slot-form-container"
@@ -320,9 +383,9 @@ def blocked_slot_add(request):
     return render(request, "cabinet/partials/blocked_slot_form.html", {"form": BlockedSlotForm()})
 
 
-@login_required
+@specialist_required
 def blocked_slot_edit(request, pk: int):
-    slot = get_object_or_404(BlockedSlot, pk=pk)
+    slot = get_object_or_404(BlockedSlot, pk=pk, specialist=request.specialist)
     if request.method == "POST":
         form = BlockedSlotForm(request.POST, instance=slot)
         if form.is_valid():
@@ -336,10 +399,10 @@ def blocked_slot_edit(request, pk: int):
     })
 
 
-@login_required
+@specialist_required
 @require_POST
 def blocked_slot_delete(request, pk: int):
-    get_object_or_404(BlockedSlot, pk=pk).delete()
+    get_object_or_404(BlockedSlot, pk=pk, specialist=request.specialist).delete()
     return _blocked_slot_section_response(request)
 
 
@@ -347,7 +410,7 @@ def blocked_slot_delete(request, pk: int):
 # Prices helpers
 # ---------------------------------------------------------------------------
 
-def _prices_ctx() -> dict:
+def _prices_ctx(specialist: Specialist) -> dict:
     massages = Massage.objects.filter(is_archived=False).order_by("massage_type", "order")
     site_settings = SiteSettings.objects.first()
     today = timezone.localdate()
@@ -357,8 +420,10 @@ def _prices_ctx() -> dict:
         and site_settings.price_change_date <= today
         and massages.filter(new_price__isnull=False).exists()
     )
-    active_discount = Discount.objects.filter(date_from__lte=today, date_to__gte=today).first()
-    discounts = Discount.objects.all()
+    active_discount = Discount.objects.filter(
+        specialist=specialist, date_from__lte=today, date_to__gte=today
+    ).first()
+    discounts = Discount.objects.filter(specialist=specialist)
     return {
         "massages": massages,
         "site_settings": site_settings,
@@ -368,16 +433,21 @@ def _prices_ctx() -> dict:
     }
 
 
-def _discount_section_ctx() -> dict:
+def _discount_section_ctx(specialist: Specialist) -> dict:
     today = timezone.localdate()
     return {
-        "discounts": Discount.objects.all(),
-        "active_discount": Discount.objects.filter(date_from__lte=today, date_to__gte=today).first(),
+        "discounts": Discount.objects.filter(specialist=specialist),
+        "active_discount": Discount.objects.filter(
+            specialist=specialist, date_from__lte=today, date_to__gte=today
+        ).first(),
     }
 
 
 def _discount_section_response(request):
-    response = render(request, "cabinet/partials/discount_section.html", _discount_section_ctx())
+    response = render(
+        request, "cabinet/partials/discount_section.html",
+        _discount_section_ctx(request.specialist),
+    )
     response["HX-Retarget"] = "#discounts-section"
     response["HX-Reswap"] = "innerHTML"
     return response
@@ -387,12 +457,12 @@ def _discount_section_response(request):
 # Prices views
 # ---------------------------------------------------------------------------
 
-@login_required
+@specialist_required
 def prices(request):
-    return render(request, "cabinet/prices.html", _prices_ctx())
+    return render(request, "cabinet/prices.html", _prices_ctx(request.specialist))
 
 
-@login_required
+@specialist_required
 @require_POST
 def prices_save_current(request):
     massages = Massage.objects.filter(is_archived=False)
@@ -404,14 +474,17 @@ def prices_save_current(request):
                 massage.save(update_fields=["price"])
             except InvalidOperation:
                 pass
-    response = render(request, "cabinet/partials/price_list_section.html", _prices_ctx())
+    response = render(
+        request, "cabinet/partials/price_list_section.html",
+        _prices_ctx(request.specialist),
+    )
     response["HX-Retarget"] = "#price-list-section"
     response["HX-Reswap"] = "innerHTML"
     response["HX-Trigger"] = "pricesChanged"
     return response
 
 
-@login_required
+@specialist_required
 @require_POST
 def prices_save_change(request):
     site_settings = SiteSettings.objects.first()
@@ -437,16 +510,18 @@ def prices_save_change(request):
             massage.new_price = None
         massage.save(update_fields=["new_price"])
 
-    response = render(request, "cabinet/partials/price_change_section.html", _prices_ctx())
+    response = render(
+        request, "cabinet/partials/price_change_section.html",
+        _prices_ctx(request.specialist),
+    )
     response["HX-Retarget"] = "#price-change-section"
     response["HX-Reswap"] = "innerHTML"
     return response
 
 
-@login_required
+@specialist_required
 @require_POST
 def prices_apply_change(request):
-    """Применить запланированные цены немедленно."""
     massages = Massage.objects.filter(is_archived=False, new_price__isnull=False)
     for massage in massages:
         massage.price = massage.new_price
@@ -456,15 +531,18 @@ def prices_apply_change(request):
     site_settings.price_change_date = None
     site_settings.save(update_fields=["price_change_date"])
 
-    return render(request, "cabinet/prices.html", _prices_ctx())
+    return render(request, "cabinet/prices.html", _prices_ctx(request.specialist))
 
 
-@login_required
+@specialist_required
 def discount_add(request):
+    specialist = request.specialist
     if request.method == "POST":
         form = DiscountForm(request.POST)
         if form.is_valid():
-            form.save()
+            discount = form.save(commit=False)
+            discount.specialist = specialist
+            discount.save()
             return _discount_section_response(request)
         response = render(request, "cabinet/partials/discount_form.html", {"form": form})
         response["HX-Retarget"] = "#discount-form-container"
@@ -472,9 +550,9 @@ def discount_add(request):
     return render(request, "cabinet/partials/discount_form.html", {"form": DiscountForm()})
 
 
-@login_required
+@specialist_required
 def discount_edit(request, pk: int):
-    discount = get_object_or_404(Discount, pk=pk)
+    discount = get_object_or_404(Discount, pk=pk, specialist=request.specialist)
     if request.method == "POST":
         form = DiscountForm(request.POST, instance=discount)
         if form.is_valid():
@@ -488,10 +566,10 @@ def discount_edit(request, pk: int):
     })
 
 
-@login_required
+@specialist_required
 @require_POST
 def discount_delete(request, pk: int):
-    get_object_or_404(Discount, pk=pk).delete()
+    get_object_or_404(Discount, pk=pk, specialist=request.specialist).delete()
     return _discount_section_response(request)
 
 
@@ -499,8 +577,9 @@ def discount_delete(request, pk: int):
 # FullCalendar JSON events
 # ---------------------------------------------------------------------------
 
-@login_required
+@specialist_required
 def calendar_events(request):
+    specialist = request.specialist
     start_str = request.GET.get("start", "")
     end_str = request.GET.get("end", "")
     try:
@@ -510,9 +589,11 @@ def calendar_events(request):
         return JsonResponse([], safe=False)
 
     events = []
-    schedule = WorkSchedule.get_solo()
+    schedule = WorkSchedule.for_specialist(specialist)
     working_days = schedule.working_weekdays()
-    exceptions = ScheduleException.objects.filter(date_from__lte=end, date_to__gte=start)
+    exceptions = ScheduleException.objects.filter(
+        specialist=specialist, date_from__lte=end, date_to__gte=start
+    )
 
     current = start
     while current < end:
@@ -527,7 +608,7 @@ def calendar_events(request):
         current += timedelta(days=1)
 
     apt_counts = (
-        Appointment.objects.filter(date__gte=start, date__lt=end)
+        Appointment.objects.filter(date__gte=start, date__lt=end, specialist=specialist)
         .exclude(status=Appointment.CANCELLED)
         .values("date")
         .annotate(count=Count("id"))

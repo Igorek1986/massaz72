@@ -122,6 +122,16 @@ body.cabinet-body {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.sidebar__specialist {
+  padding: 6px 12px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sidebar__logout {
   display: flex;
   align-items: center;
@@ -322,12 +332,36 @@ body.cabinet-body {
     color: #fff;
   }
 
+  .fc-gotoToday-button {
+    background: var(--cab-surface) !important;
+    border-color: var(--cab-border) !important;
+    color: var(--cab-text) !important;
+    opacity: 1 !important;
+
+    &:hover {
+      background: var(--cab-border) !important;
+    }
+  }
+
   .fc-day-today {
-    background: rgba(59, 130, 246, 0.06) !important;
+    background: rgba(245, 158, 11, 0.10) !important;
   }
 
   .fc-day-selected {
-    background: rgba(59, 130, 246, 0.12) !important;
+    background: rgba(59, 130, 246, 0.14) !important;
+    box-shadow: inset 0 0 0 2px var(--cab-primary) !important;
+  }
+
+  .fc-daygrid-day {
+    cursor: pointer;
+
+    &:hover .fc-daygrid-day-frame {
+      background: var(--cab-border);
+    }
+
+    &:hover .fc-daygrid-day-number {
+      color: var(--cab-primary);
+    }
   }
 
   .fc-day-off {

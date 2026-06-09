@@ -2,11 +2,11 @@ from datetime import datetime, timedelta
 
 from django import forms
 
-from .models import Appointment, BlockedSlot, Discount, ScheduleException, WorkSchedule
+from .models import Appointment, BlockedSlot, Discount, ScheduleException, Specialist, WorkSchedule
 
 
 def _apt_end_dt(apt_date, time_start, service, break_minutes):
-    """Возвращает datetime окончания записи с учётом перерыва."""
+    """Datetime окончания записи с учётом перерыва."""
     duration = 0
     if service:
         duration = service.duration_max or service.duration_min or 0
@@ -22,12 +22,9 @@ def _apt_end_time(apt_date, time_start, service):
 
 
 def _conflict_message(apt_date, conflicts, break_minutes):
-    """Строит человекочитаемое сообщение об ошибке с подсказкой."""
-    # Главный конфликт — первый по времени
+    """Человекочитаемое сообщение об ошибке с подсказкой по времени."""
     conflict = min(conflicts, key=lambda a: a.time_start)
     conflict_end_dt = _apt_end_time(apt_date, conflict.time_start, conflict.service)
-
-    # Ближайшее свободное = максимальный конец всех конфликтов + перерыв
     latest_end_dt = max(
         _apt_end_time(apt_date, c.time_start, c.service) for c in conflicts
     )
@@ -46,13 +43,15 @@ def _conflict_message(apt_date, conflicts, break_minutes):
     return msg
 
 
-def find_time_conflicts(apt_date, time_start, service, break_minutes, exclude_pk=None):
-    """Возвращает список записей, пересекающихся по времени с новым слотом."""
+def find_time_conflicts(apt_date, time_start, service, break_minutes, specialist=None, exclude_pk=None):
+    """Возвращает записи, пересекающиеся по времени с новым слотом."""
     existing = (
         Appointment.objects.filter(date=apt_date)
         .exclude(status="cancelled")
         .select_related("service")
     )
+    if specialist is not None:
+        existing = existing.filter(specialist=specialist)
     if exclude_pk:
         existing = existing.exclude(pk=exclude_pk)
 
@@ -78,16 +77,21 @@ class AppointmentForm(forms.ModelForm):
         help_text="Больше 1 — запись создаётся на каждый рабочий день подряд",
     )
 
+    def __init__(self, *args, specialist: "Specialist | None" = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._specialist = specialist
+
     def clean(self):
         cleaned_data = super().clean()
         apt_date = cleaned_data.get("date")
         time_start = cleaned_data.get("time_start")
         service = cleaned_data.get("service")
         if apt_date and time_start:
-            schedule = WorkSchedule.get_solo()
-            break_minutes = schedule.break_between_minutes
+            schedule = WorkSchedule.for_specialist(self._specialist) if self._specialist else None
+            break_minutes = schedule.break_between_minutes if schedule else 15
             conflicts = find_time_conflicts(
                 apt_date, time_start, service, break_minutes,
+                specialist=self._specialist,
                 exclude_pk=self.instance.pk if self.instance.pk else None,
             )
             if conflicts:

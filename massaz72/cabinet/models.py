@@ -1,12 +1,43 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
 
-class WorkSchedule(models.Model):
-    """Недельное расписание — singleton."""
+class Specialist(models.Model):
+    SPECIALTY_CHOICES = [
+        ("masseur", "Массажист"),
+        ("other", "Другое"),
+    ]
 
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="specialist",
+        verbose_name="Пользователь",
+    )
+    specialty = models.CharField(
+        "Специальность", max_length=30, choices=SPECIALTY_CHOICES, default="masseur"
+    )
+    name = models.CharField("Имя", max_length=100)
+    photo = models.ImageField("Фото", upload_to="specialists/", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Специалист"
+        verbose_name_plural = "Специалисты"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.get_specialty_display()})"
+
+
+class WorkSchedule(models.Model):
+    specialist = models.OneToOneField(
+        Specialist,
+        on_delete=models.CASCADE,
+        related_name="schedule",
+        verbose_name="Специалист",
+    )
     monday = models.BooleanField("Понедельник", default=True)
     tuesday = models.BooleanField("Вторник", default=True)
     wednesday = models.BooleanField("Среда", default=True)
@@ -23,44 +54,30 @@ class WorkSchedule(models.Model):
         verbose_name_plural = "Рабочее расписание"
 
     def __str__(self) -> str:
-        return "Рабочее расписание"
-
-    def save(self, *args, **kwargs) -> None:
-        self.pk = 1
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        pass
+        return f"Расписание — {self.specialist}"
 
     @classmethod
-    def get_solo(cls) -> "WorkSchedule":
-        obj, _ = cls.objects.get_or_create(pk=1)
+    def for_specialist(cls, specialist: "Specialist") -> "WorkSchedule":
+        obj, _ = cls.objects.get_or_create(specialist=specialist)
         return obj
 
     def working_weekdays(self) -> list[int]:
-        """Возвращает список рабочих дней недели (0=пн, 6=вс)."""
         mapping = [
-            (0, self.monday),
-            (1, self.tuesday),
-            (2, self.wednesday),
-            (3, self.thursday),
-            (4, self.friday),
-            (5, self.saturday),
-            (6, self.sunday),
+            (0, self.monday), (1, self.tuesday), (2, self.wednesday),
+            (3, self.thursday), (4, self.friday), (5, self.saturday), (6, self.sunday),
         ]
         return [day for day, active in mapping if active]
 
 
 class ScheduleException(models.Model):
-    """Диапазон дат, когда массажист не работает (выходной, отпуск)."""
-
     DAY_OFF = "day_off"
     VACATION = "vacation"
-    TYPE_CHOICES = [
-        (DAY_OFF, "Выходной"),
-        (VACATION, "Отпуск"),
-    ]
+    TYPE_CHOICES = [(DAY_OFF, "Выходной"), (VACATION, "Отпуск")]
 
+    specialist = models.ForeignKey(
+        Specialist, on_delete=models.CASCADE,
+        related_name="exceptions", verbose_name="Специалист",
+    )
     date_from = models.DateField("Дата начала")
     date_to = models.DateField("Дата окончания")
     exception_type = models.CharField(
@@ -78,14 +95,14 @@ class ScheduleException(models.Model):
 
     def clean(self) -> None:
         if self.date_to < self.date_from:
-            raise ValidationError(
-                {"date_to": "Дата окончания не может быть раньше даты начала."}
-            )
+            raise ValidationError({"date_to": "Дата окончания не может быть раньше даты начала."})
 
 
 class BlockedSlot(models.Model):
-    """Заблокированный временной промежуток внутри рабочего дня."""
-
+    specialist = models.ForeignKey(
+        Specialist, on_delete=models.CASCADE,
+        related_name="blocked_slots", verbose_name="Специалист",
+    )
     date = models.DateField("Дата")
     time_start = models.TimeField("Начало")
     time_end = models.TimeField("Конец")
@@ -101,20 +118,17 @@ class BlockedSlot(models.Model):
 
     def clean(self) -> None:
         if self.time_end <= self.time_start:
-            raise ValidationError(
-                {"time_end": "Время окончания должно быть позже времени начала."}
-            )
+            raise ValidationError({"time_end": "Время окончания должно быть позже времени начала."})
 
 
 class AppointmentSeries(models.Model):
-    """Серия сеансов — объединяет записи одного курса лечения."""
-
+    specialist = models.ForeignKey(
+        Specialist, on_delete=models.CASCADE,
+        related_name="series", verbose_name="Специалист",
+    )
     service = models.ForeignKey(
-        "services.Massage",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Услуга",
+        "services.Massage", on_delete=models.SET_NULL,
+        null=True, blank=True, verbose_name="Услуга",
     )
     total_sessions = models.PositiveIntegerField("Количество сеансов")
     created_at = models.DateTimeField("Создана", auto_now_add=True)
@@ -128,8 +142,6 @@ class AppointmentSeries(models.Model):
 
 
 class Appointment(models.Model):
-    """Запись клиента на сеанс."""
-
     SCHEDULED = "scheduled"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
@@ -139,37 +151,30 @@ class Appointment(models.Model):
         (CANCELLED, "Отменено"),
     ]
 
+    specialist = models.ForeignKey(
+        Specialist, on_delete=models.CASCADE,
+        related_name="appointments", verbose_name="Специалист",
+    )
     client_name = models.CharField("Имя клиента", max_length=255)
     client_phone = models.CharField("Телефон", max_length=20, blank=True)
     address = models.CharField("Адрес", max_length=500, blank=True)
     service = models.ForeignKey(
-        "services.Massage",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Услуга",
+        "services.Massage", on_delete=models.SET_NULL,
+        null=True, blank=True, verbose_name="Услуга",
     )
     date = models.DateField("Дата")
     time_start = models.TimeField("Время начала")
     cost = models.DecimalField("Стоимость", max_digits=10, decimal_places=2)
     transport_cost = models.DecimalField(
-        "Транспортные расходы",
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
+        "Транспортные расходы", max_digits=10, decimal_places=2, null=True, blank=True,
     )
     notes = models.TextField("Заметки", blank=True)
     status = models.CharField(
         "Статус", max_length=10, choices=STATUS_CHOICES, default=SCHEDULED
     )
     series = models.ForeignKey(
-        AppointmentSeries,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="appointments",
-        verbose_name="Серия",
+        AppointmentSeries, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="appointments", verbose_name="Серия",
     )
     created_at = models.DateTimeField("Создана", auto_now_add=True)
 
@@ -183,8 +188,6 @@ class Appointment(models.Model):
 
 
 class Discount(models.Model):
-    """Скидка на услуги — показывает баннер на сайте и изменяет отображаемую цену."""
-
     PERCENTAGE = "percentage"
     AMOUNT = "amount"
     TYPE_CHOICES = [
@@ -192,6 +195,10 @@ class Discount(models.Model):
         (AMOUNT, "Фиксированная сумма (₽)"),
     ]
 
+    specialist = models.ForeignKey(
+        Specialist, on_delete=models.CASCADE,
+        related_name="discounts", verbose_name="Специалист",
+    )
     discount_type = models.CharField(
         "Тип скидки", max_length=10, choices=TYPE_CHOICES, default=PERCENTAGE
     )
@@ -199,9 +206,7 @@ class Discount(models.Model):
     date_from = models.DateField("Дата начала")
     date_to = models.DateField("Дата окончания")
     description = models.CharField(
-        "Текст баннера",
-        max_length=255,
-        blank=True,
+        "Текст баннера", max_length=255, blank=True,
         help_text="Оставьте пустым — текст сформируется автоматически",
     )
 
@@ -226,14 +231,12 @@ class Discount(models.Model):
         if self.description:
             return self.description
         date_str = self.date_to.strftime("%d.%m.%Y")
-        if self.discount_type == self.PERCENTAGE:
-            v = int(self.value) if self.value == int(self.value) else self.value
-            return f"Скидка {v}% действует до {date_str}"
         v = int(self.value) if self.value == int(self.value) else self.value
+        if self.discount_type == self.PERCENTAGE:
+            return f"Скидка {v}% действует до {date_str}"
         return f"Скидка {v} ₽ на все услуги до {date_str}"
 
     def apply_to(self, price: Decimal) -> Decimal:
-        """Возвращает цену после скидки, округлённую до целых."""
         if self.discount_type == self.PERCENTAGE:
             discounted = price * (1 - self.value / Decimal("100"))
         else:
