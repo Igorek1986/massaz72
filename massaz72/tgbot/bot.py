@@ -8,6 +8,9 @@
 - администратор отвечает реплаем (Reply) на пересланное сообщение → ответ
   уходит клиенту.
 
+Мастер записи («📝 Записаться»):
+  тип → массаж → [массажист] → кол-во сеансов → дата (текст) → слот времени → подтверждение
+
 Бот синхронный (threaded=False): один и тот же код обслуживает и polling
 (manage.py runbot), и webhook (process_new_updates в Django-view).
 """
@@ -57,8 +60,9 @@ ADMIN_HINT = (
 _bots: dict[str, telebot.TeleBot] = {}
 
 # Состояние мастера записи: telegram_id → state dict
-# state: {msg_id, type?, massage_id?, massage_name?, massage_price?,
-#         therapist_id?, therapist_name?, awaiting_message?}
+# Ключи state: msg_id, type?, massage_id?, massage_name?, massage_price?,
+#              therapist_id?, therapist_name?, sessions?, sessions_label?,
+#              date_text?, timeslot_id?, timeslot_label?, awaiting_date?
 _pending_bookings: dict[int, dict] = {}
 
 
@@ -164,7 +168,7 @@ def _build_header(user: TelegramUser, text: str) -> str:
     )
 
 
-# ─── Мастер записи: инлайн-клавиатуры ───────────────────────────────────────
+# ─── Мастер записи: клавиатуры ────────────────────────────────────────────────
 
 
 def _bk_type_keyboard() -> types.InlineKeyboardMarkup | None:
@@ -223,14 +227,52 @@ def _bk_therapist_keyboard() -> types.InlineKeyboardMarkup | None:
     return kb
 
 
+def _bk_sessions_keyboard() -> types.InlineKeyboardMarkup | None:
+    from .models import BookingSessionOption
+
+    options = list(BookingSessionOption.objects.filter(is_active=True))
+    if not options:
+        return None
+    kb = types.InlineKeyboardMarkup()
+    for opt in options:
+        kb.add(types.InlineKeyboardButton(opt.button_label, callback_data=f"bk_s_{opt.id}"))
+    kb.add(types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_massage"))
+    kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"))
+    return kb
+
+
+def _bk_timeslot_keyboard() -> types.InlineKeyboardMarkup | None:
+    from .models import BookingTimeSlot
+
+    slots = list(BookingTimeSlot.objects.filter(is_active=True))
+    if not slots:
+        return None
+    kb = types.InlineKeyboardMarkup()
+    for slot in slots:
+        kb.add(types.InlineKeyboardButton(slot.label, callback_data=f"bk_ts_{slot.id}"))
+    kb.add(types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_sessions"))
+    kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"))
+    return kb
+
+
 def _bk_cancel_keyboard() -> types.InlineKeyboardMarkup:
     kb = types.InlineKeyboardMarkup()
     kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"))
     return kb
 
 
-def _bk_prompt_text(state: dict) -> str:
-    lines = ["📝 <b>Запись на массаж</b>\n"]
+def _bk_confirm_keyboard() -> types.InlineKeyboardMarkup:
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton("✅ Подтвердить", callback_data="bk_confirm"),
+        types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"),
+    )
+    kb.add(types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_timeslot"))
+    return kb
+
+
+def _bk_confirm_text(state: dict) -> str:
+    lines = ["📋 <b>Подтвердите запись</b>\n"]
     if state.get("massage_name"):
         line = f"Массаж: <b>{html.escape(state['massage_name'])}</b>"
         if state.get("massage_price"):
@@ -238,25 +280,31 @@ def _bk_prompt_text(state: dict) -> str:
         lines.append(line)
     if state.get("therapist_name"):
         lines.append(f"Массажист: <b>{html.escape(state['therapist_name'])}</b>")
-    lines.append(
-        "\nНапишите <b>удобные дату и время</b> для записи "
-        "— или любую информацию для связи."
-    )
+    if state.get("sessions_label"):
+        lines.append(f"Сеансов: <b>{html.escape(state['sessions_label'])}</b>")
+    if state.get("date_text"):
+        lines.append(f"Дата: <b>{html.escape(state['date_text'])}</b>")
+    if state.get("timeslot_label"):
+        lines.append(f"Время: <b>{html.escape(state['timeslot_label'])}</b>")
+    lines.append("\nВсё верно?")
     return "\n".join(lines)
+
+
+# ─── Вспомогательные переходы мастера ────────────────────────────────────────
 
 
 def _bk_delete_or_edit(bot: telebot.TeleBot, chat_id: int, msg_id: int, text: str = "Запись отменена.") -> None:
     try:
         bot.delete_message(chat_id, msg_id)
-    except Exception:
+    except Exception:  # noqa: BLE001
         try:
             bot.edit_message_text(text, chat_id, msg_id, reply_markup=None)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 
 def _bk_proceed_after_massage(bot: telebot.TeleBot, uid: int, chat_id: int, msg_id: int, state: dict) -> None:
-    """Общая логика после выбора массажа: показать выбор массажиста или финальный запрос."""
+    """После выбора массажа: показать массажистов (если несколько) или сразу сеансы."""
     kb = _bk_therapist_keyboard()
     if kb:
         bot.edit_message_text(
@@ -271,10 +319,53 @@ def _bk_proceed_after_massage(bot: telebot.TeleBot, uid: int, chat_id: int, msg_
     if therapist:
         state["therapist_id"] = therapist.id
         state["therapist_name"] = therapist.name
-    state["awaiting_message"] = True
     _pending_bookings[uid] = state
+    _bk_show_sessions(bot, uid, chat_id, msg_id)
+
+
+def _bk_show_sessions(bot: telebot.TeleBot, uid: int, chat_id: int, msg_id: int) -> None:
+    kb = _bk_sessions_keyboard()
+    if kb is None:
+        bot.edit_message_text(
+            "⚠️ Варианты количества сеансов не настроены.\n"
+            "Обратитесь к администратору или напишите сообщение напрямую.",
+            chat_id, msg_id, reply_markup=_bk_cancel_keyboard(),
+        )
+        return
     bot.edit_message_text(
-        _bk_prompt_text(state), chat_id, msg_id, reply_markup=_bk_cancel_keyboard(),
+        "📝 <b>Запись на массаж</b>\n\nВыберите <b>количество сеансов</b>:",
+        chat_id, msg_id, reply_markup=kb,
+    )
+
+
+def _bk_show_date_prompt(bot: telebot.TeleBot, uid: int, chat_id: int, msg_id: int, state: dict) -> None:
+    state["awaiting_date"] = True
+    _pending_bookings[uid] = state
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_sessions"),
+        types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"),
+    )
+    bot.edit_message_text(
+        "📝 <b>Запись на массаж</b>\n\n"
+        "Введите желаемую <b>дату начала</b>\n"
+        "(например: <i>15 июня</i> или <i>15.06</i>):",
+        chat_id, msg_id, reply_markup=kb,
+    )
+
+
+def _bk_show_timeslot(bot: telebot.TeleBot, uid: int, chat_id: int, msg_id: int) -> None:
+    kb = _bk_timeslot_keyboard()
+    if kb is None:
+        bot.edit_message_text(
+            "⚠️ Временные слоты не настроены.\n"
+            "Обратитесь к администратору или напишите сообщение напрямую.",
+            chat_id, msg_id, reply_markup=_bk_cancel_keyboard(),
+        )
+        return
+    bot.edit_message_text(
+        "📝 <b>Запись на массаж</b>\n\nВыберите удобное <b>время</b>:",
+        chat_id, msg_id, reply_markup=kb,
     )
 
 
@@ -314,15 +405,10 @@ def _forward_to_admins(bot: telebot.TeleBot, message) -> None:
     bot.send_message(message.chat.id, CONFIRMATION if delivered else DELIVERY_FAILED)
 
 
-def _handle_booking_message(bot: telebot.TeleBot, message, state: dict) -> None:
-    """Принимает финальное сообщение из мастера записи и пересылает администраторам."""
-    uid = message.from_user.id
-    user = _upsert_user(message.from_user)
-    text = _message_text(message)
-
+def _send_booking_to_admins(bot: telebot.TeleBot, user: TelegramUser, state: dict) -> None:
+    """Отправляет сводку заявки всем активным администраторам."""
     name = html.escape(user.display_name)
     username = f" (@{html.escape(user.username)})" if user.username else ""
-    body = html.escape(text) if text else "<i>[вложение]</i>"
 
     header = f"📅 <b>Заявка на запись</b>\n{name}{username}\nID: <code>{user.telegram_id}</code>\n\n"
     if state.get("massage_name"):
@@ -332,46 +418,34 @@ def _handle_booking_message(bot: telebot.TeleBot, message, state: dict) -> None:
         header += line + "\n"
     if state.get("therapist_name"):
         header += f"Массажист: <b>{html.escape(state['therapist_name'])}</b>\n"
-    header += f"\n{body}\n\n↩️ Ответьте на это сообщение (Reply), чтобы написать клиенту."
+    if state.get("sessions_label"):
+        header += f"Сеансов: <b>{html.escape(state['sessions_label'])}</b>\n"
+    if state.get("date_text"):
+        header += f"Желаемая дата: <b>{html.escape(state['date_text'])}</b>\n"
+    if state.get("timeslot_label"):
+        header += f"Время: <b>{html.escape(state['timeslot_label'])}</b>\n"
+    header += "\n↩️ Ответьте на это сообщение (Reply), чтобы написать клиенту."
 
-    DialogMessage.objects.create(user=user, direction=DialogMessage.IN, text=text)
+    summary = (
+        f"Запись: {state.get('massage_name', '')} / "
+        f"{state.get('sessions_label', '')} / "
+        f"{state.get('date_text', '')} / "
+        f"{state.get('timeslot_label', '')}"
+    )
+    DialogMessage.objects.create(user=user, direction=DialogMessage.IN, text=summary)
+
     admin_ids = _active_admin_ids()
-    delivered = False
+    if not admin_ids:
+        logger.warning("tgbot: нет активных администраторов для пересылки заявки (клиент %s)", user.telegram_id)
+        return
     for admin_id in admin_ids:
         try:
             sent = bot.send_message(admin_id, header)
             AdminForward.objects.create(
                 user=user, admin_telegram_id=admin_id, admin_message_id=sent.message_id
             )
-            if _has_media(message):
-                copied = bot.copy_message(admin_id, message.chat.id, message.message_id)
-                AdminForward.objects.create(
-                    user=user, admin_telegram_id=admin_id, admin_message_id=copied.message_id
-                )
-            delivered = True
         except Exception as exc:  # noqa: BLE001
             logger.warning("tgbot: заявка не доставлена админу %s: %s", admin_id, exc)
-
-    # Обновляем сообщение мастера: убираем клавиатуру, показываем итог
-    msg_id = state.get("msg_id")
-    if msg_id:
-        try:
-            bot.edit_message_text(
-                "✅ <b>Заявка отправлена!</b>\n\nМассажист свяжется с вами в ближайшее время.",
-                uid, msg_id, reply_markup=None,
-            )
-        except Exception:  # noqa: BLE001
-            pass
-
-    _pending_bookings.pop(uid, None)
-
-    if not admin_ids:
-        confirmation = NO_ADMINS
-    elif delivered:
-        confirmation = CONFIRMATION
-    else:
-        confirmation = DELIVERY_FAILED
-    bot.send_message(message.chat.id, confirmation, reply_markup=main_keyboard())
 
 
 def _handle_admin_reply(bot: telebot.TeleBot, message) -> None:
@@ -419,7 +493,7 @@ def _handle_admin_reply(bot: telebot.TeleBot, message) -> None:
 # ─── Регистрация обработчиков (порядок важен) ────────────────────────────────
 
 
-def _register_handlers(bot: telebot.TeleBot) -> None:
+def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
     @bot.message_handler(commands=["start"])
     def on_start(message):
         _pending_bookings.pop(message.from_user.id, None)
@@ -441,6 +515,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
     @bot.message_handler(func=lambda m: m.text == BTN_BOOK)
     def on_book(message):
         uid = message.from_user.id
+        _upsert_user(message.from_user)
         # Сбрасываем предыдущий мастер, если был открыт
         old = _pending_bookings.pop(uid, None)
         if old and old.get("msg_id"):
@@ -462,7 +537,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
         _pending_bookings[uid] = {"msg_id": sent.message_id}
 
     @bot.callback_query_handler(func=lambda c: c.data.startswith("bk_"))
-    def cb_booking(call):
+    def cb_booking(call):  # noqa: C901
         uid = call.from_user.id
         chat_id = call.message.chat.id
         msg_id = call.message.message_id
@@ -472,13 +547,18 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
         state = _pending_bookings.get(uid) or {}
         state["msg_id"] = msg_id  # актуализируем на случай перезапуска
 
+        # ── Отмена ──────────────────────────────────────────────────────────
         if data == "bk_cancel":
             _pending_bookings.pop(uid, None)
             _bk_delete_or_edit(bot, chat_id, msg_id)
             return
 
+        # ── Навигация назад ──────────────────────────────────────────────────
         if data == "bk_back_type":
-            for key in ("type", "massage_id", "massage_name", "massage_price", "awaiting_message"):
+            for key in ("type", "massage_id", "massage_name", "massage_price",
+                        "therapist_id", "therapist_name",
+                        "sessions", "sessions_label",
+                        "date_text", "timeslot_id", "timeslot_label", "awaiting_date"):
                 state.pop(key, None)
             _pending_bookings[uid] = state
             kb = _bk_type_keyboard()
@@ -492,7 +572,9 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
         if data == "bk_back_massage":
             mtype = state.get("type")
             for key in ("massage_id", "massage_name", "massage_price",
-                        "therapist_id", "therapist_name", "awaiting_message"):
+                        "therapist_id", "therapist_name",
+                        "sessions", "sessions_label",
+                        "date_text", "timeslot_id", "timeslot_label", "awaiting_date"):
                 state.pop(key, None)
             _pending_bookings[uid] = state
             kb = _bk_massage_keyboard(mtype) if mtype else None
@@ -503,6 +585,22 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
                 )
             return
 
+        if data == "bk_back_sessions":
+            for key in ("sessions", "sessions_label",
+                        "date_text", "timeslot_id", "timeslot_label", "awaiting_date"):
+                state.pop(key, None)
+            _pending_bookings[uid] = state
+            _bk_show_sessions(bot, uid, chat_id, msg_id)
+            return
+
+        if data == "bk_back_timeslot":
+            state.pop("timeslot_id", None)
+            state.pop("timeslot_label", None)
+            _pending_bookings[uid] = state
+            _bk_show_timeslot(bot, uid, chat_id, msg_id)
+            return
+
+        # ── Выбор типа массажа ───────────────────────────────────────────────
         if data.startswith("bk_t_"):
             mtype = data[5:]
             state["type"] = mtype
@@ -520,6 +618,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
             )
             return
 
+        # ── Выбор конкретного массажа ────────────────────────────────────────
         if data.startswith("bk_m_"):
             try:
                 massage_id = int(data[5:])
@@ -540,6 +639,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
             _bk_proceed_after_massage(bot, uid, chat_id, msg_id, state)
             return
 
+        # ── Выбор массажиста ─────────────────────────────────────────────────
         if data.startswith("bk_a_"):
             try:
                 therapist_id = int(data[5:])
@@ -553,10 +653,57 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
                 state["therapist_name"] = t.name
             except About.DoesNotExist:
                 pass
-            state["awaiting_message"] = True
+            _pending_bookings[uid] = state
+            _bk_show_sessions(bot, uid, chat_id, msg_id)
+            return
+
+        # ── Выбор количества сеансов ─────────────────────────────────────────
+        if data.startswith("bk_s_"):
+            try:
+                opt_id = int(data[5:])
+            except ValueError:
+                return
+            from .models import BookingSessionOption
+
+            try:
+                opt = BookingSessionOption.objects.get(id=opt_id, is_active=True)
+                state["sessions"] = opt.count
+                state["sessions_label"] = opt.button_label
+            except BookingSessionOption.DoesNotExist:
+                return
+            _pending_bookings[uid] = state
+            _bk_show_date_prompt(bot, uid, chat_id, msg_id, state)
+            return
+
+        # ── Выбор временного слота ───────────────────────────────────────────
+        if data.startswith("bk_ts_"):
+            try:
+                slot_id = int(data[6:])
+            except ValueError:
+                return
+            from .models import BookingTimeSlot
+
+            try:
+                slot = BookingTimeSlot.objects.get(id=slot_id, is_active=True)
+                state["timeslot_id"] = slot.id
+                state["timeslot_label"] = slot.label
+            except BookingTimeSlot.DoesNotExist:
+                return
+            state.pop("awaiting_date", None)
             _pending_bookings[uid] = state
             bot.edit_message_text(
-                _bk_prompt_text(state), chat_id, msg_id, reply_markup=_bk_cancel_keyboard(),
+                _bk_confirm_text(state), chat_id, msg_id, reply_markup=_bk_confirm_keyboard(),
+            )
+            return
+
+        # ── Подтверждение ────────────────────────────────────────────────────
+        if data == "bk_confirm":
+            user = _upsert_user(call.from_user)
+            _send_booking_to_admins(bot, user, state)
+            _pending_bookings.pop(uid, None)
+            bot.edit_message_text(
+                "✅ <b>Заявка отправлена!</b>\n\nМассажист свяжется с вами в ближайшее время.",
+                chat_id, msg_id, reply_markup=None,
             )
             return
 
@@ -575,8 +722,19 @@ def _register_handlers(bot: telebot.TeleBot) -> None:
         if _is_admin(uid):
             bot.send_message(message.chat.id, ADMIN_HINT)
             return
+
         state = _pending_bookings.get(uid)
-        if state and state.get("awaiting_message"):
-            _handle_booking_message(bot, message, state)
+        if state and state.get("awaiting_date"):
+            text = _message_text(message).strip()
+            if not text:
+                # Не текст — игнорируем; ждём текст даты
+                return
+            state["date_text"] = text
+            state.pop("awaiting_date", None)
+            _pending_bookings[uid] = state
+            msg_id = state.get("msg_id")
+            if msg_id:
+                _bk_show_timeslot(bot, uid, uid, msg_id)
             return
+
         _forward_to_admins(bot, message)

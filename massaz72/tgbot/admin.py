@@ -1,7 +1,15 @@
 from django.contrib import admin, messages
 
 from .bot import ALLOWED_UPDATES, get_bot
-from .models import AdminForward, BotAdmin, BotSettings, DialogMessage, TelegramUser
+from .models import (
+    AdminForward,
+    BotAdmin,
+    BotSettings,
+    BookingSessionOption,
+    BookingTimeSlot,
+    DialogMessage,
+    TelegramUser,
+)
 
 
 @admin.register(BotSettings)
@@ -103,6 +111,18 @@ class TelegramUserAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(BookingSessionOption)
+class BookingSessionOptionAdmin(admin.ModelAdmin):
+    list_display = ["__str__", "count", "is_active", "order"]
+    list_editable = ["is_active", "order"]
+
+
+@admin.register(BookingTimeSlot)
+class BookingTimeSlotAdmin(admin.ModelAdmin):
+    list_display = ["label", "is_active", "order"]
+    list_editable = ["is_active", "order"]
 
 
 @admin.register(DialogMessage)
