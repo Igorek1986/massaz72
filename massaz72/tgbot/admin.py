@@ -134,7 +134,7 @@ class BookingTimeSlotAdmin(admin.ModelAdmin):
 class BroadcastAdmin(admin.ModelAdmin):
     list_display = ["subject_or_text", "created_at", "is_sent", "sent_count", "failed_count"]
     readonly_fields = ["sent_count", "failed_count", "is_sent", "created_at"]
-    actions = ["action_send"]
+    actions = ["action_send", "action_duplicate"]
 
     @admin.display(description="Рассылка")
     def subject_or_text(self, obj):
@@ -145,6 +145,12 @@ class BroadcastAdmin(admin.ModelAdmin):
         if obj and obj.is_sent:
             return ["subject", "text", "sent_count", "failed_count", "is_sent", "created_at"]
         return self.readonly_fields
+
+    @admin.action(description="Скопировать как новый черновик")
+    def action_duplicate(self, request, queryset):
+        for broadcast in queryset:
+            Broadcast.objects.create(subject=broadcast.subject, text=broadcast.text)
+        self.message_user(request, f"Создано копий: {queryset.count()}.")
 
     @admin.action(description="Разослать всем пользователям бота")
     def action_send(self, request, queryset):
