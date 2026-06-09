@@ -160,7 +160,7 @@ def build_services_text() -> str:
 
     labels = {
         Massage.CHILD: "🧒 <b>Детский массаж</b>",
-        Massage.ADULT: "💆 <b>Массаж для взрослых</b>",
+        Massage.ADULT: "💆 <b>Массаж</b>",
     }
     parts = ["<b>Услуги и цены</b>"]
     current_type = None
@@ -173,7 +173,7 @@ def build_services_text() -> str:
             duration = f"{m.duration_min} мин"
         else:
             duration = f"{m.duration_min}–{m.duration_max} мин"
-        parts.append(f"• {html.escape(m.name)} — {price} · {duration}")
+        parts.append(f"\n• {html.escape(m.name)}\n{price} · {duration}")
 
     parts.append('\nЧтобы записаться, нажмите «📝 Записаться» или просто напишите сообщение.')
     return "\n".join(parts)
@@ -502,7 +502,7 @@ def _forward_to_admins(bot: telebot.TeleBot, message) -> None:
     admin_ids = _active_admin_ids()
     if not admin_ids:
         logger.warning("tgbot: нет активных администраторов для пересылки (клиент %s)", user.telegram_id)
-        bot.send_message(message.chat.id, NO_ADMINS)
+        bot.send_message(message.chat.id, NO_ADMINS, reply_markup=main_keyboard())
         return
 
     header = _build_header(user, text)
@@ -524,7 +524,11 @@ def _forward_to_admins(bot: telebot.TeleBot, message) -> None:
         except Exception as exc:  # noqa: BLE001
             logger.warning("tgbot: не доставлено админу %s: %s", admin_id, exc)
 
-    bot.send_message(message.chat.id, CONFIRMATION if delivered else DELIVERY_FAILED)
+    bot.send_message(
+        message.chat.id,
+        CONFIRMATION if delivered else DELIVERY_FAILED,
+        reply_markup=main_keyboard(),
+    )
 
 
 def _send_booking_to_admins(bot: telebot.TeleBot, user: TelegramUser, state: dict) -> None:
@@ -614,6 +618,10 @@ def _handle_admin_reply(bot: telebot.TeleBot, message) -> None:
 
 
 def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
+    bot.set_my_commands([
+        telebot.types.BotCommand("start", "Начало работы / восстановить меню"),
+    ])
+
     @bot.message_handler(commands=["start"])
     def on_start(message):
         _pending_bookings.pop(message.from_user.id, None)
@@ -878,9 +886,11 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             user = _upsert_user(call.from_user)
             _send_booking_to_admins(bot, user, state)
             _pending_bookings.pop(uid, None)
-            bot.edit_message_text(
+            _bk_delete_or_edit(bot, chat_id, msg_id)
+            bot.send_message(
+                chat_id,
                 "✅ <b>Заявка отправлена!</b>\n\nЭто предварительная запись — ожидайте подтверждения от администратора.",
-                chat_id, msg_id, reply_markup=None,
+                reply_markup=main_keyboard(),
             )
             return
 
