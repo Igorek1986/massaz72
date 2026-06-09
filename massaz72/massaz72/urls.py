@@ -36,6 +36,7 @@ urlpatterns = [
     path("", include("main.urls", "main")),
 
     path("services/", include("services.urls", "services")),
+    path("", include("tgbot.urls", "tgbot")),
     path(
         "sitemap.xml",
         sitemap,

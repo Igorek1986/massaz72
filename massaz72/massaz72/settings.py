@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     # my app
     "main.apps.MainConfig",
     "services.apps.ServicesConfig",
+    "tgbot.apps.TgbotConfig",
 ]
 
 MIDDLEWARE = [

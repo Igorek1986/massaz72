@@ -17,6 +17,7 @@ services:
   app:
     build:
       dockerfile: ./Dockerfile
+    image: massaz72_django-app
     ports:
       - "8000:8000"
     volumes:
@@ -29,6 +30,30 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "200k"
+
+  # Telegram-бот в режиме polling. Запускается только при необходимости:
+  #   docker compose --profile polling up -d
+  # В режиме webhook этот сервис не нужен (обновления принимает app через URL).
+  bot:
+    image: massaz72_django-app
+    profiles: ["polling"]
+    command: ["python", "manage.py", "runbot"]
+    entrypoint: []
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./massaz72/logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
     logging:
       driver: "json-file"
       options:
