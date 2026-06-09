@@ -116,8 +116,13 @@
             {% if therapist.description %}
             <p class="about__description">{{ therapist.description }}</p>
             {% endif %}
-            {% if therapist.telegram_username and therapist.telegram_active or therapist.whatsapp_number and therapist.whatsapp_active or therapist.max_messanger and therapist.max_messanger_active %}
+            {% if telegram_bot_username or therapist.telegram_username and therapist.telegram_active or therapist.whatsapp_number and therapist.whatsapp_active or therapist.max_messanger and therapist.max_messanger_active %}
             <div class="about__contacts">
+              {% if telegram_bot_username %}
+              <a class="telegram telegram-bot" href="https://t.me/{{ telegram_bot_username }}" target="_blank" rel="noopener" aria-label="Записаться через Telegram-бота" title="Записаться через Telegram-бота">
+                <svg class="icon telegram__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="15%"/><path class="telegram__icon-path1" d="M199 404c-11 0-10-4-13-14l-32-105 245-144"/><path class="telegram__icon-path2" d="M199 404c7 0 11-4 16-8l45-43-56-34"/><path class="telegram__icon-path3" d="M204 319l135 99c14 9 26 4 30-14l55-258c5-22-9-32-24-25L79 245c-21 8-21 21-4 26l83 26 190-121c9-5 17-3 11 4"/></svg>
+              </a>
+              {% endif %}
               {% if therapist.telegram_username and therapist.telegram_active %}
               <a class="telegram" href="https://t.me/{{ therapist.telegram_username }}" target="_blank" aria-label="Telegram">
                 <svg class="icon telegram__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="15%"/><path class="telegram__icon-path1" d="M199 404c-11 0-10-4-13-14l-32-105 245-144"/><path class="telegram__icon-path2" d="M199 404c7 0 11-4 16-8l45-43-56-34"/><path class="telegram__icon-path3" d="M204 319l135 99c14 9 26 4 30-14l55-258c5-22-9-32-24-25L79 245c-21 8-21 21-4 26l83 26 190-121c9-5 17-3 11 4"/></svg>

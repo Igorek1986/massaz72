@@ -2,13 +2,22 @@ from datetime import datetime
 
 from django.utils import timezone
 
+from tgbot.models import BotSettings
+
 from .models import About, SiteSettings
 
 
 def common_context(request):
     therapists = About.objects.filter(is_active=True).order_by("order")
     primary = therapists.first()
-    has_contacts = any(
+
+    # Ссылка на Telegram-бота (один на сайт): показываем, если бот включён.
+    bot = BotSettings.objects.first()
+    telegram_bot_username = (
+        bot.bot_username if bot and bot.is_enabled and bot.bot_username else ""
+    )
+
+    has_contacts = bool(telegram_bot_username) or any(
         (t.telegram_username and t.telegram_active)
         or (t.whatsapp_number and t.whatsapp_active)
         or (t.max_messanger and t.max_messanger_active)
@@ -20,6 +29,7 @@ def common_context(request):
         "telegram_username": primary.telegram_username if primary else "",
         "whatsapp_number": primary.whatsapp_number if primary else "",
         "max_messanger": primary.max_messanger if primary else "",
+        "telegram_bot_username": telegram_bot_username,
         "has_contacts": has_contacts,
         "year": datetime.now().year,
     }
