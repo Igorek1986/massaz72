@@ -9,14 +9,16 @@
   уходит клиенту.
 
 Мастер записи («📝 Записаться»):
-  тип → массаж → [массажист] → кол-во сеансов → дата (текст) → слот времени → подтверждение
+  тип → массаж → [массажист] → кол-во сеансов → дата (календарь) → слот → подтверждение
 
 Бот синхронный (threaded=False): один и тот же код обслуживает и polling
 (manage.py runbot), и webhook (process_new_updates в Django-view).
 """
 
+import calendar as _cal
 import html
 import logging
+from datetime import date, timedelta
 
 import telebot
 from telebot import types
@@ -30,7 +32,6 @@ BTN_SERVICES = "💰 Услуги и цены"
 BTN_BOOK = "📝 Записаться"
 
 # Типы обновлений, которые запрашиваем у Telegram (и для polling, и для webhook).
-# Важно: без callback_query не приходят нажатия инлайн-кнопок.
 ALLOWED_UPDATES = ["message", "callback_query"]
 
 # Типы сообщений, которые принимаем от клиента/админа
@@ -56,13 +57,22 @@ ADMIN_HINT = (
     "сообщении этого клиента и напишите текст ответа."
 )
 
+_MONTH_NAMES = [
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+]
+_MONTH_NAMES_GEN = [
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+]
+
 # Кэш экземпляров бота по токену (на процесс/воркер)
 _bots: dict[str, telebot.TeleBot] = {}
 
 # Состояние мастера записи: telegram_id → state dict
 # Ключи state: msg_id, type?, massage_id?, massage_name?, massage_price?,
 #              therapist_id?, therapist_name?, sessions?, sessions_label?,
-#              date_text?, timeslot_id?, timeslot_label?, awaiting_date?
+#              date_iso?, timeslot_id?, timeslot_label?
 _pending_bookings: dict[int, dict] = {}
 
 
@@ -113,8 +123,22 @@ def _has_media(message) -> bool:
     return message.content_type != "text"
 
 
+def _format_date(iso: str) -> str:
+    """«2026-06-15» → «15 июня 2026»."""
+    try:
+        d = date.fromisoformat(iso)
+        return f"{d.day} {_MONTH_NAMES_GEN[d.month - 1]} {d.year}"
+    except (ValueError, AttributeError):
+        return iso
+
+
+def _today() -> date:
+    from django.utils import timezone
+    return timezone.localdate()
+
+
 def main_keyboard() -> types.ReplyKeyboardMarkup:
-    """Постоянная нижняя клавиатура с кнопками меню (всегда видна под полем ввода)."""
+    """Постоянная нижняя клавиатура с кнопками меню."""
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add(types.KeyboardButton(BTN_SERVICES))
     kb.add(types.KeyboardButton(BTN_BOOK))
@@ -241,6 +265,61 @@ def _bk_sessions_keyboard() -> types.InlineKeyboardMarkup | None:
     return kb
 
 
+def _bk_calendar_keyboard(year: int, month: int) -> types.InlineKeyboardMarkup:
+    """Инлайн-клавиатура с выбором дня месяца."""
+    today = _today()
+    kb = types.InlineKeyboardMarkup()
+
+    # Предыдущий / следующий месяц
+    prev_y, prev_m = (year, month - 1) if month > 1 else (year - 1, 12)
+    next_y, next_m = (year, month + 1) if month < 12 else (year + 1, 1)
+    can_prev = (prev_y, prev_m) >= (today.year, today.month)
+    # Не дальше +3 месяца вперёд
+    can_next = date(next_y, next_m, 1) <= today.replace(day=1) + timedelta(days=92)
+
+    kb.row(
+        types.InlineKeyboardButton(
+            "◀️" if can_prev else " ",
+            callback_data=f"bk_cal_{prev_y}_{prev_m}" if can_prev else "bk_x",
+        ),
+        types.InlineKeyboardButton(f"{_MONTH_NAMES[month - 1]} {year}", callback_data="bk_x"),
+        types.InlineKeyboardButton(
+            "▶️" if can_next else " ",
+            callback_data=f"bk_cal_{next_y}_{next_m}" if can_next else "bk_x",
+        ),
+    )
+
+    # Заголовок дней недели
+    kb.row(*[
+        types.InlineKeyboardButton(d, callback_data="bk_x")
+        for d in ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+    ])
+
+    # Дни
+    for week in _cal.monthcalendar(year, month):
+        row = []
+        for day in week:
+            if day == 0:
+                row.append(types.InlineKeyboardButton(" ", callback_data="bk_x"))
+            else:
+                d = date(year, month, day)
+                if d < today:
+                    # Прошедшая дата — не активна
+                    row.append(types.InlineKeyboardButton("·", callback_data="bk_x"))
+                else:
+                    label = f"[{day}]" if d == today else str(day)
+                    row.append(types.InlineKeyboardButton(
+                        label, callback_data=f"bk_d_{year}-{month:02d}-{day:02d}",
+                    ))
+        kb.row(*row)
+
+    kb.row(
+        types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_sessions"),
+        types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"),
+    )
+    return kb
+
+
 def _bk_timeslot_keyboard() -> types.InlineKeyboardMarkup | None:
     from .models import BookingTimeSlot
 
@@ -250,7 +329,7 @@ def _bk_timeslot_keyboard() -> types.InlineKeyboardMarkup | None:
     kb = types.InlineKeyboardMarkup()
     for slot in slots:
         kb.add(types.InlineKeyboardButton(slot.label, callback_data=f"bk_ts_{slot.id}"))
-    kb.add(types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_sessions"))
+    kb.add(types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_date"))
     kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"))
     return kb
 
@@ -282,8 +361,8 @@ def _bk_confirm_text(state: dict) -> str:
         lines.append(f"Массажист: <b>{html.escape(state['therapist_name'])}</b>")
     if state.get("sessions_label"):
         lines.append(f"Сеансов: <b>{html.escape(state['sessions_label'])}</b>")
-    if state.get("date_text"):
-        lines.append(f"Дата: <b>{html.escape(state['date_text'])}</b>")
+    if state.get("date_iso"):
+        lines.append(f"Дата: <b>{_format_date(state['date_iso'])}</b>")
     if state.get("timeslot_label"):
         lines.append(f"Время: <b>{html.escape(state['timeslot_label'])}</b>")
     lines.append("\nВсё верно?")
@@ -320,15 +399,14 @@ def _bk_proceed_after_massage(bot: telebot.TeleBot, uid: int, chat_id: int, msg_
         state["therapist_id"] = therapist.id
         state["therapist_name"] = therapist.name
     _pending_bookings[uid] = state
-    _bk_show_sessions(bot, uid, chat_id, msg_id)
+    _bk_show_sessions(bot, chat_id, msg_id)
 
 
-def _bk_show_sessions(bot: telebot.TeleBot, uid: int, chat_id: int, msg_id: int) -> None:
+def _bk_show_sessions(bot: telebot.TeleBot, chat_id: int, msg_id: int) -> None:
     kb = _bk_sessions_keyboard()
     if kb is None:
         bot.edit_message_text(
-            "⚠️ Варианты количества сеансов не настроены.\n"
-            "Обратитесь к администратору или напишите сообщение напрямую.",
+            "⚠️ Варианты количества сеансов не настроены. Напишите нам напрямую.",
             chat_id, msg_id, reply_markup=_bk_cancel_keyboard(),
         )
         return
@@ -338,28 +416,30 @@ def _bk_show_sessions(bot: telebot.TeleBot, uid: int, chat_id: int, msg_id: int)
     )
 
 
-def _bk_show_date_prompt(bot: telebot.TeleBot, uid: int, chat_id: int, msg_id: int, state: dict) -> None:
-    state["awaiting_date"] = True
-    _pending_bookings[uid] = state
-    kb = types.InlineKeyboardMarkup(row_width=2)
-    kb.add(
-        types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_sessions"),
-        types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"),
-    )
+def _bk_show_calendar(bot: telebot.TeleBot, chat_id: int, msg_id: int, date_iso: str | None = None) -> None:
+    """Показывает месячный календарь. Если date_iso задан — открывает тот месяц."""
+    if date_iso:
+        try:
+            d = date.fromisoformat(date_iso)
+            year, month = d.year, d.month
+        except ValueError:
+            today = _today()
+            year, month = today.year, today.month
+    else:
+        today = _today()
+        year, month = today.year, today.month
     bot.edit_message_text(
-        "📝 <b>Запись на массаж</b>\n\n"
-        "Введите желаемую <b>дату начала</b>\n"
-        "(например: <i>15 июня</i> или <i>15.06</i>):",
-        chat_id, msg_id, reply_markup=kb,
+        "📝 <b>Запись на массаж</b>\n\nВыберите <b>желаемую дату</b>:",
+        chat_id, msg_id,
+        reply_markup=_bk_calendar_keyboard(year, month),
     )
 
 
-def _bk_show_timeslot(bot: telebot.TeleBot, uid: int, chat_id: int, msg_id: int) -> None:
+def _bk_show_timeslot(bot: telebot.TeleBot, chat_id: int, msg_id: int) -> None:
     kb = _bk_timeslot_keyboard()
     if kb is None:
         bot.edit_message_text(
-            "⚠️ Временные слоты не настроены.\n"
-            "Обратитесь к администратору или напишите сообщение напрямую.",
+            "⚠️ Временные слоты не настроены. Напишите нам напрямую.",
             chat_id, msg_id, reply_markup=_bk_cancel_keyboard(),
         )
         return
@@ -420,8 +500,8 @@ def _send_booking_to_admins(bot: telebot.TeleBot, user: TelegramUser, state: dic
         header += f"Массажист: <b>{html.escape(state['therapist_name'])}</b>\n"
     if state.get("sessions_label"):
         header += f"Сеансов: <b>{html.escape(state['sessions_label'])}</b>\n"
-    if state.get("date_text"):
-        header += f"Желаемая дата: <b>{html.escape(state['date_text'])}</b>\n"
+    if state.get("date_iso"):
+        header += f"Желаемая дата: <b>{_format_date(state['date_iso'])}</b>\n"
     if state.get("timeslot_label"):
         header += f"Время: <b>{html.escape(state['timeslot_label'])}</b>\n"
     header += "\n↩️ Ответьте на это сообщение (Reply), чтобы написать клиенту."
@@ -429,14 +509,14 @@ def _send_booking_to_admins(bot: telebot.TeleBot, user: TelegramUser, state: dic
     summary = (
         f"Запись: {state.get('massage_name', '')} / "
         f"{state.get('sessions_label', '')} / "
-        f"{state.get('date_text', '')} / "
+        f"{_format_date(state['date_iso']) if state.get('date_iso') else ''} / "
         f"{state.get('timeslot_label', '')}"
     )
     DialogMessage.objects.create(user=user, direction=DialogMessage.IN, text=summary)
 
     admin_ids = _active_admin_ids()
     if not admin_ids:
-        logger.warning("tgbot: нет активных администраторов для пересылки заявки (клиент %s)", user.telegram_id)
+        logger.warning("tgbot: нет активных администраторов (заявка клиента %s)", user.telegram_id)
         return
     for admin_id in admin_ids:
         try:
@@ -459,7 +539,6 @@ def _handle_admin_reply(bot: telebot.TeleBot, message) -> None:
         .first()
     )
     if forward is None:
-        # Реплай не на пересланное сообщение клиента — игнорируем тихо.
         return
 
     user = forward.user
@@ -516,6 +595,11 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
     def on_book(message):
         uid = message.from_user.id
         _upsert_user(message.from_user)
+        # Удаляем сообщение пользователя «📝 Записаться», чтобы экран оставался чистым
+        try:
+            bot.delete_message(message.chat.id, message.message_id)
+        except Exception:  # noqa: BLE001
+            pass
         # Сбрасываем предыдущий мастер, если был открыт
         old = _pending_bookings.pop(uid, None)
         if old and old.get("msg_id"):
@@ -544,8 +628,12 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         data = call.data
         bot.answer_callback_query(call.id)
 
+        # Нажатие на неактивный элемент (заголовок, пустая ячейка, прошедшая дата)
+        if data == "bk_x":
+            return
+
         state = _pending_bookings.get(uid) or {}
-        state["msg_id"] = msg_id  # актуализируем на случай перезапуска
+        state["msg_id"] = msg_id
 
         # ── Отмена ──────────────────────────────────────────────────────────
         if data == "bk_cancel":
@@ -553,12 +641,28 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             _bk_delete_or_edit(bot, chat_id, msg_id)
             return
 
+        # ── Навигация по календарю ───────────────────────────────────────────
+        if data.startswith("bk_cal_"):
+            parts = data[7:].split("_")
+            if len(parts) != 2:
+                return
+            try:
+                cal_year, cal_month = int(parts[0]), int(parts[1])
+            except ValueError:
+                return
+            bot.edit_message_text(
+                "📝 <b>Запись на массаж</b>\n\nВыберите <b>желаемую дату</b>:",
+                chat_id, msg_id,
+                reply_markup=_bk_calendar_keyboard(cal_year, cal_month),
+            )
+            return
+
         # ── Навигация назад ──────────────────────────────────────────────────
         if data == "bk_back_type":
             for key in ("type", "massage_id", "massage_name", "massage_price",
                         "therapist_id", "therapist_name",
                         "sessions", "sessions_label",
-                        "date_text", "timeslot_id", "timeslot_label", "awaiting_date"):
+                        "date_iso", "timeslot_id", "timeslot_label"):
                 state.pop(key, None)
             _pending_bookings[uid] = state
             kb = _bk_type_keyboard()
@@ -574,7 +678,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             for key in ("massage_id", "massage_name", "massage_price",
                         "therapist_id", "therapist_name",
                         "sessions", "sessions_label",
-                        "date_text", "timeslot_id", "timeslot_label", "awaiting_date"):
+                        "date_iso", "timeslot_id", "timeslot_label"):
                 state.pop(key, None)
             _pending_bookings[uid] = state
             kb = _bk_massage_keyboard(mtype) if mtype else None
@@ -586,18 +690,24 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             return
 
         if data == "bk_back_sessions":
-            for key in ("sessions", "sessions_label",
-                        "date_text", "timeslot_id", "timeslot_label", "awaiting_date"):
+            for key in ("sessions", "sessions_label", "date_iso", "timeslot_id", "timeslot_label"):
                 state.pop(key, None)
             _pending_bookings[uid] = state
-            _bk_show_sessions(bot, uid, chat_id, msg_id)
+            _bk_show_sessions(bot, chat_id, msg_id)
+            return
+
+        if data == "bk_back_date":
+            state.pop("timeslot_id", None)
+            state.pop("timeslot_label", None)
+            _pending_bookings[uid] = state
+            _bk_show_calendar(bot, chat_id, msg_id, state.get("date_iso"))
             return
 
         if data == "bk_back_timeslot":
             state.pop("timeslot_id", None)
             state.pop("timeslot_label", None)
             _pending_bookings[uid] = state
-            _bk_show_timeslot(bot, uid, chat_id, msg_id)
+            _bk_show_timeslot(bot, chat_id, msg_id)
             return
 
         # ── Выбор типа массажа ───────────────────────────────────────────────
@@ -654,7 +764,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             except About.DoesNotExist:
                 pass
             _pending_bookings[uid] = state
-            _bk_show_sessions(bot, uid, chat_id, msg_id)
+            _bk_show_sessions(bot, chat_id, msg_id)
             return
 
         # ── Выбор количества сеансов ─────────────────────────────────────────
@@ -672,7 +782,23 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             except BookingSessionOption.DoesNotExist:
                 return
             _pending_bookings[uid] = state
-            _bk_show_date_prompt(bot, uid, chat_id, msg_id, state)
+            _bk_show_calendar(bot, chat_id, msg_id)
+            return
+
+        # ── Выбор даты из календаря ──────────────────────────────────────────
+        if data.startswith("bk_d_"):
+            iso = data[5:]
+            try:
+                d = date.fromisoformat(iso)
+            except ValueError:
+                return
+            if d < _today():
+                return
+            state["date_iso"] = iso
+            state.pop("timeslot_id", None)
+            state.pop("timeslot_label", None)
+            _pending_bookings[uid] = state
+            _bk_show_timeslot(bot, chat_id, msg_id)
             return
 
         # ── Выбор временного слота ───────────────────────────────────────────
@@ -689,7 +815,6 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 state["timeslot_label"] = slot.label
             except BookingTimeSlot.DoesNotExist:
                 return
-            state.pop("awaiting_date", None)
             _pending_bookings[uid] = state
             bot.edit_message_text(
                 _bk_confirm_text(state), chat_id, msg_id, reply_markup=_bk_confirm_keyboard(),
@@ -722,19 +847,4 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         if _is_admin(uid):
             bot.send_message(message.chat.id, ADMIN_HINT)
             return
-
-        state = _pending_bookings.get(uid)
-        if state and state.get("awaiting_date"):
-            text = _message_text(message).strip()
-            if not text:
-                # Не текст — игнорируем; ждём текст даты
-                return
-            state["date_text"] = text
-            state.pop("awaiting_date", None)
-            _pending_bookings[uid] = state
-            msg_id = state.get("msg_id")
-            if msg_id:
-                _bk_show_timeslot(bot, uid, uid, msg_id)
-            return
-
         _forward_to_admins(bot, message)
