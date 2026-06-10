@@ -338,7 +338,7 @@ def appointment_add(request):
                         cost=apt.cost,
                         transport_cost=apt.transport_cost,
                         notes=apt.notes,
-                        discount=apt.discount,
+                        discount_percent=apt.discount_percent,
                         series=series,
                     )
                     _create_additional_services(parent_apt, extra_services, specialist)
@@ -397,8 +397,8 @@ def appointment_edit(request, pk: int):
                         child = appointment.additional_services.get(pk=es["pk"])
                         child.service = es["service"]
                         child.cost = es["cost"]
-                        child.discount = appointment.discount
-                        child.save(update_fields=["service", "cost", "discount"])
+                        child.discount_percent = appointment.discount_percent
+                        child.save(update_fields=["service", "cost", "discount_percent"])
                     except Appointment.DoesNotExist:
                         # create instead
                         _create_additional_services(appointment, [es], specialist)
