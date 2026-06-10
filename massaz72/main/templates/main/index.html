@@ -55,6 +55,7 @@
               <p class="service-card__price">
                 {% if active_discount %}<span class="price-original">{{ massage.price|floatformat:0 }} ₽</span><span class="price-discounted">{{ massage.price|apply_discount:active_discount }} ₽</span>{% else %}{{ massage.price|floatformat:0 }} ₽{% endif %}
               </p>
+              {% if active_discount %}<span class="service-card__promo">акция до {{ active_discount.date_to|date:"d.m.Y" }}</span>{% endif %}
             </div>
           </a>
           {% endfor %}
@@ -73,6 +74,7 @@
               <p class="service-card__price">
                 {% if active_discount %}<span class="price-original">{{ massage.price|floatformat:0 }} ₽</span><span class="price-discounted">{{ massage.price|apply_discount:active_discount }} ₽</span>{% else %}{{ massage.price|floatformat:0 }} ₽{% endif %}
               </p>
+              {% if active_discount %}<span class="service-card__promo">акция до {{ active_discount.date_to|date:"d.m.Y" }}</span>{% endif %}
             </div>
           </a>
           {% endfor %}

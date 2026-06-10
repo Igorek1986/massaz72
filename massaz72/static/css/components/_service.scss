@@ -98,6 +98,14 @@
     color: var(--color-ink);
   }
 
+  &__promo {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #16a34a;
+  }
+
   &__price {
     margin: 4px 0 0;
     font-size: 13px;

@@ -24,6 +24,7 @@
           {% if active_discount %}
             <span class="price-original">{% if new_prices_active %}{{ massage.new_price|default_if_none:massage.price }}{% else %}{{ massage.price }}{% endif %} ₽</span>
             <span class="price-discounted">{{ massage.price|apply_discount:active_discount }} ₽</span>
+            <span class="price-promo-note">акция до {{ active_discount.date_to|date:"d.m.Y" }}</span>
           {% else %}
             {% if new_prices_active %}{{ massage.new_price|default_if_none:massage.price }}{% else %}{{ massage.price }}{% endif %} ₽
           {% endif %}
