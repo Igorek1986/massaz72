@@ -643,6 +643,12 @@ def massage_edit(request, pk: int):
 
 
 @prices_manager_required
+def massage_confirm_archive(request, pk: int):
+    massage = get_object_or_404(Massage, pk=pk)
+    return render(request, "cabinet/partials/massage_confirm_archive.html", {"massage": massage})
+
+
+@prices_manager_required
 @require_POST
 def massage_toggle_archive(request, pk: int):
     massage = get_object_or_404(Massage, pk=pk)

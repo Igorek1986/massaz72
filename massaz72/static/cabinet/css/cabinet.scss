@@ -713,6 +713,16 @@ body.cabinet-body {
     padding-top: 16px;
     border-top: 1px solid var(--cab-border);
   }
+
+  &--confirm {
+    max-width: 360px;
+  }
+
+  &__confirm-name {
+    font-size: 14px;
+    color: var(--cab-muted);
+    margin: 0 0 4px;
+  }
 }
 
 .form-grid {

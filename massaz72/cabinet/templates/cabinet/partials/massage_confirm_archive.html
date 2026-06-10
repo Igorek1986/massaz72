@@ -1,0 +1,20 @@
+<div class="apt-form apt-form--confirm">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">{% if massage.is_archived %}Восстановить услугу?{% else %}Добавить в архив?{% endif %}</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <p class="apt-form__confirm-name">{{ massage.name }}</p>
+  <form hx-post="{% url 'cabinet:massage_toggle_archive' massage.pk %}"
+        hx-target="#massage-list-section"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--primary">
+        {% if massage.is_archived %}Восстановить{% else %}В архив{% endif %}
+      </button>
+    </div>
+  </form>
+</div>

@@ -22,10 +22,9 @@
               hx-target="#cabinet-modal"
               hx-swap="innerHTML">✎</button>
       <button class="apt-btn apt-btn--del" title="{% if m.is_archived %}Восстановить{% else %}В архив{% endif %}"
-              hx-post="{% url 'cabinet:massage_toggle_archive' m.pk %}"
-              hx-target="#massage-list-section"
-              hx-swap="innerHTML"
-              hx-confirm="{% if m.is_archived %}Восстановить услугу?{% else %}Добавить услугу в архив?{% endif %}">{% if m.is_archived %}↩{% else %}⊘{% endif %}</button>
+              hx-get="{% url 'cabinet:massage_confirm_archive' m.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">{% if m.is_archived %}↩{% else %}⊘{% endif %}</button>
     </div>
   </li>
   {% endfor %}
