@@ -1,0 +1,40 @@
+{% load i18n %}
+<div class="apt-form apt-form--confirm">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">Перенос серии</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <p class="apt-form__confirm-note">
+    Перенести {{ shift_count }} зап. начиная с {{ appointment.date|date:"j E" }}
+    на {{ target_date|date:"j E (l)" }}
+  </p>
+
+  <form hx-post="{% url 'cabinet:series_reschedule' appointment.pk %}"
+        hx-target="#cabinet-modal"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="target_date" value="{{ target_date|date:'Y-m-d' }}">
+
+    {% if has_conflict %}
+    <p class="form-error form-error--block">
+      В {{ target_time|time:"H:i" }} уже есть запись. Введите другое время:
+    </p>
+    <div class="form-field" style="margin-top:8px">
+      <label class="form-label">Новое время</label>
+      <input type="time" name="new_time" class="form-input" value="{{ target_time|time:'H:i' }}" required>
+    </div>
+    {% else %}
+    <p class="apt-form__confirm-note">Время: {{ target_time|time:"H:i" }}</p>
+    <input type="hidden" name="new_time" value="">
+    {% endif %}
+
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              hx-get="{% url 'cabinet:appointment_confirm_delete' appointment.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">Назад</button>
+      <button type="submit" class="btn btn--primary">Перенести</button>
+    </div>
+  </form>
+</div>

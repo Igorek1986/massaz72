@@ -31,11 +31,23 @@
         {% if apt.is_travel %}<div class="apt-card__travel">Выездной</div>{% endif %}
         {% if apt.series %}<div class="apt-card__series">Серия #{{ apt.series_id }}, {{ apt.series.total_sessions }} сеансов</div>{% endif %}
         {% if apt.notes %}<div class="apt-card__notes">{{ apt.notes }}</div>{% endif %}
+        {% with extras=apt.additional_services.all %}
+        {% if extras %}
+        <div class="apt-card__extras">
+          {% for child in extras %}
+          <div class="apt-card__extra-item">
+            <span>{{ child.time_start|time:"H:i" }} {{ child.service.name }}</span>
+            <span>{{ child.cost }} ₽</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
       </div>
       <div class="apt-card__right">
-        <div class="apt-card__cost">{{ apt.cost }} ₽</div>
+        <div class="apt-card__cost">{{ apt.total_visit_cost }} ₽</div>
         {% if apt.transport_cost %}
-        <div class="apt-card__transport">+ {{ apt.transport_cost }} ₽ дорога</div>
+        <div class="apt-card__transport">вкл. {{ apt.transport_cost }} ₽ дорога</div>
         {% endif %}
         <span class="apt-badge apt-badge--{{ apt.status }}">{{ apt.get_status_display }}</span>
         <div class="apt-card__actions">

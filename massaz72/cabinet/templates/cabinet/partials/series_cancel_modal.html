@@ -1,0 +1,38 @@
+{% load i18n %}
+<div class="apt-form apt-form--confirm">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">Отмена записи</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <p class="apt-form__confirm-name">{{ appointment.client_name }}</p>
+  <p class="apt-form__confirm-note">
+    {{ appointment.date|date:"j E" }}, {{ appointment.time_start|time:"H:i" }}
+    {% if appointment.service %} · {{ appointment.service.name }}{% endif %}
+  </p>
+  <p class="apt-form__confirm-note">Запись входит в серию #{{ appointment.series_id }} ({{ appointment.series.total_sessions }} сеансов)</p>
+  <div class="apt-form__confirm-actions">
+    <button type="button" class="btn btn--ghost"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">Назад</button>
+    <div class="apt-form__confirm-buttons">
+      <form hx-post="{% url 'cabinet:appointment_delete' appointment.pk %}"
+            hx-target="#cabinet-modal"
+            hx-swap="innerHTML"
+            style="display:inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--ghost">Только эту</button>
+      </form>
+      <form hx-post="{% url 'cabinet:series_cancel_following' appointment.pk %}"
+            hx-target="#cabinet-modal"
+            hx-swap="innerHTML"
+            style="display:inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--ghost">Эту и следующие</button>
+      </form>
+      <button class="btn btn--primary"
+              hx-get="{% url 'cabinet:series_reschedule' appointment.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">Перенести</button>
+    </div>
+  </div>
+</div>

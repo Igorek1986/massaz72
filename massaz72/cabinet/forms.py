@@ -1,17 +1,18 @@
 from datetime import datetime, timedelta
 
 from django import forms
+from django.utils import timezone
 
 from services.models import Massage
 from .models import Appointment, BlockedSlot, Discount, ScheduleException, Specialist, WorkSchedule
 
 
-def _apt_end_dt(apt_date, time_start, service, break_minutes):
-    """Datetime окончания записи с учётом перерыва."""
+def _apt_end_dt(apt_date, time_start, service, break_minutes, extra_duration=0):
+    """Datetime окончания записи с учётом перерыва и доп. услуг."""
     duration = 0
     if service:
         duration = service.duration_max or service.duration_min or 0
-    return datetime.combine(apt_date, time_start) + timedelta(minutes=duration + break_minutes)
+    return datetime.combine(apt_date, time_start) + timedelta(minutes=duration + extra_duration + break_minutes)
 
 
 def _apt_end_time(apt_date, time_start, service):
@@ -20,6 +21,16 @@ def _apt_end_time(apt_date, time_start, service):
     if service:
         duration = service.duration_max or service.duration_min or 0
     return datetime.combine(apt_date, time_start) + timedelta(minutes=duration)
+
+
+def _apt_total_extra_duration(apt):
+    """Суммарная длительность доп. услуг записи (использует prefetch)."""
+    total = 0
+    for child in apt.additional_services.all():
+        svc = child.service
+        if svc:
+            total += svc.duration_max or svc.duration_min or 0
+    return total
 
 
 def _conflict_message(apt_date, conflicts, break_minutes):
@@ -48,12 +59,14 @@ def find_time_conflicts(
     apt_date, time_start, service, break_minutes,
     specialist=None, exclude_pk=None,
     is_travel=False, travel_break_minutes=None,
+    extra_duration=0,
 ):
     """Возвращает записи, пересекающиеся по времени с новым слотом."""
     existing = (
-        Appointment.objects.filter(date=apt_date)
+        Appointment.objects.filter(date=apt_date, parent__isnull=True)
         .exclude(status="cancelled")
         .select_related("service")
+        .prefetch_related("additional_services__service")
     )
     if specialist is not None:
         existing = existing.filter(specialist=specialist)
@@ -63,13 +76,14 @@ def find_time_conflicts(
     travel_break = travel_break_minutes or break_minutes
     new_break = travel_break if is_travel else break_minutes
     new_start_dt = datetime.combine(apt_date, time_start)
-    new_end_dt = _apt_end_dt(apt_date, time_start, service, new_break)
+    new_end_dt = _apt_end_dt(apt_date, time_start, service, new_break, extra_duration=extra_duration)
 
     conflicts = []
     for apt in existing:
         apt_break = travel_break if apt.is_travel else break_minutes
+        apt_extra = _apt_total_extra_duration(apt)
         apt_start_dt = datetime.combine(apt_date, apt.time_start)
-        apt_end_dt = _apt_end_dt(apt_date, apt.time_start, apt.service, apt_break)
+        apt_end_dt = _apt_end_dt(apt_date, apt.time_start, apt.service, apt_break, extra_duration=apt_extra)
         if new_start_dt < apt_end_dt and new_end_dt > apt_start_dt:
             conflicts.append(apt)
     return conflicts
@@ -85,11 +99,17 @@ class AppointmentForm(forms.ModelForm):
         help_text="Больше 1 — запись создаётся на каждый рабочий день подряд",
     )
 
+    _extra_duration = 0
+
     def __init__(self, *args, specialist: "Specialist | None" = None, **kwargs):
         super().__init__(*args, **kwargs)
         self._specialist = specialist
         if self.instance and self.instance.pk:
             self.fields["sessions"].required = False
+        today = timezone.localdate()
+        self.fields["discount"].queryset = Discount.objects.filter(date_to__gte=today)
+        self.fields["discount"].required = False
+        self.fields["discount"].empty_label = "— без скидки —"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -108,6 +128,7 @@ class AppointmentForm(forms.ModelForm):
                 exclude_pk=self.instance.pk if self.instance.pk else None,
                 is_travel=is_travel,
                 travel_break_minutes=travel_break_minutes,
+                extra_duration=self._extra_duration,
             )
             if conflicts:
                 raise forms.ValidationError(
@@ -120,7 +141,7 @@ class AppointmentForm(forms.ModelForm):
         fields = [
             "client_name", "client_phone", "address", "is_travel",
             "service", "date", "time_start",
-            "cost", "transport_cost", "notes",
+            "cost", "transport_cost", "discount", "notes",
         ]
         widgets = {
             "client_name": forms.TextInput(attrs={"class": "form-input"}),
@@ -131,6 +152,7 @@ class AppointmentForm(forms.ModelForm):
             "time_start": forms.TimeInput(attrs={"type": "time", "class": "form-input"}, format="%H:%M"),
             "cost": forms.NumberInput(attrs={"class": "form-input", "step": "50", "min": "0", "id": "id_cost", "readonly": True}),
             "transport_cost": forms.NumberInput(attrs={"class": "form-input", "step": "10", "min": "0"}),
+            "discount": forms.Select(attrs={"class": "form-input", "id": "id_discount"}),
             "notes": forms.Textarea(attrs={"class": "form-input", "rows": "2"}),
         }
 

@@ -1,4 +1,5 @@
-from datetime import date, timedelta
+import json
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
@@ -77,8 +78,9 @@ def _series_dates(start: date, count: int, schedule: WorkSchedule, specialist: S
 
 def _day_context(selected_date: date, specialist: Specialist) -> dict:
     appointments = (
-        Appointment.objects.filter(date=selected_date, specialist=specialist)
+        Appointment.objects.filter(date=selected_date, specialist=specialist, parent__isnull=True)
         .select_related("service", "series")
+        .prefetch_related("additional_services__service")
         .order_by("time_start")
     )
     blocked_slots = BlockedSlot.objects.filter(date=selected_date, specialist=specialist)
@@ -87,6 +89,10 @@ def _day_context(selected_date: date, specialist: Specialist) -> dict:
     exceptions = ScheduleException.objects.filter(
         specialist=specialist, date_from__lte=selected_date, date_to__gte=selected_date
     )
+    # compute total_visit_cost for each appointment
+    for apt in appointments:
+        extra = sum(c.cost for c in apt.additional_services.all())
+        apt.total_visit_cost = apt.cost + extra + (apt.transport_cost or Decimal("0"))
     return {
         "selected_date": selected_date,
         "date_str": selected_date.isoformat(),
@@ -94,6 +100,129 @@ def _day_context(selected_date: date, specialist: Specialist) -> dict:
         "blocked_slots": blocked_slots,
         "is_working": is_working,
         "exceptions": exceptions,
+    }
+
+
+def _parse_extra_services(post_data):
+    """Parse extra_service_N/extra_cost_N/extra_pk_N from POST."""
+    services = []
+    i = 0
+    while i < 20:
+        service_id = post_data.get(f"extra_service_{i}", "").strip()
+        cost_raw = post_data.get(f"extra_cost_{i}", "").strip()
+        if not service_id and not cost_raw:
+            break
+        if service_id:
+            try:
+                service_obj = Massage.objects.get(pk=int(service_id), is_archived=False)
+                pk_raw = post_data.get(f"extra_pk_{i}", "").strip()
+                try:
+                    cost_dec = Decimal(cost_raw) if cost_raw else Decimal("0")
+                except InvalidOperation:
+                    cost_dec = Decimal("0")
+                services.append({
+                    "pk": int(pk_raw) if pk_raw else None,
+                    "service": service_obj,
+                    "cost": cost_dec,
+                })
+            except (Massage.DoesNotExist, ValueError):
+                pass
+        i += 1
+    return services
+
+
+def _compute_extra_duration(extra_services):
+    total = 0
+    for es in extra_services:
+        svc = es.get("service")
+        if svc:
+            total += svc.duration_max or svc.duration_min or 0
+    return total
+
+
+def _create_additional_services(parent_apt, extra_services, specialist):
+    """Create child Appointment records for additional services."""
+    cumulative = 0
+    if parent_apt.service:
+        cumulative += parent_apt.service.duration_max or parent_apt.service.duration_min or 0
+    for es in extra_services:
+        child_dt = datetime.combine(parent_apt.date, parent_apt.time_start) + timedelta(minutes=cumulative)
+        Appointment.objects.create(
+            parent=parent_apt,
+            specialist=specialist,
+            client_name=parent_apt.client_name,
+            client_phone=parent_apt.client_phone,
+            address=parent_apt.address,
+            is_travel=parent_apt.is_travel,
+            service=es["service"],
+            date=parent_apt.date,
+            time_start=child_dt.time(),
+            cost=es["cost"],
+            discount=parent_apt.discount,
+            notes=parent_apt.notes,
+            status=parent_apt.status,
+            series=parent_apt.series,
+        )
+        cumulative += es["service"].duration_max or es["service"].duration_min or 0
+
+
+def _recompute_children_times(parent_apt):
+    """Recompute time_start for all children of a parent appointment."""
+    cumulative = 0
+    if parent_apt.service:
+        cumulative += parent_apt.service.duration_max or parent_apt.service.duration_min or 0
+    for child in parent_apt.additional_services.select_related("service").order_by("time_start", "pk"):
+        child_dt = datetime.combine(parent_apt.date, parent_apt.time_start) + timedelta(minutes=cumulative)
+        child.time_start = child_dt.time()
+        child.save(update_fields=["time_start"])
+        if child.service:
+            cumulative += child.service.duration_max or child.service.duration_min or 0
+
+
+def _next_series_working_day(series_pk, specialist):
+    """Returns the next working day after the last parent appointment in the series."""
+    last_apt = Appointment.objects.filter(series_id=series_pk, parent__isnull=True).order_by("-date").first()
+    if not last_apt:
+        return None
+    schedule = WorkSchedule.for_specialist(specialist)
+    candidate = last_apt.date + timedelta(days=1)
+    limit = candidate + timedelta(days=180)
+    while candidate <= limit:
+        if _is_working_day(candidate, schedule, specialist):
+            return candidate
+        candidate += timedelta(days=1)
+    return None
+
+
+def _build_discount_data(discounts):
+    """Build dict of discount data for JS."""
+    result = {}
+    for d in discounts:
+        result[str(d.pk)] = {
+            "type": d.discount_type,
+            "value": float(d.value),
+        }
+    return result
+
+
+def _apt_form_context(specialist, date_str, form, appointment=None, extra_services_data=None):
+    """Build shared context for appointment form."""
+    service_prices = {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)}
+    today = timezone.localdate()
+    discounts = Discount.objects.filter(date_to__gte=today)
+    discount_data = _build_discount_data(discounts)
+    available_services = list(
+        Massage.objects.filter(is_archived=False).values("pk", "name").order_by("name")
+    )
+    available_services_json = json.dumps([{"id": s["pk"], "name": s["name"]} for s in available_services])
+    return {
+        "form": form,
+        "date_str": date_str,
+        "appointment": appointment,
+        "service_prices": json.dumps(service_prices),
+        "discount_data": json.dumps(discount_data),
+        "available_services_json": available_services_json,
+        "extra_services_data": json.dumps(extra_services_data or []),
     }
 
 
@@ -158,10 +287,13 @@ def appointment_add(request):
         initial_date = date.today()
         date_str = initial_date.isoformat()
 
-    service_prices = {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)}
-
     if request.method == "POST":
+        extra_services = _parse_extra_services(request.POST)
+        extra_duration = _compute_extra_duration(extra_services)
+
         form = AppointmentForm(request.POST, specialist=specialist)
+        form._extra_duration = extra_duration
+
         if form.is_valid():
             sessions = form.cleaned_data.pop("sessions")
             apt: Appointment = form.save(commit=False)
@@ -174,7 +306,9 @@ def appointment_add(request):
                 conflict_dates = []
                 for d in dates:
                     day_conflicts = find_time_conflicts(
-                        d, apt.time_start, apt.service, break_minutes, specialist=specialist
+                        d, apt.time_start, apt.service, break_minutes,
+                        specialist=specialist,
+                        extra_duration=extra_duration,
                     )
                     if day_conflicts:
                         conflict_dates.append((d, day_conflicts))
@@ -185,9 +319,13 @@ def appointment_add(request):
                             f"{d.strftime('%d.%m')}: " + _conflict_message(d, day_conflicts, break_minutes)
                         )
                     form.add_error(None, " | ".join(lines))
-                    return render(request, "cabinet/partials/appointment_form.html", {
-                        "form": form, "date_str": date_str, "service_prices": service_prices,
-                    })
+                    extra_services_data = [
+                        {"pk": None, "service_id": es["service"].pk, "cost": str(int(es["cost"]))}
+                        for es in extra_services
+                    ]
+                    return render(request, "cabinet/partials/appointment_form.html",
+                                  _apt_form_context(specialist, date_str, form,
+                                                    extra_services_data=extra_services_data))
 
                 series = AppointmentSeries.objects.create(
                     specialist=specialist,
@@ -195,58 +333,122 @@ def appointment_add(request):
                     total_sessions=sessions,
                 )
                 for d in dates:
-                    Appointment.objects.create(
+                    parent_apt = Appointment.objects.create(
                         specialist=specialist,
                         client_name=apt.client_name,
                         client_phone=apt.client_phone,
                         address=apt.address,
+                        is_travel=apt.is_travel,
                         service=apt.service,
                         date=d,
                         time_start=apt.time_start,
                         cost=apt.cost,
                         transport_cost=apt.transport_cost,
                         notes=apt.notes,
+                        discount=apt.discount,
                         series=series,
                     )
+                    _create_additional_services(parent_apt, extra_services, specialist)
             else:
                 apt.save()
+                _create_additional_services(apt, extra_services, specialist)
 
             return _appointment_saved_response(request, apt.date, specialist)
 
-        return render(request, "cabinet/partials/appointment_form.html", {
-            "form": form, "date_str": date_str, "service_prices": service_prices,
-        })
+        extra_services_data = [
+            {"pk": None, "service_id": es["service"].pk, "cost": str(int(es["cost"]))}
+            for es in extra_services
+        ]
+        return render(request, "cabinet/partials/appointment_form.html",
+                      _apt_form_context(specialist, date_str, form,
+                                        extra_services_data=extra_services_data))
 
     form = AppointmentForm(initial={"date": initial_date}, specialist=specialist)
-    return render(request, "cabinet/partials/appointment_form.html", {
-        "form": form, "date_str": date_str, "service_prices": service_prices,
-    })
+    return render(request, "cabinet/partials/appointment_form.html",
+                  _apt_form_context(specialist, date_str, form))
 
 
 @specialist_required
 def appointment_edit(request, pk: int):
     specialist = request.specialist
-    appointment = get_object_or_404(Appointment, pk=pk, specialist=specialist)
+    appointment = get_object_or_404(
+        Appointment.objects.prefetch_related("additional_services__service"),
+        pk=pk, specialist=specialist, parent__isnull=True,
+    )
     date_str = appointment.date.isoformat()
-    service_prices = {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)}
+
+    extra_services_data = [
+        {"pk": c.pk, "service_id": c.service_id, "cost": str(int(c.cost))}
+        for c in appointment.additional_services.order_by("time_start", "pk")
+    ]
 
     if request.method == "POST":
+        extra_services = _parse_extra_services(request.POST)
+        extra_duration = _compute_extra_duration(extra_services)
+
         form = AppointmentForm(request.POST, instance=appointment, specialist=specialist)
+        form._extra_duration = extra_duration
+
         if form.is_valid():
             form.cleaned_data.pop("sessions", None)
             form.save()
+
+            # Sync additional services
+            submitted_pks = {es["pk"] for es in extra_services if es["pk"]}
+            # Delete removed children
+            appointment.additional_services.exclude(pk__in=submitted_pks).delete()
+            # Update existing and create new
+            for es in extra_services:
+                if es["pk"]:
+                    try:
+                        child = appointment.additional_services.get(pk=es["pk"])
+                        child.service = es["service"]
+                        child.cost = es["cost"]
+                        child.discount = appointment.discount
+                        child.save(update_fields=["service", "cost", "discount"])
+                    except Appointment.DoesNotExist:
+                        # create instead
+                        _create_additional_services(appointment, [es], specialist)
+                else:
+                    _create_additional_services(appointment, [es], specialist)
+            _recompute_children_times(appointment)
+
+            # Apply to following in series if requested
+            apply_to_following = request.POST.get("apply_to_following") == "1"
+            if apply_to_following and appointment.series_id:
+                following = Appointment.objects.filter(
+                    series=appointment.series,
+                    parent__isnull=True,
+                    date__gt=appointment.date,
+                ).order_by("date")
+                for sibling in following:
+                    sibling.time_start = appointment.time_start
+                    sibling.cost = appointment.cost
+                    sibling.transport_cost = appointment.transport_cost
+                    sibling.notes = appointment.notes
+                    sibling.discount = appointment.discount
+                    sibling.is_travel = appointment.is_travel
+                    sibling.save(update_fields=[
+                        "time_start", "cost", "transport_cost", "notes",
+                        "discount", "is_travel",
+                    ])
+                    # Sync additional services for each sibling
+                    sibling.additional_services.all().delete()
+                    _create_additional_services(sibling, extra_services, specialist)
+
             return _appointment_saved_response(request, appointment.date, specialist)
 
-        return render(request, "cabinet/partials/appointment_form.html", {
-            "form": form, "date_str": date_str, "appointment": appointment,
-            "service_prices": service_prices,
-        })
+        extra_services_data = [
+            {"pk": es["pk"], "service_id": es["service"].pk, "cost": str(int(es["cost"]))}
+            for es in extra_services
+        ]
+        return render(request, "cabinet/partials/appointment_form.html",
+                      _apt_form_context(specialist, date_str, form, appointment,
+                                        extra_services_data=extra_services_data))
 
-    form = AppointmentForm(instance=appointment, specialist=specialist)
-    return render(request, "cabinet/partials/appointment_form.html", {
-        "form": form, "date_str": date_str, "appointment": appointment,
-        "service_prices": service_prices,
-    })
+    return render(request, "cabinet/partials/appointment_form.html",
+                  _apt_form_context(specialist, date_str, form=AppointmentForm(instance=appointment, specialist=specialist),
+                                    appointment=appointment, extra_services_data=extra_services_data))
 
 
 @specialist_required
@@ -262,6 +464,8 @@ def appointment_status(request, pk: int):
     if new_status in allowed.get(appointment.status, ()):
         appointment.status = new_status
         appointment.save()
+        # Also update children
+        appointment.additional_services.all().update(status=new_status)
     response = render(
         request, "cabinet/partials/day_schedule.html",
         _day_context(appointment.date, specialist),
@@ -273,6 +477,8 @@ def appointment_status(request, pk: int):
 @specialist_required
 def appointment_confirm_delete(request, pk: int):
     appointment = get_object_or_404(Appointment, pk=pk, specialist=request.specialist)
+    if appointment.series_id and not appointment.parent_id:
+        return render(request, "cabinet/partials/series_cancel_modal.html", {"appointment": appointment})
     return render(request, "cabinet/partials/appointment_confirm_delete.html", {"appointment": appointment})
 
 
@@ -294,6 +500,152 @@ def appointment_delete(request, pk: int):
     response["HX-Reswap"] = "innerHTML"
     response["HX-Trigger"] = "appointmentChanged"
     return response
+
+
+@specialist_required
+@require_POST
+def series_cancel_following(request, pk: int):
+    specialist = request.specialist
+    appointment = get_object_or_404(Appointment, pk=pk, specialist=specialist, parent__isnull=True)
+    saved_date = appointment.date
+    Appointment.objects.filter(
+        series=appointment.series, parent__isnull=True, date__gte=appointment.date
+    ).delete()  # CASCADE handles children
+    day_html = render_to_string(
+        "cabinet/partials/day_schedule.html",
+        _day_context(saved_date, specialist),
+        request=request,
+    )
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+    response = HttpResponse(day_html + oob_close)
+    response["HX-Retarget"] = "#day-panel"
+    response["HX-Reswap"] = "innerHTML"
+    response["HX-Trigger"] = "appointmentChanged"
+    return response
+
+
+def _series_reschedule_context(appointment, specialist, target_date, check_time, existing_conflicts):
+    """Build context for series reschedule form, checking conflicts."""
+    schedule = WorkSchedule.for_specialist(specialist)
+    break_minutes = schedule.break_between_minutes
+    travel_break_minutes = schedule.break_between_travel_minutes
+
+    extra_duration = 0
+    try:
+        extra_duration = _compute_extra_duration([
+            {"service": c.service} for c in appointment.additional_services.all()
+        ])
+    except Exception:
+        pass
+
+    if not existing_conflicts:
+        conflicts = find_time_conflicts(
+            target_date, check_time, appointment.service, break_minutes,
+            specialist=specialist,
+            is_travel=appointment.is_travel,
+            travel_break_minutes=travel_break_minutes,
+            extra_duration=extra_duration,
+        )
+    else:
+        conflicts = existing_conflicts
+
+    shift_count = Appointment.objects.filter(
+        series=appointment.series, parent__isnull=True, date__gte=appointment.date
+    ).count()
+
+    return {
+        "appointment": appointment,
+        "target_date": target_date,
+        "target_time": check_time,
+        "has_conflict": bool(conflicts),
+        "shift_count": shift_count,
+        "conflict_info": conflicts[0] if conflicts else None,
+    }
+
+
+@specialist_required
+def series_reschedule(request, pk: int):
+    specialist = request.specialist
+    appointment = get_object_or_404(
+        Appointment.objects.prefetch_related("additional_services__service"),
+        pk=pk, specialist=specialist, parent__isnull=True,
+    )
+
+    if request.method == "POST":
+        target_date_str = request.POST.get("target_date", "")
+        new_time_str = request.POST.get("new_time", "").strip()
+        try:
+            target_date = date.fromisoformat(target_date_str)
+        except ValueError:
+            return HttpResponse("Неверная дата", status=400)
+
+        delta = target_date - appointment.date
+
+        parents = list(
+            Appointment.objects.filter(
+                series=appointment.series, parent__isnull=True, date__gte=appointment.date
+            ).prefetch_related("additional_services").order_by("date")
+        )
+
+        new_time = None
+        if new_time_str:
+            from datetime import time as time_type
+            try:
+                h, m = new_time_str.split(":")
+                new_time = time_type(int(h), int(m))
+            except (ValueError, AttributeError):
+                pass
+
+        if new_time:
+            schedule = WorkSchedule.for_specialist(specialist)
+            break_minutes = schedule.break_between_minutes
+            travel_break_minutes = schedule.break_between_travel_minutes
+            extra_duration = _compute_extra_duration([
+                {"service": c.service} for c in appointment.additional_services.all()
+            ])
+            conflicts = find_time_conflicts(
+                target_date, new_time, appointment.service, break_minutes,
+                specialist=specialist,
+                exclude_pk=appointment.pk,
+                is_travel=appointment.is_travel,
+                travel_break_minutes=travel_break_minutes,
+                extra_duration=extra_duration,
+            )
+            if conflicts:
+                form_ctx = _series_reschedule_context(appointment, specialist, target_date, new_time, conflicts)
+                return render(request, "cabinet/partials/series_reschedule_form.html", form_ctx)
+
+        for parent in parents:
+            new_date = parent.date + delta
+            if new_time and parent.pk == appointment.pk:
+                parent.time_start = new_time
+                parent.date = new_date
+                parent.save(update_fields=["date", "time_start"])
+                _recompute_children_times(parent)
+            else:
+                parent.date = new_date
+                parent.save(update_fields=["date"])
+            parent.additional_services.all().update(date=new_date)
+
+        day_html = render_to_string(
+            "cabinet/partials/day_schedule.html",
+            _day_context(target_date, specialist),
+            request=request,
+        )
+        oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+        response = HttpResponse(day_html + oob_close)
+        response["HX-Retarget"] = "#day-panel"
+        response["HX-Reswap"] = "innerHTML"
+        response["HX-Trigger"] = "appointmentChanged"
+        return response
+
+    # GET: compute target date and check for conflicts
+    target_date = _next_series_working_day(appointment.series_id, specialist)
+    if not target_date:
+        return HttpResponse("Не удалось определить дату переноса", status=400)
+
+    ctx = _series_reschedule_context(appointment, specialist, target_date, appointment.time_start, [])
+    return render(request, "cabinet/partials/series_reschedule_form.html", ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -528,7 +880,6 @@ def prices_save_current(request):
     price_change_html = render_to_string(
         "cabinet/partials/price_change_section.html", ctx, request=request
     )
-    # OOB-своп обновляет второй блок без отдельного запроса
     oob = f'<div id="price-change-section" class="settings-card" hx-swap-oob="innerHTML">{price_change_html}</div>'
     response = HttpResponse(price_list_html + oob)
     response["HX-Retarget"] = "#price-list-section"
@@ -707,7 +1058,9 @@ def calendar_events(request):
         current += timedelta(days=1)
 
     apt_counts = (
-        Appointment.objects.filter(date__gte=start, date__lt=end, specialist=specialist)
+        Appointment.objects.filter(
+            date__gte=start, date__lt=end, specialist=specialist, parent__isnull=True
+        )
         .exclude(status=Appointment.CANCELLED)
         .values("date")
         .annotate(count=Count("id"))

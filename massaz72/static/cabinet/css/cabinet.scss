@@ -1242,6 +1242,75 @@ body.cabinet-body {
   }
 }
 
+// ===== Extra service rows in appointment form =====
+.extra-service-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--cab-border);
+
+  &__fields {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+
+.extra-services-section {
+  border-top: 1px solid var(--cab-border);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.btn--add-service {
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--cab-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 4px;
+
+  &:hover { text-decoration: underline; }
+}
+
+// ===== Grouped appointment display in schedule =====
+.apt-card__extras {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.apt-card__extra-item {
+  font-size: 12px;
+  opacity: 0.9;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+// ===== Series cancel modal =====
+.apt-form__confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.apt-form__confirm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 // ===== Responsive =====
 @media (max-width: 768px) {
   .mobile-topbar {

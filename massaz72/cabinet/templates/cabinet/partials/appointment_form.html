@@ -41,9 +41,32 @@
         {{ form.address }}
       </div>
 
+      {# ---- Services section ---- #}
       <div class="form-field form-field--full">
         <label class="form-label">{{ form.service.label }}</label>
         {{ form.service }}
+      </div>
+
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.discount.label }}</label>
+        {{ form.discount }}
+      </div>
+
+      <div class="form-field form-field--full extra-services-section">
+        <div id="extra-services-container"></div>
+        <button type="button" class="btn--add-service" onclick="addExtraSvcRow()">+ Доп. услуга</button>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">{{ form.cost.label }}<span class="form-req">*</span></label>
+        {{ form.cost }}
+        {% if form.cost.errors %}<span class="form-error">{{ form.cost.errors.0 }}</span>{% endif %}
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">{{ form.transport_cost.label }}</label>
+        {{ form.transport_cost }}
+        <span class="form-hint">Проезд до клиента, необязательно</span>
       </div>
 
       <div class="form-field form-field--full form-field--dt">
@@ -59,23 +82,20 @@
         </div>
       </div>
 
-      <div class="form-field">
-        <label class="form-label">{{ form.cost.label }}<span class="form-req">*</span></label>
-        {{ form.cost }}
-        {% if form.cost.errors %}<span class="form-error">{{ form.cost.errors.0 }}</span>{% endif %}
-      </div>
-
-      <div class="form-field">
-        <label class="form-label">{{ form.transport_cost.label }}</label>
-        {{ form.transport_cost }}
-        <span class="form-hint">Проезд до клиента, необязательно</span>
-      </div>
-
       {% if not appointment %}
       <div class="form-field">
         <label class="form-label">{{ form.sessions.label }}</label>
         {{ form.sessions }}
         {% if form.sessions.help_text %}<span class="form-hint">{{ form.sessions.help_text }}</span>{% endif %}
+      </div>
+      {% endif %}
+
+      {% if appointment and appointment.series_id %}
+      <div class="form-field form-field--full">
+        <label class="form-check">
+          <input type="checkbox" name="apply_to_following" value="1">
+          <span class="form-check__label">Применить изменения ко всем следующим записям в серии</span>
+        </label>
       </div>
       {% endif %}
 
@@ -99,12 +119,20 @@
 
 <script>
 (function () {
-  var prices = {{ service_prices|default:"{}" }};
+  var prices = {{ service_prices|safe }};
+  var discountData = {{ discount_data|safe }};
+  var availableSvcs = {{ available_services_json|safe }};
+  var initialExtras = {{ extra_services_data|safe }};
+  var extraCount = 0;
+
   var serviceEl   = document.getElementById('id_service');
   var costEl      = document.getElementById('id_cost');
   var sessionsEl  = document.getElementById('id_sessions');
   var transportEl = document.getElementById('id_transport_cost');
+  var discountEl  = document.getElementById('id_discount');
   var summaryEl   = document.getElementById('apt-cost-summary');
+  var container   = document.getElementById('extra-services-container');
+
   if (!serviceEl || !costEl) return;
 
   function plural(n) {
@@ -113,45 +141,130 @@
     return 'ов';
   }
 
+  function applyDiscount(base, discountId) {
+    if (!discountId || !discountData[discountId]) return base;
+    var d = discountData[discountId];
+    if (d.type === 'percentage') return Math.max(0, Math.round(base * (1 - d.value / 100)));
+    return Math.max(0, base - d.value);
+  }
+
+  function fillCost(serviceId, costInput) {
+    var discountId = discountEl ? discountEl.value : '';
+    var base = prices[serviceId];
+    if (base !== undefined) costInput.value = applyDiscount(base, discountId);
+  }
+
   function updateSummary() {
     if (!summaryEl) return;
     var price     = parseInt(costEl.value) || 0;
     var sessions  = sessionsEl ? (parseInt(sessionsEl.value) || 1) : 1;
     var transport = transportEl ? (parseInt(transportEl.value) || 0) : 0;
-    if (!price) { summaryEl.innerHTML = ''; return; }
 
-    var perSession = price + transport;
+    // Sum extra services
+    var extraTotal = 0;
+    container.querySelectorAll('.extra-svc-cost').forEach(function(inp) {
+      extraTotal += parseInt(inp.value) || 0;
+    });
+
+    if (!price && !extraTotal) { summaryEl.innerHTML = ''; return; }
+
+    var perSession = price + extraTotal + transport;
     var total = perSession * sessions;
     var html = '';
 
     if (sessions > 1) {
       html += '<span class="apt-cost-summary__line">1 сеанс — ' + perSession.toLocaleString('ru') + ' ₽';
       if (transport > 0) {
-        html += ' (массаж ' + price.toLocaleString('ru') + ' + дорога ' + transport.toLocaleString('ru') + ')';
+        html += ' (+ дорога ' + transport.toLocaleString('ru') + ')';
       }
       html += '</span>';
       html += '<span class="apt-cost-summary__line apt-cost-summary__line--total">Итого за ' + sessions + ' сеанс' + plural(sessions) + ' — ' + total.toLocaleString('ru') + ' ₽</span>';
     } else {
       html += '<span class="apt-cost-summary__line apt-cost-summary__line--total">Итого — ' + perSession.toLocaleString('ru') + ' ₽</span>';
       if (transport > 0) {
-        html += '<span class="apt-cost-summary__line apt-cost-summary__line--muted">массаж ' + price.toLocaleString('ru') + ' + дорога ' + transport.toLocaleString('ru') + ' ₽</span>';
+        html += '<span class="apt-cost-summary__line apt-cost-summary__line--muted">+ дорога ' + transport.toLocaleString('ru') + ' ₽</span>';
       }
     }
     summaryEl.innerHTML = html;
   }
 
-  function fillPrice() {
+  function buildOptions(selectedId) {
+    return availableSvcs.map(function(s) {
+      return '<option value="' + s.id + '"' + (String(s.id) === String(selectedId) ? ' selected' : '') + '>' + s.name + '</option>';
+    }).join('');
+  }
+
+  window.addExtraSvcRow = function(serviceId, cost, extraPk) {
+    var idx = extraCount++;
+    var div = document.createElement('div');
+    div.className = 'extra-service-row';
+    div.dataset.idx = idx;
+    div.innerHTML =
+      '<input type="hidden" name="extra_pk_' + idx + '" value="' + (extraPk || '') + '" class="extra-pk">' +
+      '<div class="extra-service-row__fields">' +
+        '<div class="form-field">' +
+          '<label class="form-label">Доп. услуга</label>' +
+          '<select name="extra_service_' + idx + '" class="form-input extra-svc-select">' +
+            '<option value="">— выберите —</option>' + buildOptions(serviceId) +
+          '</select>' +
+        '</div>' +
+        '<div class="form-field">' +
+          '<label class="form-label">Стоимость</label>' +
+          '<input type="number" name="extra_cost_' + idx + '" class="form-input extra-svc-cost" readonly step="50" min="0" value="' + (cost || '') + '">' +
+        '</div>' +
+      '</div>' +
+      '<button type="button" class="apt-btn apt-btn--del extra-svc-remove" onclick="removeExtraSvc(this)" title="Удалить">✕</button>';
+
+    var sel = div.querySelector('.extra-svc-select');
+    var costInp = div.querySelector('.extra-svc-cost');
+    sel.addEventListener('change', function() {
+      fillCost(this.value, costInp);
+      updateSummary();
+    });
+    container.appendChild(div);
+    updateSummary();
+  };
+
+  window.removeExtraSvc = function(btn) {
+    btn.closest('.extra-service-row').remove();
+    updateSummary();
+  };
+
+  function fillMainPrice() {
     var id = serviceEl.value;
-    var price = prices[id];
-    if (price) costEl.value = price;
+    var base = prices[id];
+    if (base !== undefined) {
+      var discountId = discountEl ? discountEl.value : '';
+      costEl.value = applyDiscount(base, discountId);
+    }
     updateSummary();
   }
 
-  serviceEl.addEventListener('change', fillPrice);
+  function onDiscountChange() {
+    // Refill main service cost
+    if (serviceEl.value) fillMainPrice();
+    // Refill each extra
+    container.querySelectorAll('.extra-service-row').forEach(function(row) {
+      var sel = row.querySelector('.extra-svc-select');
+      var costInp = row.querySelector('.extra-svc-cost');
+      if (sel && sel.value) fillCost(sel.value, costInp);
+    });
+    updateSummary();
+  }
+
+  serviceEl.addEventListener('change', fillMainPrice);
   if (sessionsEl)  sessionsEl.addEventListener('input', updateSummary);
   if (transportEl) transportEl.addEventListener('input', updateSummary);
+  if (discountEl)  discountEl.addEventListener('change', onDiscountChange);
 
-  if (!costEl.value) fillPrice();
+  // Load initial extra services (when editing)
+  if (initialExtras && initialExtras.length) {
+    initialExtras.forEach(function(es) {
+      addExtraSvcRow(es.service_id, es.cost, es.pk);
+    });
+  }
+
+  if (!costEl.value) fillMainPrice();
   else updateSummary();
 })();
 </script>
