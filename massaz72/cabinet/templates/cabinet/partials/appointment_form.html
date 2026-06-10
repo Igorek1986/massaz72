@@ -65,10 +65,14 @@
       <div class="form-field">
         <label class="form-label">{{ form.discount_percent.label }}</label>
         {{ form.discount_percent }}
-        <span class="form-hint">Процент скидки, необязательно</span>
       </div>
 
       <div class="form-field">
+        <label class="form-label">{{ form.discount_amount.label }}</label>
+        {{ form.discount_amount }}
+      </div>
+
+      <div class="form-field form-field--full">
         <label class="form-label">{{ form.transport_cost.label }}</label>
         {{ form.transport_cost }}
         <span class="form-hint">Проезд до клиента, необязательно</span>
@@ -130,13 +134,14 @@
   var initialExtras = {{ extra_services_data|safe }};
   var extraCount    = 0;
 
-  var serviceEl   = document.getElementById('id_service');
-  var costEl      = document.getElementById('id_cost');
-  var sessionsEl  = document.getElementById('id_sessions');
-  var transportEl = document.getElementById('id_transport_cost');
-  var discountEl  = document.getElementById('id_discount_percent');
-  var summaryEl   = document.getElementById('apt-cost-summary');
-  var container   = document.getElementById('extra-services-container');
+  var serviceEl    = document.getElementById('id_service');
+  var costEl       = document.getElementById('id_cost');
+  var sessionsEl   = document.getElementById('id_sessions');
+  var transportEl  = document.getElementById('id_transport_cost');
+  var discountEl   = document.getElementById('id_discount_percent');
+  var discountAmt  = document.getElementById('id_discount_amount');
+  var summaryEl    = document.getElementById('apt-cost-summary');
+  var container    = document.getElementById('extra-services-container');
 
   if (!serviceEl || !costEl) return;
 
@@ -148,8 +153,11 @@
 
   function applyDiscount(base) {
     var pct = discountEl ? (parseFloat(discountEl.value) || 0) : 0;
-    if (pct <= 0 || pct > 100) return base;
-    return Math.max(0, Math.round(base * (1 - pct / 100)));
+    var amt = discountAmt ? (parseFloat(discountAmt.value) || 0) : 0;
+    var result = base;
+    if (pct > 0 && pct <= 100) result = result * (1 - pct / 100);
+    if (amt > 0) result = result - amt;
+    return Math.max(0, Math.round(result));
   }
 
   function fillCost(serviceId, costInput) {
@@ -229,18 +237,18 @@
     updateSummary();
   };
 
-  // Refill all costs when discount changes
-  if (discountEl) {
-    discountEl.addEventListener('input', function() {
-      if (serviceEl.value) fillCost(serviceEl.value, costEl);
-      container.querySelectorAll('.extra-service-row').forEach(function(row) {
-        var sel = row.querySelector('.extra-svc-select');
-        var c   = row.querySelector('.extra-svc-cost');
-        if (sel && sel.value) fillCost(sel.value, c);
-      });
-      updateSummary();
+  // Refill all costs when either discount field changes
+  function onDiscountChange() {
+    if (serviceEl.value) fillCost(serviceEl.value, costEl);
+    container.querySelectorAll('.extra-service-row').forEach(function(row) {
+      var sel = row.querySelector('.extra-svc-select');
+      var c   = row.querySelector('.extra-svc-cost');
+      if (sel && sel.value) fillCost(sel.value, c);
     });
+    updateSummary();
   }
+  if (discountEl)  discountEl.addEventListener('input', onDiscountChange);
+  if (discountAmt) discountAmt.addEventListener('input', onDiscountChange);
 
   // Main service change
   serviceEl.addEventListener('change', function() {

@@ -159,6 +159,7 @@ def _create_additional_services(parent_apt, extra_services, specialist):
             time_start=child_dt.time(),
             cost=es["cost"],
             discount_percent=parent_apt.discount_percent,
+            discount_amount=parent_apt.discount_amount,
             notes=parent_apt.notes,
             status=parent_apt.status,
             series=parent_apt.series,
@@ -339,6 +340,7 @@ def appointment_add(request):
                         transport_cost=apt.transport_cost,
                         notes=apt.notes,
                         discount_percent=apt.discount_percent,
+                        discount_amount=apt.discount_amount,
                         series=series,
                     )
                     _create_additional_services(parent_apt, extra_services, specialist)
@@ -398,7 +400,8 @@ def appointment_edit(request, pk: int):
                         child.service = es["service"]
                         child.cost = es["cost"]
                         child.discount_percent = appointment.discount_percent
-                        child.save(update_fields=["service", "cost", "discount_percent"])
+                        child.discount_amount = appointment.discount_amount
+                        child.save(update_fields=["service", "cost", "discount_percent", "discount_amount"])
                     except Appointment.DoesNotExist:
                         # create instead
                         _create_additional_services(appointment, [es], specialist)
@@ -420,10 +423,11 @@ def appointment_edit(request, pk: int):
                     sibling.transport_cost = appointment.transport_cost
                     sibling.notes = appointment.notes
                     sibling.discount_percent = appointment.discount_percent
+                    sibling.discount_amount = appointment.discount_amount
                     sibling.is_travel = appointment.is_travel
                     sibling.save(update_fields=[
                         "time_start", "cost", "transport_cost", "notes",
-                        "discount_percent", "is_travel",
+                        "discount_percent", "discount_amount", "is_travel",
                     ])
                     # Sync additional services for each sibling
                     sibling.additional_services.all().delete()

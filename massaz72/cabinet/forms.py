@@ -136,7 +136,7 @@ class AppointmentForm(forms.ModelForm):
         fields = [
             "client_name", "client_phone", "address", "is_travel",
             "service", "date", "time_start",
-            "cost", "transport_cost", "discount_percent", "notes",
+            "cost", "transport_cost", "discount_percent", "discount_amount", "notes",
         ]
         widgets = {
             "client_name": forms.TextInput(attrs={"class": "form-input"}),
@@ -150,6 +150,10 @@ class AppointmentForm(forms.ModelForm):
             "discount_percent": forms.NumberInput(attrs={
                 "class": "form-input", "step": "1", "min": "0", "max": "100",
                 "id": "id_discount_percent", "placeholder": "0",
+            }),
+            "discount_amount": forms.NumberInput(attrs={
+                "class": "form-input", "step": "50", "min": "0",
+                "id": "id_discount_amount", "placeholder": "0",
             }),
             "notes": forms.Textarea(attrs={"class": "form-input", "rows": "2"}),
         }
