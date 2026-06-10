@@ -692,10 +692,8 @@ body.cabinet-body {
   width: 100%;
   max-width: 620px;
   max-height: 90vh;
-  overflow-x: hidden;
   overflow-y: auto;
   padding: 20px;
-  box-sizing: border-box;
 
   &__header {
     display: flex;
@@ -753,7 +751,7 @@ body.cabinet-body {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -790,6 +788,7 @@ body.cabinet-body {
   background: var(--cab-surface);
   outline: none;
   width: 100%;
+  min-width: 0;
   transition: border-color 0.15s;
 
   &:focus {
@@ -1292,7 +1291,7 @@ body.cabinet-body {
 
   .form-grid,
   .form-grid--3 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   // Модалка снизу (bottom sheet) — без горизонтального скролла
