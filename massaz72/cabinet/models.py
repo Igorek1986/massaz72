@@ -189,9 +189,8 @@ class Appointment(models.Model):
         "self", null=True, blank=True, on_delete=models.CASCADE,
         related_name="additional_services", verbose_name="Основная запись",
     )
-    discount = models.ForeignKey(
-        "Discount", null=True, blank=True, on_delete=models.SET_NULL,
-        related_name="appointments", verbose_name="Скидка",
+    discount_percent = models.DecimalField(
+        "Скидка (%)", max_digits=5, decimal_places=2, null=True, blank=True,
     )
     created_at = models.DateTimeField("Создана", auto_now_add=True)
 

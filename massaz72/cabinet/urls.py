@@ -26,6 +26,7 @@ urlpatterns = [
     path("appointments/<int:pk>/confirm-delete/", views.appointment_confirm_delete, name="appointment_confirm_delete"),
     path("appointments/<int:pk>/delete/", views.appointment_delete, name="appointment_delete"),
     path("appointments/<int:pk>/series-cancel-following/", views.series_cancel_following, name="series_cancel_following"),
+    path("appointments/<int:pk>/series-cancel/", views.series_cancel_action, name="series_cancel_action"),
     path("appointments/<int:pk>/reschedule/", views.series_reschedule, name="series_reschedule"),
 
     # Prices

@@ -158,7 +158,7 @@ def _create_additional_services(parent_apt, extra_services, specialist):
             date=parent_apt.date,
             time_start=child_dt.time(),
             cost=es["cost"],
-            discount=parent_apt.discount,
+            discount_percent=parent_apt.discount_percent,
             notes=parent_apt.notes,
             status=parent_apt.status,
             series=parent_apt.series,
@@ -194,23 +194,17 @@ def _next_series_working_day(series_pk, specialist):
     return None
 
 
-def _build_discount_data(discounts):
-    """Build dict of discount data for JS."""
-    result = {}
-    for d in discounts:
-        result[str(d.pk)] = {
-            "type": d.discount_type,
-            "value": float(d.value),
-        }
-    return result
-
 
 def _apt_form_context(specialist, date_str, form, appointment=None, extra_services_data=None):
     """Build shared context for appointment form."""
-    service_prices = {m.pk: int(m.price) for m in Massage.objects.filter(is_archived=False)}
     today = timezone.localdate()
-    discounts = Discount.objects.filter(date_to__gte=today)
-    discount_data = _build_discount_data(discounts)
+    active_discount = Discount.objects.filter(date_from__lte=today, date_to__gte=today).first()
+    service_prices = {}
+    for m in Massage.objects.filter(is_archived=False):
+        price = int(m.price)
+        if active_discount:
+            price = int(active_discount.apply_to(m.price))
+        service_prices[m.pk] = price
     available_services = list(
         Massage.objects.filter(is_archived=False).values("pk", "name").order_by("name")
     )
@@ -220,7 +214,6 @@ def _apt_form_context(specialist, date_str, form, appointment=None, extra_servic
         "date_str": date_str,
         "appointment": appointment,
         "service_prices": json.dumps(service_prices),
-        "discount_data": json.dumps(discount_data),
         "available_services_json": available_services_json,
         "extra_services_data": json.dumps(extra_services_data or []),
     }
@@ -426,11 +419,11 @@ def appointment_edit(request, pk: int):
                     sibling.cost = appointment.cost
                     sibling.transport_cost = appointment.transport_cost
                     sibling.notes = appointment.notes
-                    sibling.discount = appointment.discount
+                    sibling.discount_percent = appointment.discount_percent
                     sibling.is_travel = appointment.is_travel
                     sibling.save(update_fields=[
                         "time_start", "cost", "transport_cost", "notes",
-                        "discount", "is_travel",
+                        "discount_percent", "is_travel",
                     ])
                     # Sync additional services for each sibling
                     sibling.additional_services.all().delete()
@@ -511,6 +504,54 @@ def series_cancel_following(request, pk: int):
     Appointment.objects.filter(
         series=appointment.series, parent__isnull=True, date__gte=appointment.date
     ).delete()  # CASCADE handles children
+    day_html = render_to_string(
+        "cabinet/partials/day_schedule.html",
+        _day_context(saved_date, specialist),
+        request=request,
+    )
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+    response = HttpResponse(day_html + oob_close)
+    response["HX-Retarget"] = "#day-panel"
+    response["HX-Reswap"] = "innerHTML"
+    response["HX-Trigger"] = "appointmentChanged"
+    return response
+
+
+@specialist_required
+@require_POST
+def series_cancel_action(request, pk: int):
+    specialist = request.specialist
+    appointment = get_object_or_404(
+        Appointment.objects.select_related("series").prefetch_related("additional_services__service"),
+        pk=pk, specialist=specialist, parent__isnull=True,
+    )
+    saved_date = appointment.date
+    action = request.POST.get("action", "cancel_one")
+    include_main = "include_main" in request.POST
+
+    # Collect additional service_ids that were checked
+    extra_service_ids = set()
+    for child in appointment.additional_services.all():
+        if request.POST.get(f"include_service_{child.service_id}"):
+            extra_service_ids.add(child.service_id)
+
+    if action == "cancel_one":
+        if include_main:
+            appointment.delete()  # CASCADE removes children
+        else:
+            appointment.additional_services.filter(service_id__in=extra_service_ids).delete()
+    else:  # cancel_following
+        if include_main:
+            Appointment.objects.filter(
+                series=appointment.series, parent__isnull=True, date__gte=appointment.date
+            ).delete()
+        else:
+            Appointment.objects.filter(
+                parent__series=appointment.series,
+                parent__date__gte=appointment.date,
+                service_id__in=extra_service_ids,
+            ).delete()
+
     day_html = render_to_string(
         "cabinet/partials/day_schedule.html",
         _day_context(saved_date, specialist),

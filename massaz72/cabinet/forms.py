@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from django import forms
-from django.utils import timezone
 
 from services.models import Massage
 from .models import Appointment, BlockedSlot, Discount, ScheduleException, Specialist, WorkSchedule
@@ -106,10 +105,6 @@ class AppointmentForm(forms.ModelForm):
         self._specialist = specialist
         if self.instance and self.instance.pk:
             self.fields["sessions"].required = False
-        today = timezone.localdate()
-        self.fields["discount"].queryset = Discount.objects.filter(date_to__gte=today)
-        self.fields["discount"].required = False
-        self.fields["discount"].empty_label = "— без скидки —"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -141,7 +136,7 @@ class AppointmentForm(forms.ModelForm):
         fields = [
             "client_name", "client_phone", "address", "is_travel",
             "service", "date", "time_start",
-            "cost", "transport_cost", "discount", "notes",
+            "cost", "transport_cost", "discount_percent", "notes",
         ]
         widgets = {
             "client_name": forms.TextInput(attrs={"class": "form-input"}),
@@ -152,7 +147,10 @@ class AppointmentForm(forms.ModelForm):
             "time_start": forms.TimeInput(attrs={"type": "time", "class": "form-input"}, format="%H:%M"),
             "cost": forms.NumberInput(attrs={"class": "form-input", "step": "50", "min": "0", "id": "id_cost", "readonly": True}),
             "transport_cost": forms.NumberInput(attrs={"class": "form-input", "step": "10", "min": "0"}),
-            "discount": forms.Select(attrs={"class": "form-input", "id": "id_discount"}),
+            "discount_percent": forms.NumberInput(attrs={
+                "class": "form-input", "step": "1", "min": "0", "max": "100",
+                "id": "id_discount_percent", "placeholder": "0",
+            }),
             "notes": forms.Textarea(attrs={"class": "form-input", "rows": "2"}),
         }
 

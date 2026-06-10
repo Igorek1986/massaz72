@@ -1242,6 +1242,22 @@ body.cabinet-body {
   }
 }
 
+// ===== Service+cost paired row layout =====
+.service-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  > .form-field:first-child { flex: 2; min-width: 0; }
+
+  &__cost { flex: 1 !important; min-width: 80px; }
+
+  &--extra {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 // ===== Extra service rows in appointment form =====
 .extra-service-row {
   display: flex;
@@ -1249,21 +1265,6 @@ body.cabinet-body {
   gap: 8px;
   padding: 8px 0;
   border-top: 1px solid var(--cab-border);
-
-  &__fields {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-}
-
-.extra-services-section {
-  border-top: 1px solid var(--cab-border);
-  padding-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
 }
 
 .btn--add-service {
@@ -1297,18 +1298,18 @@ body.cabinet-body {
   gap: 8px;
 }
 
-// ===== Series cancel modal =====
-.apt-form__confirm-actions {
+// ===== Series cancel: services checkboxes =====
+.apt-form__services {
+  margin: 12px 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
 }
 
-.apt-form__confirm-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.apt-form__services-label {
+  font-size: 13px;
+  color: var(--cab-muted);
+  margin: 0 0 4px;
 }
 
 // ===== Responsive =====
