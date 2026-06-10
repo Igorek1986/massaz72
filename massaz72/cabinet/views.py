@@ -535,16 +535,31 @@ def series_cancel_action(request, pk: int):
         if request.POST.get(f"include_service_{child.service_id}"):
             extra_service_ids.add(child.service_id)
 
+    def _detach_kept_children(parent):
+        """Unlink children NOT selected for cancellation so CASCADE won't delete them."""
+        keep_ids = [
+            c.pk for c in parent.additional_services.all()
+            if c.service_id not in extra_service_ids
+        ]
+        if keep_ids:
+            Appointment.objects.filter(pk__in=keep_ids).update(parent=None)
+
     if action == "cancel_one":
         if include_main:
-            appointment.delete()  # CASCADE removes children
+            _detach_kept_children(appointment)
+            appointment.delete()
         else:
             appointment.additional_services.filter(service_id__in=extra_service_ids).delete()
     else:  # cancel_following
         if include_main:
-            Appointment.objects.filter(
-                series=appointment.series, parent__isnull=True, date__gte=appointment.date
-            ).delete()
+            affected = list(
+                Appointment.objects.filter(
+                    series=appointment.series, parent__isnull=True, date__gte=appointment.date
+                ).prefetch_related("additional_services")
+            )
+            for parent in affected:
+                _detach_kept_children(parent)
+            Appointment.objects.filter(pk__in=[p.pk for p in affected]).delete()
         else:
             Appointment.objects.filter(
                 parent__series=appointment.series,

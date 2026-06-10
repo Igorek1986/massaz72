@@ -41,19 +41,17 @@
       {% endfor %}
     </div>
 
-    <div class="apt-form__footer apt-form__footer--split">
+    <div class="apt-form__footer">
       <button type="button" class="btn btn--ghost"
               onclick="document.getElementById('cabinet-modal').innerHTML=''">Назад</button>
-      <div class="apt-form__footer-actions">
-        <button type="submit" class="btn btn--ghost"
-                onclick="document.getElementById('series-cancel-action-field').value='cancel_one'">Только эту</button>
-        <button type="submit" class="btn btn--ghost"
-                onclick="document.getElementById('series-cancel-action-field').value='cancel_following'">Эту и следующие</button>
-        <button type="button" class="btn btn--primary"
-                hx-get="{% url 'cabinet:series_reschedule' appointment.pk %}"
-                hx-target="#cabinet-modal"
-                hx-swap="innerHTML">Перенести</button>
-      </div>
+      <button type="submit" class="btn btn--ghost"
+              onclick="document.getElementById('series-cancel-action-field').value='cancel_one'">Только эту</button>
+      <button type="submit" class="btn btn--ghost"
+              onclick="document.getElementById('series-cancel-action-field').value='cancel_following'">Эту и следующие</button>
+      <button type="button" class="btn btn--primary"
+              hx-get="{% url 'cabinet:series_reschedule' appointment.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">Перенести</button>
     </div>
   </form>
 </div>
