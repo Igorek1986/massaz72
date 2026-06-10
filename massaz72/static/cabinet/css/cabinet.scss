@@ -759,6 +759,7 @@ body.cabinet-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 
   &--full { grid-column: 1 / -1; }
 
