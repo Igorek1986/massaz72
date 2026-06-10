@@ -163,6 +163,25 @@ def get_keyboard(telegram_id: int) -> types.ReplyKeyboardMarkup:
     return admin_keyboard() if _is_admin(telegram_id) else main_keyboard()
 
 
+def _get_active_discount():
+    """Возвращает первую активную сегодня скидку или None."""
+    try:
+        from cabinet.models import Discount
+        from django.utils import timezone
+        today = timezone.localdate()
+        return Discount.objects.filter(date_from__lte=today, date_to__gte=today).first()
+    except Exception:
+        return None
+
+
+def _format_price(price, discount=None) -> str:
+    """Форматирует цену со скидкой (зачёркнутая + новая) или без."""
+    if discount:
+        discounted = int(discount.apply_to(price))
+        return f"<s>{int(price)} ₽</s> {discounted} ₽"
+    return f"{int(price)} ₽"
+
+
 def build_services_text() -> str:
     """Формирует прайс из активных услуг (services.Massage)."""
     from services.models import Massage
@@ -176,17 +195,20 @@ def build_services_text() -> str:
             "Напишите сообщение — массажист ответит вам лично."
         )
 
+    discount = _get_active_discount()
     labels = {
         Massage.CHILD: "🧒 <b>Детский массаж</b>",
         Massage.ADULT: "💆 <b>Массаж</b>",
     }
     parts = ["<b>Услуги и цены</b>"]
+    if discount:
+        parts.append(f"<i>Действует скидка: {discount.banner_text}</i>")
     current_type = None
     for m in massages:
         if m.massage_type != current_type:
             current_type = m.massage_type
             parts.append("\n" + labels.get(current_type, "<b>Массаж</b>"))
-        price = f"{int(m.price)} ₽"
+        price = _format_price(m.price, discount)
         if m.duration_min == m.duration_max:
             duration = f"{m.duration_min} мин"
         else:
@@ -281,9 +303,10 @@ def _bk_massage_page(
     global_nums = range(start + 1, end + 1)
 
     # Текст: пронумерованный список с именем, ценой и длительностью
+    discount = _get_active_discount()
     lines = ["📝 <b>Запись на массаж</b>"]
     for num, m in zip(global_nums, page_massages):
-        price = f"{int(m.price)} ₽"
+        price = _format_price(m.price, discount)
         dur = (
             f"{m.duration_min} мин"
             if m.duration_min == m.duration_max
@@ -864,7 +887,8 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 return
             state["massage_id"] = m.id
             state["massage_name"] = m.name
-            state["massage_price"] = str(m.price)
+            _disc = _get_active_discount()
+            state["massage_price"] = str(int(_disc.apply_to(m.price)) if _disc else m.price)
             _pending_bookings[uid] = state
             _bk_proceed_after_massage(bot, uid, chat_id, msg_id, state)
             return

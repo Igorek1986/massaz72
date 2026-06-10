@@ -97,6 +97,25 @@
     line-height: 1.3;
     color: var(--color-ink);
   }
+
+  &__price {
+    margin: 4px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-ink);
+
+    .price-original {
+      color: var(--color-muted);
+      text-decoration: line-through;
+      margin-right: 4px;
+      font-size: 0.9em;
+    }
+
+    .price-discounted {
+      color: #16a34a;
+      font-weight: 700;
+    }
+  }
 }
 
 // Certificate cards (keep original background-image overlay style)
