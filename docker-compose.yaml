@@ -41,6 +41,8 @@ services:
   #   BOT_MODE=webhook  — сервис сразу завершается; обновления принимает app через URL
   # После изменения BOT_MODE пересоздать контейнер: docker compose up -d bot
   bot:
+    build:
+      dockerfile: ./Dockerfile
     image: massaz72_django-app
     entrypoint: ["/bin/sh", "-c"]
     command:
