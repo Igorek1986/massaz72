@@ -729,10 +729,21 @@ body.cabinet-body {
     margin-top: 20px;
     padding-top: 16px;
     border-top: 1px solid var(--cab-border);
+
+    &--split {
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+  }
+
+  &__footer-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   &--confirm {
-    max-width: 360px;
+    max-width: 440px;
   }
 
   &__confirm-name {
