@@ -619,31 +619,52 @@ body.cabinet-body {
   &--sm { padding: 5px 10px; font-size: 13px; }
 }
 
+// ===== Modal =====
+#cabinet-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.55);
+  z-index: 500;
+  padding: 16px;
+  backdrop-filter: blur(2px);
+
+  &:empty { display: none; }
+}
+
 // ===== Appointment form =====
 .apt-form {
-  padding: 16px;
-  border-top: 1px solid var(--cab-border);
+  background: var(--cab-surface);
+  border: 1px solid var(--cab-border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
 
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
   }
 
   &__title {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
   }
 
   &__close {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border: none;
     background: none;
     cursor: pointer;
     color: var(--cab-muted);
-    font-size: 16px;
+    font-size: 18px;
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -655,7 +676,9 @@ body.cabinet-body {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    margin-top: 16px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--cab-border);
   }
 }
 

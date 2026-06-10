@@ -3,13 +3,11 @@
   <div class="apt-form__header">
     <h3 class="apt-form__title">{% if appointment %}Редактировать запись{% else %}Новая запись{% endif %}</h3>
     <button type="button" class="apt-form__close"
-            hx-get="{% url 'cabinet:day_schedule' date_str %}"
-            hx-target="#day-panel"
-            hx-swap="innerHTML">✕</button>
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
   </div>
 
   <form hx-post="{% if appointment %}{% url 'cabinet:appointment_edit' appointment.pk %}{% else %}{% url 'cabinet:appointment_add' %}{% endif %}"
-        hx-target="#add-form-container"
+        hx-target="#cabinet-modal"
         hx-swap="innerHTML">
     {% csrf_token %}
     <input type="hidden" name="date" value="{{ date_str }}">
@@ -86,9 +84,7 @@
 
     <div class="apt-form__footer">
       <button type="button" class="btn btn--ghost"
-              hx-get="{% url 'cabinet:day_schedule' date_str %}"
-              hx-target="#day-panel"
-              hx-swap="innerHTML">Отмена</button>
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
       <button type="submit" class="btn btn--primary">Сохранить</button>
     </div>
   </form>

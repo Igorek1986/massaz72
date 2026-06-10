@@ -4,8 +4,9 @@ from functools import wraps
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -109,6 +110,20 @@ def settings(request):
 # HTMX partials
 # ---------------------------------------------------------------------------
 
+def _appointment_saved_response(request, apt_date: date, specialist: Specialist):
+    """Закрывает модалку и обновляет панель дня после сохранения записи."""
+    day_html = render_to_string(
+        "cabinet/partials/day_schedule.html",
+        _day_context(apt_date, specialist),
+        request=request,
+    )
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+    response = HttpResponse(day_html + oob_close)
+    response["HX-Retarget"] = "#day-panel"
+    response["HX-Reswap"] = "innerHTML"
+    response["HX-Trigger"] = "appointmentChanged"
+    return response
+
 @specialist_required
 def day_schedule(request, date_str: str):
     try:
@@ -158,11 +173,9 @@ def appointment_add(request):
                             f"{d.strftime('%d.%m')}: " + _conflict_message(d, day_conflicts, break_minutes)
                         )
                     form.add_error(None, " | ".join(lines))
-                    response = render(request, "cabinet/partials/appointment_form.html", {
+                    return render(request, "cabinet/partials/appointment_form.html", {
                         "form": form, "date_str": date_str, "service_prices": service_prices,
                     })
-                    response["HX-Retarget"] = "#add-form-container"
-                    return response
 
                 series = AppointmentSeries.objects.create(
                     specialist=specialist,
@@ -186,20 +199,11 @@ def appointment_add(request):
             else:
                 apt.save()
 
-            response = render(
-                request, "cabinet/partials/day_schedule.html",
-                _day_context(apt.date, specialist),
-            )
-            response["HX-Retarget"] = "#day-panel"
-            response["HX-Reswap"] = "innerHTML"
-            response["HX-Trigger"] = "appointmentChanged"
-            return response
+            return _appointment_saved_response(request, apt.date, specialist)
 
-        response = render(request, "cabinet/partials/appointment_form.html", {
+        return render(request, "cabinet/partials/appointment_form.html", {
             "form": form, "date_str": date_str, "service_prices": service_prices,
         })
-        response["HX-Retarget"] = "#add-form-container"
-        return response
 
     form = AppointmentForm(initial={"date": initial_date}, specialist=specialist)
     return render(request, "cabinet/partials/appointment_form.html", {
@@ -219,21 +223,12 @@ def appointment_edit(request, pk: int):
         if form.is_valid():
             form.cleaned_data.pop("sessions", None)
             form.save()
-            response = render(
-                request, "cabinet/partials/day_schedule.html",
-                _day_context(appointment.date, specialist),
-            )
-            response["HX-Retarget"] = "#day-panel"
-            response["HX-Reswap"] = "innerHTML"
-            response["HX-Trigger"] = "appointmentChanged"
-            return response
+            return _appointment_saved_response(request, appointment.date, specialist)
 
-        response = render(request, "cabinet/partials/appointment_form.html", {
+        return render(request, "cabinet/partials/appointment_form.html", {
             "form": form, "date_str": date_str, "appointment": appointment,
             "service_prices": service_prices,
         })
-        response["HX-Retarget"] = "#add-form-container"
-        return response
 
     form = AppointmentForm(instance=appointment, specialist=specialist)
     return render(request, "cabinet/partials/appointment_form.html", {
@@ -411,7 +406,7 @@ def blocked_slot_delete(request, pk: int):
 # ---------------------------------------------------------------------------
 
 def _prices_ctx(specialist: Specialist) -> dict:
-    massages = Massage.objects.filter(is_archived=False).order_by("massage_type", "order")
+    massages = Massage.objects.filter(is_archived=False).order_by("-massage_type", "order")
     site_settings = SiteSettings.objects.first()
     today = timezone.localdate()
     prices_due = bool(
@@ -474,10 +469,17 @@ def prices_save_current(request):
                 massage.save(update_fields=["price"])
             except InvalidOperation:
                 pass
-    response = render(
-        request, "cabinet/partials/price_list_section.html",
-        _prices_ctx(request.specialist),
+
+    ctx = _prices_ctx(request.specialist)
+    price_list_html = render_to_string(
+        "cabinet/partials/price_list_section.html", ctx, request=request
     )
+    price_change_html = render_to_string(
+        "cabinet/partials/price_change_section.html", ctx, request=request
+    )
+    # OOB-своп обновляет второй блок без отдельного запроса
+    oob = f'<div id="price-change-section" class="settings-card" hx-swap-oob="innerHTML">{price_change_html}</div>'
+    response = HttpResponse(price_list_html + oob)
     response["HX-Retarget"] = "#price-list-section"
     response["HX-Reswap"] = "innerHTML"
     response["HX-Trigger"] = "pricesChanged"

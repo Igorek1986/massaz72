@@ -13,7 +13,7 @@
     </div>
     <button class="btn btn--primary btn--sm"
             hx-get="{% url 'cabinet:appointment_add' %}?date={{ date_str }}"
-            hx-target="#add-form-container"
+            hx-target="#cabinet-modal"
             hx-swap="innerHTML">
       + Запись
     </button>
@@ -47,7 +47,7 @@
           {% endif %}
           <button class="apt-btn apt-btn--edit" title="Редактировать"
                   hx-get="{% url 'cabinet:appointment_edit' apt.pk %}"
-                  hx-target="#add-form-container"
+                  hx-target="#cabinet-modal"
                   hx-swap="innerHTML">✎</button>
           <button class="apt-btn apt-btn--del" title="Удалить"
                   hx-post="{% url 'cabinet:appointment_delete' apt.pk %}"
@@ -75,6 +75,5 @@
   </div>
   {% endif %}
 
-  <div id="add-form-container"></div>
 </div>
 {% endif %}
