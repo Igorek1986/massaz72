@@ -50,10 +50,9 @@
                   hx-target="#cabinet-modal"
                   hx-swap="innerHTML">✎</button>
           <button class="apt-btn apt-btn--del" title="Удалить"
-                  hx-post="{% url 'cabinet:appointment_delete' apt.pk %}"
-                  hx-target="#day-panel"
-                  hx-swap="innerHTML"
-                  hx-confirm="Удалить запись «{{ apt.client_name }}»?">✕</button>
+                  hx-get="{% url 'cabinet:appointment_confirm_delete' apt.pk %}"
+                  hx-target="#cabinet-modal"
+                  hx-swap="innerHTML">✕</button>
         </div>
       </div>
     </li>

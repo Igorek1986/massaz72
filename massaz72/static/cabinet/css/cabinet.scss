@@ -649,6 +649,12 @@ body.cabinet-body {
     &:hover { background: var(--cab-bg); }
   }
 
+  &--danger {
+    background: #dc2626;
+    color: #fff;
+    &:hover { background: #b91c1c; }
+  }
+
   &--sm { padding: 5px 10px; font-size: 13px; }
 }
 
@@ -720,8 +726,15 @@ body.cabinet-body {
 
   &__confirm-name {
     font-size: 14px;
+    font-weight: 600;
+    color: var(--cab-text);
+    margin: 0 0 2px;
+  }
+
+  &__confirm-note {
+    font-size: 13px;
     color: var(--cab-muted);
-    margin: 0 0 4px;
+    margin: 0;
   }
 }
 

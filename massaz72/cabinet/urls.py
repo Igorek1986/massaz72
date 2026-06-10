@@ -23,6 +23,7 @@ urlpatterns = [
     path("appointments/add/", views.appointment_add, name="appointment_add"),
     path("appointments/<int:pk>/edit/", views.appointment_edit, name="appointment_edit"),
     path("appointments/<int:pk>/status/", views.appointment_status, name="appointment_status"),
+    path("appointments/<int:pk>/confirm-delete/", views.appointment_confirm_delete, name="appointment_confirm_delete"),
     path("appointments/<int:pk>/delete/", views.appointment_delete, name="appointment_delete"),
 
     # Prices

@@ -267,16 +267,27 @@ def appointment_status(request, pk: int):
 
 
 @specialist_required
+def appointment_confirm_delete(request, pk: int):
+    appointment = get_object_or_404(Appointment, pk=pk, specialist=request.specialist)
+    return render(request, "cabinet/partials/appointment_confirm_delete.html", {"appointment": appointment})
+
+
+@specialist_required
 @require_POST
 def appointment_delete(request, pk: int):
     specialist = request.specialist
     appointment = get_object_or_404(Appointment, pk=pk, specialist=specialist)
     saved_date = appointment.date
     appointment.delete()
-    response = render(
-        request, "cabinet/partials/day_schedule.html",
+    day_html = render_to_string(
+        "cabinet/partials/day_schedule.html",
         _day_context(saved_date, specialist),
+        request=request,
     )
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+    response = HttpResponse(day_html + oob_close)
+    response["HX-Retarget"] = "#day-panel"
+    response["HX-Reswap"] = "innerHTML"
     response["HX-Trigger"] = "appointmentChanged"
     return response
 

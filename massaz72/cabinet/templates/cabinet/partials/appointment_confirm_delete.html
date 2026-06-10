@@ -1,0 +1,21 @@
+<div class="apt-form apt-form--confirm">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">Удалить запись?</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <p class="apt-form__confirm-name">{{ appointment.client_name }}</p>
+  <p class="apt-form__confirm-note">
+    {{ appointment.date|date:"d.m.Y" }} в {{ appointment.time_start|time:"H:i" }}{% if appointment.service %} · {{ appointment.service.name }}{% endif %}
+  </p>
+  <form hx-post="{% url 'cabinet:appointment_delete' appointment.pk %}"
+        hx-target="#day-panel"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--danger">Удалить</button>
+    </div>
+  </form>
+</div>
