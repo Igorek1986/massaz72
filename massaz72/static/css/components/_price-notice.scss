@@ -42,16 +42,14 @@
     border-radius: 50%;
     background-color: var(--color-on-primary);
     color: var(--color-primary);
-    font-size: 18px;
-    font-weight: 800;
-    line-height: 1;
     box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
     animation: price-notice-pulse 2s ease-out infinite;
+
+    svg { display: block; }
 
     @include small-tablet {
       width: 26px;
       height: 26px;
-      font-size: 16px;
     }
   }
 }
