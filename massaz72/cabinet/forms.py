@@ -152,7 +152,7 @@ class AppointmentForm(forms.ModelForm):
                 "id": "id_discount_percent", "placeholder": "0",
             }),
             "discount_amount": forms.NumberInput(attrs={
-                "class": "form-input", "step": "50", "min": "0",
+                "class": "form-input", "step": "1", "min": "0",
                 "id": "id_discount_amount", "placeholder": "0",
             }),
             "notes": forms.Textarea(attrs={"class": "form-input", "rows": "2"}),
