@@ -28,6 +28,7 @@
         <div class="apt-card__name">{{ apt.client_name }}</div>
         {% if apt.service %}<div class="apt-card__service">{{ apt.service.name }}</div>{% endif %}
         {% if apt.address %}<div class="apt-card__address">{{ apt.address }}</div>{% endif %}
+        {% if apt.is_travel %}<div class="apt-card__travel">Выездной</div>{% endif %}
         {% if apt.series %}<div class="apt-card__series">Серия #{{ apt.series_id }}, {{ apt.series.total_sessions }} сеансов</div>{% endif %}
         {% if apt.notes %}<div class="apt-card__notes">{{ apt.notes }}</div>{% endif %}
       </div>

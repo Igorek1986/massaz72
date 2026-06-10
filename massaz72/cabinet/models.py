@@ -53,6 +53,9 @@ class WorkSchedule(models.Model):
     break_between_minutes = models.PositiveIntegerField(
         "Перерыв между массажами (мин)", default=15
     )
+    break_between_travel_minutes = models.PositiveIntegerField(
+        "Перерыв между выездными массажами (мин)", default=60
+    )
 
     class Meta:
         verbose_name = "Рабочее расписание"
@@ -163,6 +166,7 @@ class Appointment(models.Model):
     client_name = models.CharField("Имя клиента", max_length=255)
     client_phone = models.CharField("Телефон", max_length=20, blank=True)
     address = models.CharField("Адрес", max_length=500, blank=True)
+    is_travel = models.BooleanField("Выездной", default=False)
     service = models.ForeignKey(
         "services.Massage", on_delete=models.SET_NULL,
         null=True, blank=True, verbose_name="Услуга",

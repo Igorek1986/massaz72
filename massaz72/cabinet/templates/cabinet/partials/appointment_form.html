@@ -31,7 +31,13 @@
       </div>
 
       <div class="form-field form-field--full">
-        <label class="form-label">{{ form.address.label }}</label>
+        <div class="form-field__row">
+          <label class="form-label">{{ form.address.label }}</label>
+          <label class="form-check">
+            {{ form.is_travel }}
+            <span class="form-check__label">Выездной</span>
+          </label>
+        </div>
         {{ form.address }}
       </div>
 

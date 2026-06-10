@@ -531,6 +531,17 @@ body.cabinet-body {
     text-overflow: ellipsis;
   }
 
+  &__travel {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #0369a1;
+    background: #e0f2fe;
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
   &__right {
     display: flex;
     flex-direction: column;
@@ -750,6 +761,13 @@ body.cabinet-body {
   gap: 4px;
 
   &--full { grid-column: 1 / -1; }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
 }
 
 .form-label {
@@ -781,6 +799,27 @@ body.cabinet-body {
 .form-error {
   font-size: 11px;
   color: var(--cab-danger);
+}
+
+.form-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--cab-primary);
+    flex-shrink: 0;
+  }
+
+  &__label {
+    font-size: 13px;
+    color: var(--cab-text);
+  }
 }
 
 .apt-cost-summary {

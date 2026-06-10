@@ -44,7 +44,11 @@ def _conflict_message(apt_date, conflicts, break_minutes):
     return msg
 
 
-def find_time_conflicts(apt_date, time_start, service, break_minutes, specialist=None, exclude_pk=None):
+def find_time_conflicts(
+    apt_date, time_start, service, break_minutes,
+    specialist=None, exclude_pk=None,
+    is_travel=False, travel_break_minutes=None,
+):
     """Возвращает записи, пересекающиеся по времени с новым слотом."""
     existing = (
         Appointment.objects.filter(date=apt_date)
@@ -56,13 +60,16 @@ def find_time_conflicts(apt_date, time_start, service, break_minutes, specialist
     if exclude_pk:
         existing = existing.exclude(pk=exclude_pk)
 
+    travel_break = travel_break_minutes or break_minutes
+    new_break = travel_break if is_travel else break_minutes
     new_start_dt = datetime.combine(apt_date, time_start)
-    new_end_dt = _apt_end_dt(apt_date, time_start, service, break_minutes)
+    new_end_dt = _apt_end_dt(apt_date, time_start, service, new_break)
 
     conflicts = []
     for apt in existing:
+        apt_break = travel_break if apt.is_travel else break_minutes
         apt_start_dt = datetime.combine(apt_date, apt.time_start)
-        apt_end_dt = _apt_end_dt(apt_date, apt.time_start, apt.service, break_minutes)
+        apt_end_dt = _apt_end_dt(apt_date, apt.time_start, apt.service, apt_break)
         if new_start_dt < apt_end_dt and new_end_dt > apt_start_dt:
             conflicts.append(apt)
     return conflicts
@@ -89,24 +96,29 @@ class AppointmentForm(forms.ModelForm):
         apt_date = cleaned_data.get("date")
         time_start = cleaned_data.get("time_start")
         service = cleaned_data.get("service")
+        is_travel = cleaned_data.get("is_travel", False)
         if apt_date and time_start:
             schedule = WorkSchedule.for_specialist(self._specialist) if self._specialist else None
             break_minutes = schedule.break_between_minutes if schedule else 15
+            travel_break_minutes = schedule.break_between_travel_minutes if schedule else 60
+            effective_break = travel_break_minutes if is_travel else break_minutes
             conflicts = find_time_conflicts(
                 apt_date, time_start, service, break_minutes,
                 specialist=self._specialist,
                 exclude_pk=self.instance.pk if self.instance.pk else None,
+                is_travel=is_travel,
+                travel_break_minutes=travel_break_minutes,
             )
             if conflicts:
                 raise forms.ValidationError(
-                    _conflict_message(apt_date, conflicts, break_minutes)
+                    _conflict_message(apt_date, conflicts, effective_break)
                 )
         return cleaned_data
 
     class Meta:
         model = Appointment
         fields = [
-            "client_name", "client_phone", "address",
+            "client_name", "client_phone", "address", "is_travel",
             "service", "date", "time_start",
             "cost", "transport_cost", "notes",
         ]
@@ -129,11 +141,14 @@ class WorkScheduleForm(forms.ModelForm):
         fields = [
             "monday", "tuesday", "wednesday", "thursday",
             "friday", "saturday", "sunday",
-            "break_between_minutes",
+            "break_between_minutes", "break_between_travel_minutes",
         ]
         widgets = {
             "break_between_minutes": forms.NumberInput(
                 attrs={"class": "form-input", "min": "0", "max": "120", "style": "width:80px"}
+            ),
+            "break_between_travel_minutes": forms.NumberInput(
+                attrs={"class": "form-input", "min": "0", "max": "240", "style": "width:80px"}
             ),
         }
 
