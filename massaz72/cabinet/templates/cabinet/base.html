@@ -67,5 +67,13 @@
 {% block scripts %}{% endblock %}
 
 <div id="cabinet-modal" onclick="if(event.target===this)this.innerHTML=''"></div>
+<script>
+(function () {
+  var modal = document.getElementById('cabinet-modal');
+  new MutationObserver(function () {
+    document.body.style.overflow = modal.children.length ? 'hidden' : '';
+  }).observe(modal, { childList: true });
+})();
+</script>
 </body>
 </html>
