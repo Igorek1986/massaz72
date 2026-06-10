@@ -46,16 +46,17 @@
         {{ form.service }}
       </div>
 
-      <div class="form-field">
-        <label class="form-label">{{ form.date.label }}<span class="form-req">*</span></label>
-        {{ form.date }}
-        {% if form.date.errors %}<span class="form-error">{{ form.date.errors.0 }}</span>{% endif %}
-      </div>
-
-      <div class="form-field">
-        <label class="form-label">{{ form.time_start.label }}<span class="form-req">*</span></label>
-        {{ form.time_start }}
-        {% if form.time_start.errors %}<span class="form-error">{{ form.time_start.errors.0 }}</span>{% endif %}
+      <div class="form-field form-field--full form-field--dt">
+        <div class="form-field">
+          <label class="form-label">{{ form.date.label }}<span class="form-req">*</span></label>
+          {{ form.date }}
+          {% if form.date.errors %}<span class="form-error">{{ form.date.errors.0 }}</span>{% endif %}
+        </div>
+        <div class="form-field">
+          <label class="form-label">{{ form.time_start.label }}<span class="form-req">*</span></label>
+          {{ form.time_start }}
+          {% if form.time_start.errors %}<span class="form-error">{{ form.time_start.errors.0 }}</span>{% endif %}
+        </div>
       </div>
 
       <div class="form-field">

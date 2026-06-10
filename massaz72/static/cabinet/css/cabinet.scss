@@ -763,6 +763,14 @@ body.cabinet-body {
 
   &--full { grid-column: 1 / -1; }
 
+  &--dt {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+
+    > .form-field { flex: 1; }
+  }
+
   &__row {
     display: flex;
     align-items: center;
