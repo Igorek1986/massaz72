@@ -33,6 +33,9 @@ urlpatterns = [
     path("prices/discounts/add/", views.discount_add, name="discount_add"),
     path("prices/discounts/<int:pk>/edit/", views.discount_edit, name="discount_edit"),
     path("prices/discounts/<int:pk>/delete/", views.discount_delete, name="discount_delete"),
+    path("prices/massages/add/", views.massage_add, name="massage_add"),
+    path("prices/massages/<int:pk>/edit/", views.massage_edit, name="massage_edit"),
+    path("prices/massages/<int:pk>/toggle-archive/", views.massage_toggle_archive, name="massage_toggle_archive"),
 
     # Settings actions
     path("settings/schedule/", views.schedule_save, name="schedule_save"),

@@ -3,7 +3,7 @@
   {% if can_manage %}
   <button class="btn btn--ghost btn--sm"
           hx-get="{% url 'cabinet:discount_add' %}"
-          hx-target="#discount-form-container"
+          hx-target="#cabinet-modal"
           hx-swap="innerHTML">+ Добавить</button>
   {% endif %}
 </div>
@@ -25,7 +25,7 @@
     <div class="settings-list__actions">
       <button class="apt-btn apt-btn--edit" title="Редактировать"
               hx-get="{% url 'cabinet:discount_edit' d.pk %}"
-              hx-target="#discount-form-container"
+              hx-target="#cabinet-modal"
               hx-swap="innerHTML">✎</button>
       <button class="apt-btn apt-btn--del" title="Удалить"
               hx-post="{% url 'cabinet:discount_delete' d.pk %}"
@@ -39,8 +39,4 @@
 </ul>
 {% else %}
 <p class="settings-empty">Нет скидок</p>
-{% endif %}
-
-{% if can_manage %}
-<div id="discount-form-container"></div>
 {% endif %}

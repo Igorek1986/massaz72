@@ -1,0 +1,68 @@
+<div class="apt-form">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">{% if massage %}Редактировать услугу{% else %}Новая услуга{% endif %}</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <form hx-post="{% if massage %}{% url 'cabinet:massage_edit' massage.pk %}{% else %}{% url 'cabinet:massage_add' %}{% endif %}"
+        hx-target="#cabinet-modal"
+        hx-swap="innerHTML"
+        hx-encoding="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.name.label }}<span class="form-req">*</span></label>
+        {{ form.name }}
+        {% if form.name.errors %}<span class="form-error">{{ form.name.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.massage_type.label }}</label>
+        {{ form.massage_type }}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.price.label }}<span class="form-req">*</span></label>
+        {{ form.price }}
+        {% if form.price.errors %}<span class="form-error">{{ form.price.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.duration_min.label }}<span class="form-req">*</span></label>
+        {{ form.duration_min }}
+        {% if form.duration_min.errors %}<span class="form-error">{{ form.duration_min.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.duration_max.label }}<span class="form-req">*</span></label>
+        {{ form.duration_max }}
+        {% if form.duration_max.errors %}<span class="form-error">{{ form.duration_max.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.location.label }}<span class="form-req">*</span></label>
+        {{ form.location }}
+        {% if form.location.errors %}<span class="form-error">{{ form.location.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.order.label }}</label>
+        {{ form.order }}
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.description.label }}</label>
+        {{ form.description }}
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.image.label }}</label>
+        {% if massage.image %}
+        <p class="form-hint">Текущее фото: <a href="{{ massage.image.url }}" target="_blank">посмотреть</a></p>
+        {% endif %}
+        {{ form.image }}
+        {% if form.image.errors %}<span class="form-error">{{ form.image.errors.0 }}</span>{% endif %}
+      </div>
+    </div>
+    {% if form.non_field_errors %}
+    <div class="form-error form-error--block">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--primary">Сохранить</button>
+    </div>
+  </form>
+</div>

@@ -13,8 +13,10 @@ from django.views.decorators.http import require_POST
 from main.models import SiteSettings
 from services.models import Massage
 
+from massaz72.utils import _slugify_ru
+
 from .forms import (
-    AppointmentForm, BlockedSlotForm, DiscountForm,
+    AppointmentForm, BlockedSlotForm, DiscountForm, MassageForm,
     ScheduleExceptionForm, WorkScheduleForm,
     find_time_conflicts, _conflict_message,
 )
@@ -417,6 +419,7 @@ def blocked_slot_delete(request, pk: int):
 
 def _prices_ctx(specialist: Specialist) -> dict:
     massages = Massage.objects.filter(is_archived=False).order_by("-massage_type", "order")
+    all_massages = Massage.objects.order_by("-massage_type", "order", "name")
     site_settings = SiteSettings.objects.first()
     today = timezone.localdate()
     prices_due = bool(
@@ -429,6 +432,7 @@ def _prices_ctx(specialist: Specialist) -> dict:
     discounts = Discount.objects.all()
     return {
         "massages": massages,
+        "all_massages": all_massages,
         "site_settings": site_settings,
         "prices_due": prices_due,
         "active_discount": active_discount,
@@ -437,22 +441,45 @@ def _prices_ctx(specialist: Specialist) -> dict:
     }
 
 
+def _generate_unique_slug(name: str, exclude_pk: int | None = None) -> str:
+    base = _slugify_ru(name) or "usluga"
+    slug = base
+    i = 2
+    while True:
+        qs = Massage.objects.filter(slug=slug)
+        if exclude_pk:
+            qs = qs.exclude(pk=exclude_pk)
+        if not qs.exists():
+            return slug
+        slug = f"{base}-{i}"
+        i += 1
+
+
 
 def _discount_section_response(request):
     ctx = _prices_ctx(request.specialist)
-    discount_html = render_to_string(
-        "cabinet/partials/discount_section.html", ctx, request=request
-    )
-    price_list_html = render_to_string(
-        "cabinet/partials/price_list_section.html", ctx, request=request
-    )
-    price_change_html = render_to_string(
-        "cabinet/partials/price_change_section.html", ctx, request=request
-    )
+    discount_html = render_to_string("cabinet/partials/discount_section.html", ctx, request=request)
+    price_list_html = render_to_string("cabinet/partials/price_list_section.html", ctx, request=request)
+    price_change_html = render_to_string("cabinet/partials/price_change_section.html", ctx, request=request)
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
     oob_price_list = f'<div id="price-list-section" class="settings-card" hx-swap-oob="innerHTML">{price_list_html}</div>'
     oob_price_change = f'<div id="price-change-section" class="settings-card" hx-swap-oob="innerHTML">{price_change_html}</div>'
-    response = HttpResponse(discount_html + oob_price_list + oob_price_change)
+    response = HttpResponse(discount_html + oob_close + oob_price_list + oob_price_change)
     response["HX-Retarget"] = "#discounts-section"
+    response["HX-Reswap"] = "innerHTML"
+    return response
+
+
+def _massage_section_response(request):
+    ctx = _prices_ctx(request.specialist)
+    massage_list_html = render_to_string("cabinet/partials/massage_list_section.html", ctx, request=request)
+    price_list_html = render_to_string("cabinet/partials/price_list_section.html", ctx, request=request)
+    price_change_html = render_to_string("cabinet/partials/price_change_section.html", ctx, request=request)
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+    oob_price_list = f'<div id="price-list-section" class="settings-card" hx-swap-oob="innerHTML">{price_list_html}</div>'
+    oob_price_change = f'<div id="price-change-section" class="settings-card" hx-swap-oob="innerHTML">{price_change_html}</div>'
+    response = HttpResponse(massage_list_html + oob_close + oob_price_list + oob_price_change)
+    response["HX-Retarget"] = "#massage-list-section"
     response["HX-Reswap"] = "innerHTML"
     return response
 
@@ -553,7 +580,7 @@ def discount_add(request):
             form.save()
             return _discount_section_response(request)
         response = render(request, "cabinet/partials/discount_form.html", {"form": form})
-        response["HX-Retarget"] = "#discount-form-container"
+        response["HX-Retarget"] = "#cabinet-modal"
         return response
     return render(request, "cabinet/partials/discount_form.html", {"form": DiscountForm()})
 
@@ -567,7 +594,7 @@ def discount_edit(request, pk: int):
             form.save()
             return _discount_section_response(request)
         response = render(request, "cabinet/partials/discount_form.html", {"form": form, "discount": discount})
-        response["HX-Retarget"] = "#discount-form-container"
+        response["HX-Retarget"] = "#cabinet-modal"
         return response
     return render(request, "cabinet/partials/discount_form.html", {
         "form": DiscountForm(instance=discount), "discount": discount,
@@ -579,6 +606,49 @@ def discount_edit(request, pk: int):
 def discount_delete(request, pk: int):
     get_object_or_404(Discount, pk=pk).delete()
     return _discount_section_response(request)
+
+
+@prices_manager_required
+def massage_add(request):
+    if request.method == "POST":
+        form = MassageForm(request.POST, request.FILES)
+        if form.is_valid():
+            massage = form.save(commit=False)
+            if not massage.slug:
+                massage.slug = _generate_unique_slug(massage.name)
+            massage.save()
+            return _massage_section_response(request)
+        response = render(request, "cabinet/partials/massage_form.html", {"form": form})
+        response["HX-Retarget"] = "#cabinet-modal"
+        response["HX-Reswap"] = "innerHTML"
+        return response
+    return render(request, "cabinet/partials/massage_form.html", {"form": MassageForm()})
+
+
+@prices_manager_required
+def massage_edit(request, pk: int):
+    massage = get_object_or_404(Massage, pk=pk)
+    if request.method == "POST":
+        form = MassageForm(request.POST, request.FILES, instance=massage)
+        if form.is_valid():
+            form.save()
+            return _massage_section_response(request)
+        response = render(request, "cabinet/partials/massage_form.html", {"form": form, "massage": massage})
+        response["HX-Retarget"] = "#cabinet-modal"
+        response["HX-Reswap"] = "innerHTML"
+        return response
+    return render(request, "cabinet/partials/massage_form.html", {
+        "form": MassageForm(instance=massage), "massage": massage,
+    })
+
+
+@prices_manager_required
+@require_POST
+def massage_toggle_archive(request, pk: int):
+    massage = get_object_or_404(Massage, pk=pk)
+    massage.is_archived = not massage.is_archived
+    massage.save(update_fields=["is_archived"])
+    return _massage_section_response(request)
 
 
 # ---------------------------------------------------------------------------

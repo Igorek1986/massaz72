@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from django import forms
 
+from services.models import Massage
 from .models import Appointment, BlockedSlot, Discount, ScheduleException, Specialist, WorkSchedule
 
 
@@ -171,4 +172,32 @@ class DiscountForm(forms.ModelForm):
             "date_from": forms.DateInput(attrs={"type": "date", "class": "form-input"}, format="%Y-%m-%d"),
             "date_to": forms.DateInput(attrs={"type": "date", "class": "form-input"}, format="%Y-%m-%d"),
             "description": forms.TextInput(attrs={"class": "form-input"}),
+        }
+
+
+class MassageForm(forms.ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        dur_min = cleaned_data.get("duration_min")
+        dur_max = cleaned_data.get("duration_max")
+        if dur_min and dur_max and dur_min > dur_max:
+            self.add_error("duration_max", "Максимальная продолжительность должна быть больше минимальной")
+        return cleaned_data
+
+    class Meta:
+        model = Massage
+        fields = [
+            "name", "massage_type", "price",
+            "duration_min", "duration_max", "location",
+            "order", "description", "image",
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-input"}),
+            "massage_type": forms.Select(attrs={"class": "form-input"}),
+            "price": forms.NumberInput(attrs={"class": "form-input", "step": "50", "min": "0"}),
+            "duration_min": forms.NumberInput(attrs={"class": "form-input", "min": "1"}),
+            "duration_max": forms.NumberInput(attrs={"class": "form-input", "min": "1"}),
+            "location": forms.TextInput(attrs={"class": "form-input"}),
+            "order": forms.NumberInput(attrs={"class": "form-input", "min": "0"}),
+            "description": forms.Textarea(attrs={"class": "form-input", "rows": "3"}),
         }

@@ -923,6 +923,10 @@ body.cabinet-body {
     font-size: 13px;
 
     &:last-child { border-bottom: none; }
+
+    &--archived {
+      opacity: 0.55;
+    }
   }
 
   &__badge {
@@ -935,6 +939,31 @@ body.cabinet-body {
 
     &--day_off  { background: #fef9c3; color: #854d0e; }
     &--vacation { background: #fce7f3; color: #9d174d; }
+  }
+
+  &__name {
+    flex: 1;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__type {
+    font-size: 11px;
+    color: var(--cab-muted);
+    background: var(--cab-bg);
+    padding: 2px 7px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &__price {
+    font-size: 12px;
+    color: var(--cab-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   &__dates,

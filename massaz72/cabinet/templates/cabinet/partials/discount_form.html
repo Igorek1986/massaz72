@@ -1,11 +1,11 @@
-<div class="settings-inline-form">
+<div class="apt-form">
   <div class="apt-form__header">
     <h3 class="apt-form__title">{% if discount %}Редактировать скидку{% else %}Новая скидка{% endif %}</h3>
     <button type="button" class="apt-form__close"
-            onclick="document.getElementById('discount-form-container').innerHTML=''">✕</button>
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
   </div>
   <form hx-post="{% if discount %}{% url 'cabinet:discount_edit' discount.pk %}{% else %}{% url 'cabinet:discount_add' %}{% endif %}"
-        hx-target="#discount-form-container"
+        hx-target="#cabinet-modal"
         hx-swap="innerHTML">
     {% csrf_token %}
     <div class="form-grid form-grid--3">
@@ -41,7 +41,7 @@
     {% endif %}
     <div class="apt-form__footer">
       <button type="button" class="btn btn--ghost"
-              onclick="document.getElementById('discount-form-container').innerHTML=''">Отмена</button>
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
       <button type="submit" class="btn btn--primary">Сохранить</button>
     </div>
   </form>

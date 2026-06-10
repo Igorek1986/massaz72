@@ -1,0 +1,35 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Услуги</h2>
+  <button class="btn btn--ghost btn--sm"
+          hx-get="{% url 'cabinet:massage_add' %}"
+          hx-target="#cabinet-modal"
+          hx-swap="innerHTML">+ Добавить</button>
+</div>
+
+{% if all_massages %}
+<ul class="settings-list">
+  {% for m in all_massages %}
+  <li class="settings-list__item{% if m.is_archived %} settings-list__item--archived{% endif %}">
+    <span class="settings-list__name">{{ m.name }}</span>
+    <span class="settings-list__type">{{ m.get_massage_type_display }}</span>
+    <span class="settings-list__price">{{ m.price|floatformat:0 }} ₽</span>
+    {% if m.is_archived %}
+    <span class="settings-list__badge" style="background:#f1f5f9;color:#64748b">Архив</span>
+    {% endif %}
+    <div class="settings-list__actions">
+      <button class="apt-btn apt-btn--edit" title="Редактировать"
+              hx-get="{% url 'cabinet:massage_edit' m.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">✎</button>
+      <button class="apt-btn apt-btn--del" title="{% if m.is_archived %}Восстановить{% else %}В архив{% endif %}"
+              hx-post="{% url 'cabinet:massage_toggle_archive' m.pk %}"
+              hx-target="#massage-list-section"
+              hx-swap="innerHTML"
+              hx-confirm="{% if m.is_archived %}Восстановить услугу?{% else %}Добавить услугу в архив?{% endif %}">{% if m.is_archived %}↩{% else %}⊘{% endif %}</button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="settings-empty">Нет услуг</p>
+{% endif %}

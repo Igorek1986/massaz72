@@ -24,5 +24,11 @@
     {% include "cabinet/partials/discount_section.html" %}
   </div>
 
+  {% if can_manage %}
+  <div id="massage-list-section" class="settings-card">
+    {% include "cabinet/partials/massage_list_section.html" %}
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}
