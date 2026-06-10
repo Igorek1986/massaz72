@@ -80,6 +80,8 @@ class AppointmentForm(forms.ModelForm):
     def __init__(self, *args, specialist: "Specialist | None" = None, **kwargs):
         super().__init__(*args, **kwargs)
         self._specialist = specialist
+        if self.instance and self.instance.pk:
+            self.fields["sessions"].required = False
 
     def clean(self):
         cleaned_data = super().clean()
