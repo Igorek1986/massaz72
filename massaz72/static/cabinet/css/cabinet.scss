@@ -67,12 +67,6 @@ $radius: 8px;
   padding: 0;
 }
 
-html:has(body.cabinet-body),
-body.cabinet-body {
-  overflow-x: hidden;
-  max-width: 100%;
-}
-
 body.cabinet-body {
   font-family: $font;
   background: var(--cab-bg);
@@ -80,6 +74,7 @@ body.cabinet-body {
   min-height: 100vh;
   font-size: 14px;
   line-height: 1.5;
+  overflow-x: clip;
 }
 
 // ===== Layout =====
@@ -330,11 +325,13 @@ body.cabinet-body {
   border: 1px solid var(--cab-border);
   border-radius: 12px;
   padding: 16px;
+  min-width: 0;
 }
 
 .day-panel-wrap {
   position: sticky;
   top: 24px;
+  min-width: 0;
 }
 
 // ===== FullCalendar overrides =====
@@ -1198,20 +1195,13 @@ body.cabinet-body {
     box-sizing: border-box;
   }
 
-  // Календарь — убрать горизонтальный скролл
   .calendar-wrap {
     padding: 8px;
-    overflow: hidden;
-    max-width: 100%;
-    box-sizing: border-box;
   }
 
   .fc {
-    max-width: 100%;
-
     .fc-header-toolbar {
       flex-wrap: wrap;
-      gap: 6px 4px;
       row-gap: 8px;
     }
 
@@ -1232,10 +1222,6 @@ body.cabinet-body {
     .fc-col-header-cell-cushion {
       font-size: 11px;
       padding: 4px 2px;
-    }
-
-    .fc-view-harness {
-      overflow: hidden;
     }
   }
 }
