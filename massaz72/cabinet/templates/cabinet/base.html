@@ -16,9 +16,18 @@
 </head>
 <body class="cabinet-body" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
+<header class="mobile-topbar">
+  <a href="{% url 'cabinet:index' %}" class="mobile-topbar__logo">Массаж72</a>
+  <button class="burger-btn" id="nav-toggle" aria-label="Открыть меню">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<div class="nav-overlay" id="nav-overlay"></div>
+
 {% block body %}
 <div class="cabinet-layout">
-  <aside class="cabinet-sidebar">
+  <aside class="cabinet-sidebar" id="cabinet-sidebar">
     <div class="sidebar__logo">
       <a href="{% url 'cabinet:index' %}">Массаж72</a>
     </div>
@@ -69,10 +78,42 @@
 <div id="cabinet-modal" onclick="if(event.target===this)this.innerHTML=''"></div>
 <script>
 (function () {
-  var modal = document.getElementById('cabinet-modal');
-  new MutationObserver(function () {
-    document.body.style.overflow = modal.children.length ? 'hidden' : '';
-  }).observe(modal, { childList: true });
+  var modal   = document.getElementById('cabinet-modal');
+  var sidebar = document.getElementById('cabinet-sidebar');
+  var toggle  = document.getElementById('nav-toggle');
+  var overlay = document.getElementById('nav-overlay');
+
+  function updateScroll() {
+    var lock = modal.children.length > 0 || sidebar.classList.contains('is-open');
+    document.body.style.overflow = lock ? 'hidden' : '';
+  }
+
+  function openNav() {
+    sidebar.classList.add('is-open');
+    toggle.classList.add('is-open');
+    overlay.classList.add('is-visible');
+    updateScroll();
+  }
+
+  function closeNav() {
+    sidebar.classList.remove('is-open');
+    toggle.classList.remove('is-open');
+    overlay.classList.remove('is-visible');
+    updateScroll();
+  }
+
+  toggle.addEventListener('click', function () {
+    sidebar.classList.contains('is-open') ? closeNav() : openNav();
+  });
+  overlay.addEventListener('click', closeNav);
+
+  // Закрываем при переходе по ссылке меню
+  sidebar.querySelectorAll('.sidebar__link').forEach(function (link) {
+    link.addEventListener('click', closeNav);
+  });
+
+  // Скролл-лок для модалки записи
+  new MutationObserver(updateScroll).observe(modal, { childList: true });
 })();
 </script>
 </body>
