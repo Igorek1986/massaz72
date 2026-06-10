@@ -1,5 +1,35 @@
 // ===== Cabinet — личный кабинет массажиста =====
 
+// ===== Inter font (self-hosted) =====
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/inter-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/inter-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/inter-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/inter-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 // Собственные переменные, не зависящие от публичного сайта
 $font: 'Inter', system-ui, sans-serif;
 $sidebar-w: 220px;
@@ -37,6 +67,12 @@ $radius: 8px;
   padding: 0;
 }
 
+html:has(body.cabinet-body),
+body.cabinet-body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body.cabinet-body {
   font-family: $font;
   background: var(--cab-bg);
@@ -44,7 +80,6 @@ body.cabinet-body {
   min-height: 100vh;
   font-size: 14px;
   line-height: 1.5;
-  overflow-x: hidden;
 }
 
 // ===== Layout =====
@@ -1167,11 +1202,17 @@ body.cabinet-body {
   .calendar-wrap {
     padding: 8px;
     overflow: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .fc {
-    .fc-toolbar {
-      gap: 6px;
+    max-width: 100%;
+
+    .fc-header-toolbar {
+      flex-wrap: wrap;
+      gap: 6px 4px;
+      row-gap: 8px;
     }
 
     .fc-toolbar-title {
@@ -1179,8 +1220,8 @@ body.cabinet-body {
     }
 
     .fc-button {
-      padding: 4px 7px;
-      font-size: 12px;
+      padding: 4px 7px !important;
+      font-size: 12px !important;
     }
 
     .fc-daygrid-day-number {
@@ -1191,6 +1232,10 @@ body.cabinet-body {
     .fc-col-header-cell-cushion {
       font-size: 11px;
       padding: 4px 2px;
+    }
+
+    .fc-view-harness {
+      overflow: hidden;
     }
   }
 }
