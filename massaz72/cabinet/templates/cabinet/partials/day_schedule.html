@@ -44,6 +44,12 @@
                   hx-vals='{"status": "completed"}'
                   hx-target="#day-panel"
                   hx-swap="innerHTML">✓</button>
+          {% elif apt.status == 'completed' %}
+          <button class="apt-btn apt-btn--edit" title="Вернуть в запланировано"
+                  hx-post="{% url 'cabinet:appointment_status' apt.pk %}"
+                  hx-vals='{"status": "scheduled"}'
+                  hx-target="#day-panel"
+                  hx-swap="innerHTML">↩</button>
           {% endif %}
           <button class="apt-btn apt-btn--edit" title="Редактировать"
                   hx-get="{% url 'cabinet:appointment_edit' apt.pk %}"

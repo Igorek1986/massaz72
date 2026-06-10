@@ -255,7 +255,11 @@ def appointment_status(request, pk: int):
     specialist = request.specialist
     appointment = get_object_or_404(Appointment, pk=pk, specialist=specialist)
     new_status = request.POST.get("status")
-    if new_status in (Appointment.SCHEDULED, Appointment.COMPLETED, Appointment.CANCELLED):
+    allowed = {
+        Appointment.SCHEDULED: (Appointment.COMPLETED,),
+        Appointment.COMPLETED: (Appointment.SCHEDULED,),
+    }
+    if new_status in allowed.get(appointment.status, ()):
         appointment.status = new_status
         appointment.save()
     response = render(
