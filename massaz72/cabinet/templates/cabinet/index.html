@@ -48,7 +48,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const calendar = new FullCalendar.Calendar(calendarEl, {
     locale: 'ru',
-    titleFormat: { year: 'numeric', month: 'long' },
+    titleFormat: function(range) {
+      return range.start.marker.toLocaleString('ru', { month: 'long', year: 'numeric' }).replace(/\s*г\./, '');
+    },
     initialView: 'dayGridMonth',
     firstDay: 1,
     height: 'auto',
