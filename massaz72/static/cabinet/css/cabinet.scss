@@ -1303,6 +1303,10 @@ body.cabinet-body {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .form-field--dt {
+    flex-direction: column;
+  }
+
   // Модалка снизу (bottom sheet) — без горизонтального скролла
   #cabinet-modal {
     padding: 0;
