@@ -3,9 +3,7 @@
 {% block title %}Расписание{% endblock %}
 {% block nav_calendar %}sidebar__link--active{% endblock %}
 
-{% block head_extra %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
-{% endblock %}
+{% block head_extra %}{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -28,34 +26,57 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/ru.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.20/locales/ru.global.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const calendarEl = document.getElementById('calendar');
   const eventsUrl = '{% url "cabinet:calendar_events" %}';
   const dayUrl = '{% url "cabinet:day_schedule" "DATE" %}';
 
+  function selectDay(dateStr, dayEl) {
+    const url = dayUrl.replace('DATE', dateStr);
+    htmx.ajax('GET', url, { target: '#day-panel', swap: 'innerHTML' });
+    calendarEl.querySelectorAll('.fc-day-selected').forEach(function(el) {
+      el.classList.remove('fc-day-selected');
+    });
+    if (dayEl) dayEl.classList.add('fc-day-selected');
+  }
+
+  let initialized = false;
+
   const calendar = new FullCalendar.Calendar(calendarEl, {
     locale: 'ru',
     initialView: 'dayGridMonth',
     firstDay: 1,
     height: 'auto',
+    customButtons: {
+      gotoToday: {
+        text: 'Сегодня',
+        click: function() {
+          calendar.today();
+          const todayStr = new Date().toISOString().slice(0, 10);
+          setTimeout(function() {
+            const dayEl = calendarEl.querySelector('[data-date="' + todayStr + '"]');
+            selectDay(todayStr, dayEl);
+          }, 50);
+        }
+      }
+    },
     headerToolbar: {
-      left: 'prev,next today',
+      left: 'prev,next gotoToday',
       center: 'title',
       right: ''
     },
     events: eventsUrl,
     dateClick: function(info) {
-      const url = dayUrl.replace('DATE', info.dateStr);
-      htmx.ajax('GET', url, { target: '#day-panel', swap: 'innerHTML' });
-
-      // Подсветка выбранного дня
-      calendarEl.querySelectorAll('.fc-day-selected').forEach(function(el) {
-        el.classList.remove('fc-day-selected');
-      });
-      info.dayEl.classList.add('fc-day-selected');
+      selectDay(info.dateStr, info.dayEl);
+    },
+    eventClick: function(info) {
+      info.jsEvent.preventDefault();
+      const dateStr = info.event.startStr.slice(0, 10);
+      const dayEl = calendarEl.querySelector('[data-date="' + dateStr + '"]');
+      selectDay(dateStr, dayEl);
     },
   });
 
