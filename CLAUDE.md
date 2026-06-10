@@ -61,10 +61,16 @@ npx stylelint "**/*.scss"
 
 Docker:
 ```bash
-docker-compose up -d --build
+# Rebuild and restart everything (app + bot + migrations applied automatically):
+docker compose up -d --build
+
 # Migrations run automatically on container start (entrypoint.sh calls migrate --noinput).
 # No need to run migrate manually after build.
+```
 
+**Important:** The `bot` service uses the same `massaz72_django-app` image as `app`. After any code changes (including `bot.py`), always use `docker compose up -d --build` — this rebuilds the image and recreates BOTH containers. Running only `docker compose build app && docker compose up -d app` leaves the bot running on the old image.
+
+```bash
 # Telegram bot in polling mode runs as a separate service behind the "polling" profile.
 # Not needed in webhook mode (the app container serves the webhook URL).
 docker compose --profile polling up -d
