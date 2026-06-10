@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const calendar = new FullCalendar.Calendar(calendarEl, {
     locale: 'ru',
+    titleFormat: { year: 'numeric', month: 'long' },
     initialView: 'dayGridMonth',
     firstDay: 1,
     height: 'auto',
