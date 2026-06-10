@@ -44,6 +44,7 @@ body.cabinet-body {
   min-height: 100vh;
   font-size: 14px;
   line-height: 1.5;
+  overflow-x: hidden;
 }
 
 // ===== Layout =====
@@ -1160,5 +1161,36 @@ body.cabinet-body {
     max-height: 85vh;
     width: 100%;
     box-sizing: border-box;
+  }
+
+  // Календарь — убрать горизонтальный скролл
+  .calendar-wrap {
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  .fc {
+    .fc-toolbar {
+      gap: 6px;
+    }
+
+    .fc-toolbar-title {
+      font-size: 14px;
+    }
+
+    .fc-button {
+      padding: 4px 7px;
+      font-size: 12px;
+    }
+
+    .fc-daygrid-day-number {
+      font-size: 11px;
+      padding: 2px 4px;
+    }
+
+    .fc-col-header-cell-cushion {
+      font-size: 11px;
+      padding: 4px 2px;
+    }
   }
 }
