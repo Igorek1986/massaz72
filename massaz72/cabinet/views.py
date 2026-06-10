@@ -40,6 +40,16 @@ def specialist_required(view_func):
     return wrapper
 
 
+def prices_manager_required(view_func):
+    @wraps(view_func)
+    @specialist_required
+    def wrapper(request: HttpRequest, *args, **kwargs):
+        if not request.specialist.can_manage_prices:
+            return HttpResponse("Нет доступа к управлению ценами", status=403)
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -415,16 +425,15 @@ def _prices_ctx(specialist: Specialist) -> dict:
         and site_settings.price_change_date <= today
         and massages.filter(new_price__isnull=False).exists()
     )
-    active_discount = Discount.objects.filter(
-        specialist=specialist, date_from__lte=today, date_to__gte=today
-    ).first()
-    discounts = Discount.objects.filter(specialist=specialist)
+    active_discount = Discount.objects.filter(date_from__lte=today, date_to__gte=today).first()
+    discounts = Discount.objects.all()
     return {
         "massages": massages,
         "site_settings": site_settings,
         "prices_due": prices_due,
         "active_discount": active_discount,
         "discounts": discounts,
+        "can_manage": specialist.can_manage_prices,
     }
 
 
@@ -457,7 +466,7 @@ def prices(request):
     return render(request, "cabinet/prices.html", _prices_ctx(request.specialist))
 
 
-@specialist_required
+@prices_manager_required
 @require_POST
 def prices_save_current(request):
     massages = Massage.objects.filter(is_archived=False)
@@ -486,7 +495,7 @@ def prices_save_current(request):
     return response
 
 
-@specialist_required
+@prices_manager_required
 @require_POST
 def prices_save_change(request):
     site_settings = SiteSettings.objects.first()
@@ -521,7 +530,7 @@ def prices_save_change(request):
     return response
 
 
-@specialist_required
+@prices_manager_required
 @require_POST
 def prices_apply_change(request):
     massages = Massage.objects.filter(is_archived=False, new_price__isnull=False)
@@ -536,15 +545,12 @@ def prices_apply_change(request):
     return render(request, "cabinet/prices.html", _prices_ctx(request.specialist))
 
 
-@specialist_required
+@prices_manager_required
 def discount_add(request):
-    specialist = request.specialist
     if request.method == "POST":
         form = DiscountForm(request.POST)
         if form.is_valid():
-            discount = form.save(commit=False)
-            discount.specialist = specialist
-            discount.save()
+            form.save()
             return _discount_section_response(request)
         response = render(request, "cabinet/partials/discount_form.html", {"form": form})
         response["HX-Retarget"] = "#discount-form-container"
@@ -552,9 +558,9 @@ def discount_add(request):
     return render(request, "cabinet/partials/discount_form.html", {"form": DiscountForm()})
 
 
-@specialist_required
+@prices_manager_required
 def discount_edit(request, pk: int):
-    discount = get_object_or_404(Discount, pk=pk, specialist=request.specialist)
+    discount = get_object_or_404(Discount, pk=pk)
     if request.method == "POST":
         form = DiscountForm(request.POST, instance=discount)
         if form.is_valid():
@@ -568,10 +574,10 @@ def discount_edit(request, pk: int):
     })
 
 
-@specialist_required
+@prices_manager_required
 @require_POST
 def discount_delete(request, pk: int):
-    get_object_or_404(Discount, pk=pk, specialist=request.specialist).delete()
+    get_object_or_404(Discount, pk=pk).delete()
     return _discount_section_response(request)
 
 

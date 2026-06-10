@@ -5,6 +5,7 @@
   {% endif %}
 </div>
 
+{% if can_manage %}
 <form hx-post="{% url 'cabinet:prices_save_current' %}"
       hx-target="#price-list-section"
       hx-swap="innerHTML">
@@ -24,7 +25,7 @@
         <span class="price-list__currency">₽</span>
       </div>
       {% if active_discount %}
-      <span class="price-list__discounted">→ {{ massage.price|apply_discount:active_discount }} ₽</span>
+      <span class="price-list__discounted"><s>{{ massage.price|floatformat:0 }} ₽</s> {{ massage.price|apply_discount:active_discount }} ₽</span>
       {% endif %}
     </li>
     {% empty %}
@@ -35,3 +36,24 @@
     <button type="submit" class="btn btn--primary btn--sm">Сохранить цены</button>
   </div>
 </form>
+{% else %}
+<ul class="price-list">
+  {% load main_tags %}
+  {% for massage in massages %}
+  <li class="price-list__item">
+    <span class="price-list__name">{{ massage.name }}</span>
+    <span class="price-list__type">{{ massage.get_massage_type_display }}</span>
+    <span class="price-list__readonly">
+      {% if active_discount %}
+      <s class="price-list__old-price">{{ massage.price|floatformat:0 }} ₽</s>
+      <span class="price-list__new-price">{{ massage.price|apply_discount:active_discount }} ₽</span>
+      {% else %}
+      {{ massage.price|floatformat:0 }} ₽
+      {% endif %}
+    </span>
+  </li>
+  {% empty %}
+  <li class="settings-empty">Нет услуг</li>
+  {% endfor %}
+</ul>
+{% endif %}

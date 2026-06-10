@@ -1033,6 +1033,25 @@ body.cabinet-body {
     color: #16a34a;
     font-weight: 600;
     white-space: nowrap;
+
+    s { color: var(--cab-muted); }
+  }
+
+  &__readonly {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  &__old-price {
+    color: var(--cab-muted);
+    text-decoration: line-through;
+    margin-right: 4px;
+  }
+
+  &__new-price {
+    color: #16a34a;
+    font-weight: 700;
   }
 }
 

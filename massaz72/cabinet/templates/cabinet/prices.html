@@ -14,9 +14,11 @@
     {% include "cabinet/partials/price_list_section.html" %}
   </div>
 
+  {% if can_manage %}
   <div id="price-change-section" class="settings-card">
     {% include "cabinet/partials/price_change_section.html" %}
   </div>
+  {% endif %}
 
   <div id="discounts-section" class="settings-card">
     {% include "cabinet/partials/discount_section.html" %}

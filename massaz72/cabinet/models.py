@@ -22,6 +22,11 @@ class Specialist(models.Model):
     )
     name = models.CharField("Имя", max_length=100)
     photo = models.ImageField("Фото", upload_to="specialists/", null=True, blank=True)
+    can_manage_prices = models.BooleanField(
+        "Управление ценами",
+        default=True,
+        help_text="Разрешить изменять цены и скидки",
+    )
 
     class Meta:
         verbose_name = "Специалист"
@@ -195,10 +200,6 @@ class Discount(models.Model):
         (AMOUNT, "Фиксированная сумма (₽)"),
     ]
 
-    specialist = models.ForeignKey(
-        Specialist, on_delete=models.CASCADE,
-        related_name="discounts", verbose_name="Специалист",
-    )
     discount_type = models.CharField(
         "Тип скидки", max_length=10, choices=TYPE_CHOICES, default=PERCENTAGE
     )

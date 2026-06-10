@@ -66,6 +66,6 @@ class AppointmentAdmin(admin.ModelAdmin):
 
 @admin.register(Discount)
 class DiscountAdmin(admin.ModelAdmin):
-    list_display = ("specialist", "discount_type", "value", "date_from", "date_to", "description")
-    list_filter = ("specialist",)
+    list_display = ("discount_type", "value", "date_from", "date_to", "description")
+    list_filter = ("discount_type",)
     ordering = ("-date_from",)

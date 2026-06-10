@@ -1,9 +1,11 @@
 <div class="settings-card__header">
   <h2 class="settings-card__title">Скидки</h2>
+  {% if can_manage %}
   <button class="btn btn--ghost btn--sm"
           hx-get="{% url 'cabinet:discount_add' %}"
           hx-target="#discount-form-container"
           hx-swap="innerHTML">+ Добавить</button>
+  {% endif %}
 </div>
 
 {% if discounts %}
@@ -19,6 +21,7 @@
       {% else %}{{ d.value|floatformat:0 }} ₽{% endif %}
       {% if d.description %} — {{ d.description }}{% endif %}
     </span>
+    {% if can_manage %}
     <div class="settings-list__actions">
       <button class="apt-btn apt-btn--edit" title="Редактировать"
               hx-get="{% url 'cabinet:discount_edit' d.pk %}"
@@ -30,6 +33,7 @@
               hx-swap="innerHTML"
               hx-confirm="Удалить скидку?">✕</button>
     </div>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>
@@ -37,4 +41,6 @@
 <p class="settings-empty">Нет скидок</p>
 {% endif %}
 
+{% if can_manage %}
 <div id="discount-form-container"></div>
+{% endif %}
