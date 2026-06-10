@@ -428,21 +428,21 @@ def _prices_ctx(specialist: Specialist) -> dict:
     }
 
 
-def _discount_section_ctx(specialist: Specialist) -> dict:
-    today = timezone.localdate()
-    return {
-        "discounts": Discount.objects.filter(specialist=specialist),
-        "active_discount": Discount.objects.filter(
-            specialist=specialist, date_from__lte=today, date_to__gte=today
-        ).first(),
-    }
-
 
 def _discount_section_response(request):
-    response = render(
-        request, "cabinet/partials/discount_section.html",
-        _discount_section_ctx(request.specialist),
+    ctx = _prices_ctx(request.specialist)
+    discount_html = render_to_string(
+        "cabinet/partials/discount_section.html", ctx, request=request
     )
+    price_list_html = render_to_string(
+        "cabinet/partials/price_list_section.html", ctx, request=request
+    )
+    price_change_html = render_to_string(
+        "cabinet/partials/price_change_section.html", ctx, request=request
+    )
+    oob_price_list = f'<div id="price-list-section" class="settings-card" hx-swap-oob="innerHTML">{price_list_html}</div>'
+    oob_price_change = f'<div id="price-change-section" class="settings-card" hx-swap-oob="innerHTML">{price_change_html}</div>'
+    response = HttpResponse(discount_html + oob_price_list + oob_price_change)
     response["HX-Retarget"] = "#discounts-section"
     response["HX-Reswap"] = "innerHTML"
     return response
