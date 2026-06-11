@@ -812,20 +812,24 @@ def _blocked_slot_section_ctx(specialist: Specialist) -> dict:
 
 
 def _exception_section_response(request):
-    response = render(
-        request, "cabinet/partials/exception_section.html",
-        _exception_section_ctx(request.specialist),
+    section_html = render_to_string(
+        "cabinet/partials/exception_section.html",
+        _exception_section_ctx(request.specialist), request=request,
     )
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+    response = HttpResponse(section_html + oob_close)
     response["HX-Retarget"] = "#exceptions-section"
     response["HX-Reswap"] = "innerHTML"
     return response
 
 
 def _blocked_slot_section_response(request):
-    response = render(
-        request, "cabinet/partials/blocked_slot_section.html",
-        _blocked_slot_section_ctx(request.specialist),
+    section_html = render_to_string(
+        "cabinet/partials/blocked_slot_section.html",
+        _blocked_slot_section_ctx(request.specialist), request=request,
     )
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+    response = HttpResponse(section_html + oob_close)
     response["HX-Retarget"] = "#blocked-slots-section"
     response["HX-Reswap"] = "innerHTML"
     return response
@@ -886,6 +890,12 @@ def exception_edit(request, pk: int):
 
 
 @specialist_required
+def exception_confirm_delete(request, pk: int):
+    exc = get_object_or_404(ScheduleException, pk=pk, specialist=request.specialist)
+    return render(request, "cabinet/partials/exception_confirm_delete.html", {"exception": exc})
+
+
+@specialist_required
 @require_POST
 def exception_delete(request, pk: int):
     get_object_or_404(ScheduleException, pk=pk, specialist=request.specialist).delete()
@@ -922,6 +932,12 @@ def blocked_slot_edit(request, pk: int):
     return render(request, "cabinet/partials/blocked_slot_form.html", {
         "form": BlockedSlotForm(instance=slot), "slot": slot,
     })
+
+
+@specialist_required
+def blocked_slot_confirm_delete(request, pk: int):
+    slot = get_object_or_404(BlockedSlot, pk=pk, specialist=request.specialist)
+    return render(request, "cabinet/partials/blocked_slot_confirm_delete.html", {"slot": slot})
 
 
 @specialist_required
@@ -1072,6 +1088,12 @@ def prices_save_change(request):
     response["HX-Retarget"] = "#price-change-section"
     response["HX-Reswap"] = "innerHTML"
     return response
+
+
+@prices_manager_required
+def prices_confirm_apply(request):
+    pending_count = Massage.objects.filter(is_archived=False, new_price__isnull=False).count()
+    return render(request, "cabinet/partials/prices_apply_confirm.html", {"pending_count": pending_count})
 
 
 @prices_manager_required

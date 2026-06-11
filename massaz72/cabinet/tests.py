@@ -6,7 +6,10 @@ from django.urls import reverse
 
 from services.models import Massage
 from .forms import find_time_conflicts
-from .models import Appointment, AppointmentSeries, Discount, Specialist, WorkSchedule
+from .models import (
+    Appointment, AppointmentSeries, BlockedSlot, Discount,
+    ScheduleException, Specialist, WorkSchedule,
+)
 from .views import _appointment_end_time, _next_series_working_day
 
 User = get_user_model()
@@ -577,4 +580,76 @@ class DiscountDeleteTest(TestCase):
         self.spec.can_manage_prices = False
         self.spec.save(update_fields=["can_manage_prices"])
         r = self.client.get(reverse("cabinet:discount_confirm_delete", args=[self.discount.pk]))
+        self.assertEqual(r.status_code, 403)
+
+
+# ---------------------------------------------------------------------------
+# Settings: confirm-delete modals in our style (blocked slot / exception)
+# ---------------------------------------------------------------------------
+
+class SettingsConfirmDeleteTest(TestCase):
+    def setUp(self):
+        self.spec = _make_specialist("settings_spec")
+        self.client.force_login(self.spec.user)
+
+    def test_blocked_slot_confirm_then_delete(self):
+        slot = BlockedSlot.objects.create(
+            specialist=self.spec, date=date(2026, 6, 10),
+            time_start=time(10, 0), time_end=time(11, 0),
+        )
+        r = self.client.get(reverse("cabinet:blocked_slot_confirm_delete", args=[slot.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Удалить заблокированное время?")
+        self.assertContains(r, "apt-form--confirm")
+        self.assertTrue(BlockedSlot.objects.filter(pk=slot.pk).exists())
+
+        r = self.client.post(reverse("cabinet:blocked_slot_delete", args=[slot.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(BlockedSlot.objects.filter(pk=slot.pk).exists())
+        self.assertEqual(r["HX-Retarget"], "#blocked-slots-section")
+        self.assertIn('id="cabinet-modal"', r.content.decode())
+
+    def test_exception_confirm_then_delete(self):
+        exc = ScheduleException.objects.create(
+            specialist=self.spec, date_from=date(2026, 6, 10),
+            date_to=date(2026, 6, 12), exception_type=ScheduleException.DAY_OFF,
+        )
+        r = self.client.get(reverse("cabinet:exception_confirm_delete", args=[exc.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Удалить исключение?")
+        self.assertContains(r, "apt-form--confirm")
+        self.assertTrue(ScheduleException.objects.filter(pk=exc.pk).exists())
+
+        r = self.client.post(reverse("cabinet:exception_delete", args=[exc.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(ScheduleException.objects.filter(pk=exc.pk).exists())
+        self.assertEqual(r["HX-Retarget"], "#exceptions-section")
+        self.assertIn('id="cabinet-modal"', r.content.decode())
+
+
+# ---------------------------------------------------------------------------
+# Prices: apply-change confirm modal
+# ---------------------------------------------------------------------------
+
+class PricesApplyConfirmTest(TestCase):
+    def setUp(self):
+        self.spec = _make_specialist("apply_spec")
+        self.client.force_login(self.spec.user)
+
+    def test_confirm_renders_modal_without_applying(self):
+        m = _make_massage("Спина", duration=60, price=1000)
+        m.new_price = 1200
+        m.save(update_fields=["new_price"])
+        r = self.client.get(reverse("cabinet:prices_confirm_apply"))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Применить новые цены?")
+        self.assertContains(r, "apt-form--confirm")
+        # цена пока не изменилась — GET ничего не применяет
+        m.refresh_from_db()
+        self.assertEqual(m.price, 1000)
+
+    def test_confirm_requires_manage_prices(self):
+        self.spec.can_manage_prices = False
+        self.spec.save(update_fields=["can_manage_prices"])
+        r = self.client.get(reverse("cabinet:prices_confirm_apply"))
         self.assertEqual(r.status_code, 403)

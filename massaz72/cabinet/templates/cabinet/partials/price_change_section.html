@@ -39,10 +39,9 @@
     <button type="submit" class="btn btn--ghost btn--sm">Сохранить план</button>
     {% if prices_due %}
     <button type="button" class="btn btn--primary btn--sm"
-            hx-post="{% url 'cabinet:prices_apply_change' %}"
-            hx-target="body"
-            hx-swap="innerHTML"
-            hx-confirm="Применить новые цены прямо сейчас?">
+            hx-get="{% url 'cabinet:prices_confirm_apply' %}"
+            hx-target="#cabinet-modal"
+            hx-swap="innerHTML">
       Применить сейчас
     </button>
     {% endif %}

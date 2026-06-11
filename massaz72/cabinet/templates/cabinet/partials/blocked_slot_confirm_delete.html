@@ -1,0 +1,21 @@
+<div class="apt-form apt-form--confirm">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">Удалить заблокированное время?</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <p class="apt-form__confirm-name">{{ slot.date|date:"d.m.Y" }}</p>
+  <p class="apt-form__confirm-note">
+    {{ slot.time_start|time:"H:i" }} – {{ slot.time_end|time:"H:i" }}{% if slot.note %} · {{ slot.note }}{% endif %}
+  </p>
+  <form hx-post="{% url 'cabinet:blocked_slot_delete' slot.pk %}"
+        hx-target="#blocked-slots-section"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--danger">Удалить</button>
+    </div>
+  </form>
+</div>

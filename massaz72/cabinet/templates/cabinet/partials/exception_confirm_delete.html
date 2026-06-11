@@ -1,0 +1,21 @@
+<div class="apt-form apt-form--confirm">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">Удалить исключение?</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <p class="apt-form__confirm-name">{{ exception.get_exception_type_display }}</p>
+  <p class="apt-form__confirm-note">
+    {{ exception.date_from|date:"d.m.Y" }}{% if exception.date_from != exception.date_to %} – {{ exception.date_to|date:"d.m.Y" }}{% endif %}{% if exception.note %} · {{ exception.note }}{% endif %}
+  </p>
+  <form hx-post="{% url 'cabinet:exception_delete' exception.pk %}"
+        hx-target="#exceptions-section"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--danger">Удалить</button>
+    </div>
+  </form>
+</div>

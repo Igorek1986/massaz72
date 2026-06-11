@@ -19,10 +19,9 @@
               hx-target="#blocked-slot-form-container"
               hx-swap="innerHTML">✎</button>
       <button class="apt-btn apt-btn--del" title="Удалить"
-              hx-post="{% url 'cabinet:blocked_slot_delete' slot.pk %}"
-              hx-target="#blocked-slots-section"
-              hx-swap="innerHTML"
-              hx-confirm="Удалить заблокированное время?">✕</button>
+              hx-get="{% url 'cabinet:blocked_slot_confirm_delete' slot.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">✕</button>
     </div>
   </li>
   {% endfor %}

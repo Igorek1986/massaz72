@@ -24,10 +24,9 @@
               hx-target="#exception-form-container"
               hx-swap="innerHTML">✎</button>
       <button class="apt-btn apt-btn--del" title="Удалить"
-              hx-post="{% url 'cabinet:exception_delete' exc.pk %}"
-              hx-target="#exceptions-section"
-              hx-swap="innerHTML"
-              hx-confirm="Удалить исключение?">✕</button>
+              hx-get="{% url 'cabinet:exception_confirm_delete' exc.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">✕</button>
     </div>
   </li>
   {% endfor %}

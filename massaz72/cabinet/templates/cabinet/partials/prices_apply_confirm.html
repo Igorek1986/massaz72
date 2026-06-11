@@ -1,0 +1,21 @@
+{% load main_tags %}
+<div class="apt-form apt-form--confirm">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">Применить новые цены?</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <p class="apt-form__confirm-note">
+    Запланированные цены вступят в силу немедленно и заменят текущие{% if pending_count %} ({{ pending_count }} {{ pending_count|russian_plural:"услуга,услуги,услуг" }}){% endif %}. Действие необратимо.
+  </p>
+  <form hx-post="{% url 'cabinet:prices_apply_change' %}"
+        hx-target="body"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--primary">Применить</button>
+    </div>
+  </form>
+</div>
