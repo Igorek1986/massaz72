@@ -58,7 +58,7 @@ def find_time_conflicts(
     apt_date, time_start, service, break_minutes,
     specialist=None, exclude_pk=None,
     is_travel=False, travel_break_minutes=None,
-    extra_duration=0,
+    extra_duration=0, exclude_pks=None,
 ):
     """Возвращает записи, пересекающиеся по времени с новым слотом."""
     existing = (
@@ -71,6 +71,8 @@ def find_time_conflicts(
         existing = existing.filter(specialist=specialist)
     if exclude_pk:
         existing = existing.exclude(pk=exclude_pk)
+    if exclude_pks:
+        existing = existing.exclude(pk__in=exclude_pks)
 
     travel_break = travel_break_minutes or break_minutes
     new_break = travel_break if is_travel else break_minutes

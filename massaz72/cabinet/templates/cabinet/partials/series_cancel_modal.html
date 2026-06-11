@@ -50,6 +50,7 @@
               onclick="document.getElementById('series-cancel-action-field').value='cancel_following'">Эту и следующие</button>
       <button type="button" class="btn btn--primary"
               hx-get="{% url 'cabinet:series_reschedule' appointment.pk %}"
+              hx-include="#series-cancel-form"
               hx-target="#cabinet-modal"
               hx-swap="innerHTML">Перенести</button>
     </div>

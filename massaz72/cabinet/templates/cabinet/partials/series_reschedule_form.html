@@ -1,40 +1,58 @@
 {% load i18n %}
 <div class="apt-form apt-form--confirm">
   <div class="apt-form__header">
-    <h3 class="apt-form__title">Перенос серии</h3>
+    <h3 class="apt-form__title">Перенос записи</h3>
     <button type="button" class="apt-form__close"
             onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
   </div>
+
+  <p class="apt-form__confirm-name">{{ appointment.client_name }}</p>
   <p class="apt-form__confirm-note">
-    Перенести {{ shift_count }} зап. начиная с {{ appointment.date|date:"j E" }}
-    на {{ target_date|date:"j E (l)" }}
+    {{ appointment.date|date:"j E" }}, {{ appointment.time_start|time:"H:i" }}
+    · Серия #{{ appointment.series_id }} ({{ appointment.series.total_sessions }} сеансов)
   </p>
+  {% if moving_names %}
+  <p class="apt-form__confirm-note">Переносим: {{ moving_names|join:", " }}</p>
+  {% endif %}
 
   <form hx-post="{% url 'cabinet:series_reschedule' appointment.pk %}"
         hx-target="#cabinet-modal"
         hx-swap="innerHTML">
     {% csrf_token %}
-    <input type="hidden" name="target_date" value="{{ target_date|date:'Y-m-d' }}">
+    <input type="hidden" name="action" id="series-reschedule-action-field" value="reschedule_one">
+    {% if include_main %}<input type="hidden" name="include_main" value="1">{% endif %}
+    {% for sid in extra_service_ids %}
+    <input type="hidden" name="include_service_{{ sid }}" value="1">
+    {% endfor %}
 
-    {% if has_conflict %}
-    <p class="form-error form-error--block">
-      В {{ target_time|time:"H:i" }} уже есть запись. Введите другое время:
-    </p>
+    {% if error %}
+    <p class="form-error form-error--block">{{ error }}</p>
+    {% endif %}
+
     <div class="form-field" style="margin-top:8px">
-      <label class="form-label">Новое время</label>
+      <label class="form-label">Новая дата</label>
+      <input type="date" name="target_date" class="form-input" value="{{ target_date|date:'Y-m-d' }}" required>
+    </div>
+    <div class="form-field" style="margin-top:8px">
+      <label class="form-label">Время</label>
       <input type="time" name="new_time" class="form-input" value="{{ target_time|time:'H:i' }}" required>
     </div>
-    {% else %}
-    <p class="apt-form__confirm-note">Время: {{ target_time|time:"H:i" }}</p>
-    <input type="hidden" name="new_time" value="">
-    {% endif %}
+
+    <p class="apt-form__confirm-note" style="margin-top:8px">
+      «Только эту» — перенесётся одна запись, остальные сеансы серии не изменятся.<br>
+      «Эту и следующие» — {{ following_count }} зап. будут переразложены по рабочим дням
+      начиная с выбранной даты.
+    </p>
 
     <div class="apt-form__footer">
       <button type="button" class="btn btn--ghost"
               hx-get="{% url 'cabinet:appointment_confirm_delete' appointment.pk %}"
               hx-target="#cabinet-modal"
               hx-swap="innerHTML">Назад</button>
-      <button type="submit" class="btn btn--primary">Перенести</button>
+      <button type="submit" class="btn btn--ghost"
+              onclick="document.getElementById('series-reschedule-action-field').value='reschedule_following'">Эту и следующие</button>
+      <button type="submit" class="btn btn--primary"
+              onclick="document.getElementById('series-reschedule-action-field').value='reschedule_one'">Только эту</button>
     </div>
   </form>
 </div>

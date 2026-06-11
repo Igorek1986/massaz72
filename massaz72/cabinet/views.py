@@ -584,42 +584,43 @@ def series_cancel_action(request, pk: int):
     return response
 
 
-def _series_reschedule_context(appointment, specialist, target_date, check_time, existing_conflicts):
-    """Build context for series reschedule form, checking conflicts."""
-    schedule = WorkSchedule.for_specialist(specialist)
-    break_minutes = schedule.break_between_minutes
-    travel_break_minutes = schedule.break_between_travel_minutes
+def _reschedule_selection(appointment, params):
+    """Разбирает галочки include_main / include_service_N из запроса.
 
-    extra_duration = 0
-    try:
-        extra_duration = _compute_extra_duration([
-            {"service": c.service} for c in appointment.additional_services.all()
-        ])
-    except Exception:
-        pass
+    Если параметров выбора нет вовсе — переносится запись целиком.
+    """
+    children = list(appointment.additional_services.all())
+    keys = ["include_main"] + [f"include_service_{c.service_id}" for c in children]
+    if not any(k in params for k in keys):
+        return True, {c.service_id for c in children}
+    include_main = "include_main" in params
+    extra_service_ids = {
+        c.service_id for c in children if f"include_service_{c.service_id}" in params
+    }
+    return include_main, extra_service_ids
 
-    if not existing_conflicts:
-        conflicts = find_time_conflicts(
-            target_date, check_time, appointment.service, break_minutes,
-            specialist=specialist,
-            is_travel=appointment.is_travel,
-            travel_break_minutes=travel_break_minutes,
-            extra_duration=extra_duration,
-        )
-    else:
-        conflicts = existing_conflicts
 
-    shift_count = Appointment.objects.filter(
+def _series_reschedule_context(appointment, specialist, target_date, target_time,
+                               include_main, extra_service_ids, error=None):
+    """Контекст формы переноса записи серии."""
+    moving_names = []
+    if include_main:
+        moving_names.append(appointment.service.name if appointment.service else "Основная услуга")
+    for child in appointment.additional_services.all():
+        if child.service_id in extra_service_ids:
+            moving_names.append(child.service.name if child.service else "Доп. услуга")
+    following_count = Appointment.objects.filter(
         series=appointment.series, parent__isnull=True, date__gte=appointment.date
     ).count()
-
     return {
         "appointment": appointment,
         "target_date": target_date,
-        "target_time": check_time,
-        "has_conflict": bool(conflicts),
-        "shift_count": shift_count,
-        "conflict_info": conflicts[0] if conflicts else None,
+        "target_time": target_time,
+        "include_main": include_main,
+        "extra_service_ids": sorted(extra_service_ids),
+        "moving_names": moving_names,
+        "following_count": following_count,
+        "error": error,
     }
 
 
@@ -630,38 +631,83 @@ def series_reschedule(request, pk: int):
         Appointment.objects.prefetch_related("additional_services__service"),
         pk=pk, specialist=specialist, parent__isnull=True,
     )
+    params = request.POST if request.method == "POST" else request.GET
+    include_main, extra_service_ids = _reschedule_selection(appointment, params)
 
     if request.method == "POST":
-        target_date_str = request.POST.get("target_date", "")
-        new_time_str = request.POST.get("new_time", "").strip()
         try:
-            target_date = date.fromisoformat(target_date_str)
+            target_date = date.fromisoformat(request.POST.get("target_date", ""))
         except ValueError:
             return HttpResponse("Неверная дата", status=400)
 
-        delta = target_date - appointment.date
-
-        parents = list(
-            Appointment.objects.filter(
-                series=appointment.series, parent__isnull=True, date__gte=appointment.date
-            ).prefetch_related("additional_services").order_by("date")
-        )
-
-        new_time = None
+        new_time = appointment.time_start
+        new_time_str = request.POST.get("new_time", "").strip()
         if new_time_str:
             from datetime import time as time_type
             try:
-                h, m = new_time_str.split(":")
+                h, m = new_time_str.split(":")[:2]
                 new_time = time_type(int(h), int(m))
             except (ValueError, AttributeError):
                 pass
 
-        if new_time:
-            schedule = WorkSchedule.for_specialist(specialist)
-            break_minutes = schedule.break_between_minutes
-            travel_break_minutes = schedule.break_between_travel_minutes
+        schedule = WorkSchedule.for_specialist(specialist)
+        break_minutes = schedule.break_between_minutes
+        travel_break_minutes = schedule.break_between_travel_minutes
+        effective_break = travel_break_minutes if appointment.is_travel else break_minutes
+
+        def _form_error(error):
+            ctx = _series_reschedule_context(
+                appointment, specialist, target_date, new_time,
+                include_main, extra_service_ids, error=error,
+            )
+            return render(request, "cabinet/partials/series_reschedule_form.html", ctx)
+
+        action = request.POST.get("action", "reschedule_one")
+        children = list(appointment.additional_services.all())
+        moving_children = [c for c in children if c.service_id in extra_service_ids]
+        staying_children = [c for c in children if c.service_id not in extra_service_ids]
+
+        if action == "reschedule_following":
+            # Переразложить все оставшиеся сеансы серии (целиком, с доп. услугами)
+            # по рабочим дням начиная с выбранной даты.
+            parents = list(
+                Appointment.objects.filter(
+                    series=appointment.series, parent__isnull=True, date__gte=appointment.date
+                ).prefetch_related("additional_services__service").order_by("date", "time_start")
+            )
+            new_dates = _series_dates(target_date, len(parents), schedule, specialist)
+            if len(new_dates) < len(parents):
+                return _form_error("Не удалось подобрать рабочие дни для всех сеансов.")
+            exclude_pks = [p.pk for p in parents]
+            conflict_lines = []
+            for parent, d in zip(parents, new_dates):
+                extra_duration = _compute_extra_duration([
+                    {"service": c.service} for c in parent.additional_services.all()
+                ])
+                day_conflicts = find_time_conflicts(
+                    d, new_time, parent.service, break_minutes,
+                    specialist=specialist,
+                    exclude_pks=exclude_pks,
+                    is_travel=parent.is_travel,
+                    travel_break_minutes=travel_break_minutes,
+                    extra_duration=extra_duration,
+                )
+                if day_conflicts:
+                    conflict_lines.append(
+                        f"{d.strftime('%d.%m')}: " + _conflict_message(d, day_conflicts, break_minutes)
+                    )
+            if conflict_lines:
+                return _form_error(" | ".join(conflict_lines))
+            for parent, d in zip(parents, new_dates):
+                parent.date = d
+                parent.time_start = new_time
+                parent.save(update_fields=["date", "time_start"])
+                parent.additional_services.all().update(date=d)
+                _recompute_children_times(parent)
+        elif include_main:
+            # Перенести только эту запись (основную + выбранные доп. услуги).
             extra_duration = _compute_extra_duration([
-                {"service": c.service} for c in appointment.additional_services.all()
+                {"service": c.service} for c in moving_children
             ])
             conflicts = find_time_conflicts(
                 target_date, new_time, appointment.service, break_minutes,
@@ -672,20 +718,47 @@ def series_reschedule(request, pk: int):
                 extra_duration=extra_duration,
             )
             if conflicts:
-                form_ctx = _series_reschedule_context(appointment, specialist, target_date, new_time, conflicts)
-                return render(request, "cabinet/partials/series_reschedule_form.html", form_ctx)
-
-        for parent in parents:
-            new_date = parent.date + delta
-            if new_time and parent.pk == appointment.pk:
-                parent.time_start = new_time
-                parent.date = new_date
-                parent.save(update_fields=["date", "time_start"])
-                _recompute_children_times(parent)
-            else:
-                parent.date = new_date
-                parent.save(update_fields=["date"])
-            parent.additional_services.all().update(date=new_date)
+                return _form_error(_conflict_message(target_date, conflicts, effective_break))
+            if staying_children:
+                # Непомеченные доп. услуги остаются на прежней дате отдельной записью.
+                Appointment.objects.filter(
+                    pk__in=[c.pk for c in staying_children]
+                ).update(parent=None)
+            appointment.date = target_date
+            appointment.time_start = new_time
+            appointment.save(update_fields=["date", "time_start"])
+            if moving_children:
+                Appointment.objects.filter(
+                    pk__in=[c.pk for c in moving_children]
+                ).update(date=target_date)
+            _recompute_children_times(appointment)
+        elif moving_children:
+            # Основная остаётся, переносятся только выбранные доп. услуги.
+            moving_sorted = sorted(moving_children, key=lambda c: (c.time_start, c.pk))
+            first = moving_sorted[0]
+            extra_duration = _compute_extra_duration([
+                {"service": c.service} for c in moving_sorted[1:]
+            ])
+            conflicts = find_time_conflicts(
+                target_date, new_time, first.service, break_minutes,
+                specialist=specialist,
+                is_travel=appointment.is_travel,
+                travel_break_minutes=travel_break_minutes,
+                extra_duration=extra_duration,
+            )
+            if conflicts:
+                return _form_error(_conflict_message(target_date, conflicts, effective_break))
+            start_dt = datetime.combine(target_date, new_time)
+            cumulative = 0
+            for child in moving_sorted:
+                child.parent = None
+                child.date = target_date
+                child.time_start = (start_dt + timedelta(minutes=cumulative)).time()
+                child.save(update_fields=["parent", "date", "time_start"])
+                if child.service:
+                    cumulative += child.service.duration_max or child.service.duration_min or 0
+        else:
+            return _form_error("Выберите услуги для переноса.")
 
         day_html = render_to_string(
             "cabinet/partials/day_schedule.html",
@@ -699,12 +772,15 @@ def series_reschedule(request, pk: int):
         response["HX-Trigger"] = "appointmentChanged"
         return response
 
-    # GET: compute target date and check for conflicts
+    # GET: по умолчанию — следующий рабочий день после конца серии
     target_date = _next_series_working_day(appointment.series_id, specialist)
     if not target_date:
         return HttpResponse("Не удалось определить дату переноса", status=400)
 
-    ctx = _series_reschedule_context(appointment, specialist, target_date, appointment.time_start, [])
+    ctx = _series_reschedule_context(
+        appointment, specialist, target_date, appointment.time_start,
+        include_main, extra_service_ids,
+    )
     return render(request, "cabinet/partials/series_reschedule_form.html", ctx)
 
 

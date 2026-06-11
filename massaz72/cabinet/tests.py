@@ -290,13 +290,14 @@ class SeriesCancelActionTest(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# series_reschedule — date shift
+# series_reschedule
 # ---------------------------------------------------------------------------
 
 class SeriesRescheduleTest(TestCase):
     def setUp(self):
         self.spec = _make_specialist("reschedule_spec")
         self.massage = _make_massage("Спина", duration=60)
+        self.extra_massage = _make_massage("Шея", duration=30)
         self.series = AppointmentSeries.objects.create(
             specialist=self.spec, service=self.massage, total_sessions=3
         )
@@ -305,23 +306,195 @@ class SeriesRescheduleTest(TestCase):
     def _url(self, pk):
         return reverse("cabinet:series_reschedule", args=[pk])
 
-    def test_shift_moves_all_following(self):
-        # 3 appointments: Jun 9, 10, 11
-        dates = [date(2026, 6, 9), date(2026, 6, 10), date(2026, 6, 11)]
-        apts = [_make_apt(self.spec, d, time(10, 0), service=self.massage, series=self.series) for d in dates]
+    def _make_series_apts(self, dates):
+        return [
+            _make_apt(self.spec, d, time(10, 0), service=self.massage, series=self.series)
+            for d in dates
+        ]
 
-        # Reschedule from Jun 10 (apts[1]) → target Jun 12 (shift +2)
+    def test_reschedule_one_moves_only_selected(self):
+        # 3 appointments: Tue Jun 9, Wed Jun 10, Thu Jun 11
+        apts = self._make_series_apts([date(2026, 6, 9), date(2026, 6, 10), date(2026, 6, 11)])
         r = self.client.post(self._url(apts[1].pk), {
-            "target_date": "2026-06-12",
+            "action": "reschedule_one",
+            "target_date": "2026-06-22",
+            "new_time": "10:00",
+            "include_main": "1",
+        })
+        self.assertIn(r.status_code, [200, 302])
+        for apt in apts:
+            apt.refresh_from_db()
+        self.assertEqual(apts[0].date, date(2026, 6, 9))
+        self.assertEqual(apts[1].date, date(2026, 6, 22))
+        self.assertEqual(apts[2].date, date(2026, 6, 11))
+
+    def test_reschedule_one_without_selection_moves_whole(self):
+        # Без галочек (старый сценарий) — переносится запись целиком с доп. услугой
+        apts = self._make_series_apts([date(2026, 6, 9)])
+        child = _make_apt(
+            self.spec, apts[0].date, time(11, 0),
+            service=self.extra_massage, parent=apts[0], series=self.series,
+        )
+        r = self.client.post(self._url(apts[0].pk), {
+            "target_date": "2026-06-22",
             "new_time": "",
         })
         self.assertIn(r.status_code, [200, 302])
-        # apts[0] unchanged
+        apts[0].refresh_from_db()
+        child.refresh_from_db()
+        self.assertEqual(apts[0].date, date(2026, 6, 22))
+        self.assertEqual(child.date, date(2026, 6, 22))
+        self.assertEqual(child.parent_id, apts[0].pk)
+
+    def test_reschedule_one_moves_children_with_main(self):
+        apts = self._make_series_apts([date(2026, 6, 9)])
+        child = _make_apt(
+            self.spec, apts[0].date, time(11, 0),
+            service=self.extra_massage, parent=apts[0], series=self.series,
+        )
+        r = self.client.post(self._url(apts[0].pk), {
+            "action": "reschedule_one",
+            "target_date": "2026-06-22",
+            "new_time": "12:00",
+            "include_main": "1",
+            f"include_service_{self.extra_massage.pk}": "1",
+        })
+        self.assertIn(r.status_code, [200, 302])
+        apts[0].refresh_from_db()
+        child.refresh_from_db()
+        self.assertEqual(apts[0].date, date(2026, 6, 22))
+        self.assertEqual(apts[0].time_start, time(12, 0))
+        self.assertEqual(child.date, date(2026, 6, 22))
+        self.assertEqual(child.time_start, time(13, 0))  # после основного (60 мин)
+        self.assertEqual(child.parent_id, apts[0].pk)
+
+    def test_reschedule_one_child_only(self):
+        apts = self._make_series_apts([date(2026, 6, 9)])
+        child = _make_apt(
+            self.spec, apts[0].date, time(11, 0),
+            service=self.extra_massage, parent=apts[0], series=self.series,
+        )
+        r = self.client.post(self._url(apts[0].pk), {
+            "action": "reschedule_one",
+            "target_date": "2026-06-22",
+            "new_time": "10:00",
+            f"include_service_{self.extra_massage.pk}": "1",
+        })
+        self.assertIn(r.status_code, [200, 302])
+        apts[0].refresh_from_db()
+        child.refresh_from_db()
+        # Основная остаётся на месте
+        self.assertEqual(apts[0].date, date(2026, 6, 9))
+        # Доп. услуга отвязана и перенесена
+        self.assertIsNone(child.parent_id)
+        self.assertEqual(child.date, date(2026, 6, 22))
+        self.assertEqual(child.time_start, time(10, 0))
+
+    def test_reschedule_one_main_only_detaches_child(self):
+        apts = self._make_series_apts([date(2026, 6, 9)])
+        child = _make_apt(
+            self.spec, apts[0].date, time(11, 0),
+            service=self.extra_massage, parent=apts[0], series=self.series,
+        )
+        r = self.client.post(self._url(apts[0].pk), {
+            "action": "reschedule_one",
+            "target_date": "2026-06-22",
+            "new_time": "10:00",
+            "include_main": "1",
+        })
+        self.assertIn(r.status_code, [200, 302])
+        apts[0].refresh_from_db()
+        child.refresh_from_db()
+        self.assertEqual(apts[0].date, date(2026, 6, 22))
+        # Доп. услуга осталась на прежней дате отдельной записью
+        self.assertIsNone(child.parent_id)
+        self.assertEqual(child.date, date(2026, 6, 9))
+        self.assertEqual(child.time_start, time(11, 0))
+
+    def test_reschedule_following_reflows_over_working_days(self):
+        # Tue Jun 9, Wed Jun 10, Thu Jun 11 → с пятницы Jun 12: Fri 12, Mon 15, Tue 16
+        apts = self._make_series_apts([date(2026, 6, 9), date(2026, 6, 10), date(2026, 6, 11)])
+        r = self.client.post(self._url(apts[0].pk), {
+            "action": "reschedule_following",
+            "target_date": "2026-06-12",
+            "new_time": "10:00",
+        })
+        self.assertIn(r.status_code, [200, 302])
+        for apt in apts:
+            apt.refresh_from_db()
+        self.assertEqual(apts[0].date, date(2026, 6, 12))
+        self.assertEqual(apts[1].date, date(2026, 6, 15))
+        self.assertEqual(apts[2].date, date(2026, 6, 16))
+
+    def test_reschedule_following_from_middle_keeps_earlier(self):
+        apts = self._make_series_apts([date(2026, 6, 9), date(2026, 6, 10), date(2026, 6, 11)])
+        r = self.client.post(self._url(apts[1].pk), {
+            "action": "reschedule_following",
+            "target_date": "2026-06-15",
+            "new_time": "10:00",
+        })
+        self.assertIn(r.status_code, [200, 302])
+        for apt in apts:
+            apt.refresh_from_db()
+        self.assertEqual(apts[0].date, date(2026, 6, 9))
+        self.assertEqual(apts[1].date, date(2026, 6, 15))
+        self.assertEqual(apts[2].date, date(2026, 6, 16))
+
+    def test_reschedule_following_no_self_conflict(self):
+        # Перенос на даты, пересекающиеся со старыми датами серии, не должен
+        # конфликтовать с собственными записями серии
+        apts = self._make_series_apts([date(2026, 6, 9), date(2026, 6, 10), date(2026, 6, 11)])
+        r = self.client.post(self._url(apts[0].pk), {
+            "action": "reschedule_following",
+            "target_date": "2026-06-10",
+            "new_time": "10:00",
+        })
+        self.assertIn(r.status_code, [200, 302])
+        for apt in apts:
+            apt.refresh_from_db()
+        self.assertEqual(apts[0].date, date(2026, 6, 10))
+        self.assertEqual(apts[1].date, date(2026, 6, 11))
+        self.assertEqual(apts[2].date, date(2026, 6, 12))
+
+    def test_reschedule_following_moves_children(self):
+        apts = self._make_series_apts([date(2026, 6, 9), date(2026, 6, 10)])
+        children = [
+            _make_apt(self.spec, apt.date, time(11, 0),
+                      service=self.extra_massage, parent=apt, series=self.series)
+            for apt in apts
+        ]
+        r = self.client.post(self._url(apts[0].pk), {
+            "action": "reschedule_following",
+            "target_date": "2026-06-15",
+            "new_time": "10:00",
+        })
+        self.assertIn(r.status_code, [200, 302])
+        for obj in apts + children:
+            obj.refresh_from_db()
+        self.assertEqual(apts[0].date, date(2026, 6, 15))
+        self.assertEqual(apts[1].date, date(2026, 6, 16))
+        self.assertEqual(children[0].date, date(2026, 6, 15))
+        self.assertEqual(children[1].date, date(2026, 6, 16))
+        self.assertEqual(children[0].time_start, time(11, 0))
+
+    def test_reschedule_one_conflict_rerenders_form(self):
+        apts = self._make_series_apts([date(2026, 6, 9)])
+        # Чужая запись на целевой дате в то же время
+        _make_apt(self.spec, date(2026, 6, 22), time(10, 0), service=self.massage)
+        r = self.client.post(self._url(apts[0].pk), {
+            "action": "reschedule_one",
+            "target_date": "2026-06-22",
+            "new_time": "10:00",
+            "include_main": "1",
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "form-error")
         apts[0].refresh_from_db()
         self.assertEqual(apts[0].date, date(2026, 6, 9))
-        # apts[1] → Jun 12
-        apts[1].refresh_from_db()
-        self.assertEqual(apts[1].date, date(2026, 6, 12))
-        # apts[2] → Jun 13 (+2 from Jun 11)
-        apts[2].refresh_from_db()
-        self.assertEqual(apts[2].date, date(2026, 6, 13))
+
+    def test_get_renders_form_with_default_target(self):
+        # Последняя запись в пятницу Jun 12 → дефолтная дата переноса: понедельник Jun 15
+        apts = self._make_series_apts([date(2026, 6, 11), date(2026, 6, 12)])
+        r = self.client.get(self._url(apts[0].pk))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "2026-06-15")
