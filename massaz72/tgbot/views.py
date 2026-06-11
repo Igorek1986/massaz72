@@ -1,3 +1,4 @@
+import hmac
 import logging
 
 import telebot
@@ -25,9 +26,13 @@ def webhook(request, secret_path):
 
     if not settings.token or not settings.is_enabled or settings.mode != BotSettings.MODE_WEBHOOK:
         return HttpResponseForbidden("bot disabled")
-    if secret_path != settings.secret_path:
+    # Сравнение, не зависящее от количества совпавших символов,
+    # чтобы секреты нельзя было подобрать по времени ответа.
+    if not hmac.compare_digest(secret_path, settings.secret_path):
         return HttpResponseForbidden("bad path")
-    if request.headers.get(SECRET_HEADER) != settings.secret_token:
+    if not hmac.compare_digest(
+        request.headers.get(SECRET_HEADER, ""), settings.secret_token
+    ):
         return HttpResponseForbidden("bad secret")
 
     bot = get_bot(settings.token)

@@ -236,9 +236,12 @@ def _build_header(user: TelegramUser, text: str) -> str:
 
 
 def _format_broadcast_text(subject: str, text: str) -> str:
+    # parse_mode=HTML: без экранирования один символ «<» в тексте валит
+    # отправку каждого сообщения рассылки (Telegram отвечает 400).
+    body = html.escape(text)
     if subject:
-        return f"<b>{html.escape(subject)}</b>\n\n{text}"
-    return text
+        return f"<b>{html.escape(subject)}</b>\n\n{body}"
+    return body
 
 
 def do_broadcast(bot: telebot.TeleBot, broadcast: Broadcast) -> tuple[int, int]:

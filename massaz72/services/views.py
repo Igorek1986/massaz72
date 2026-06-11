@@ -7,3 +7,4 @@ from .models import Massage
 class MassageDetailView(DetailView):
     model = Massage
     context_object_name = "massage"
+    queryset = Massage.objects.filter(is_archived=False)

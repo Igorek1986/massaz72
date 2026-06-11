@@ -132,16 +132,20 @@
   </form>
 </div>
 
+{{ service_prices|json_script:"apt-service-prices" }}
+{{ service_durations|json_script:"apt-service-durations" }}
+{{ available_services|json_script:"apt-available-services" }}
+{{ extra_services_data|json_script:"apt-extra-services" }}
 <script>
 (function () {
   // Фокус на поле «Имя» сразу при открытии формы
   var nameEl = document.getElementById('id_client_name');
   if (nameEl) requestAnimationFrame(function () { nameEl.focus(); });
 
-  var prices        = {{ service_prices|safe }};
-  var durations     = {{ service_durations|safe }};
-  var availableSvcs = {{ available_services_json|safe }};
-  var initialExtras = {{ extra_services_data|safe }};
+  var prices        = JSON.parse(document.getElementById('apt-service-prices').textContent);
+  var durations     = JSON.parse(document.getElementById('apt-service-durations').textContent);
+  var availableSvcs = JSON.parse(document.getElementById('apt-available-services').textContent);
+  var initialExtras = JSON.parse(document.getElementById('apt-extra-services').textContent);
   var extraCount    = 0;
 
   var serviceEl    = document.getElementById('id_service');

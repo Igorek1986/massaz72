@@ -1,4 +1,3 @@
-import json
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -223,15 +222,15 @@ def _apt_form_context(specialist, date_str, form, appointment=None, extra_servic
     available_services = list(
         Massage.objects.filter(is_archived=False).values("pk", "name").order_by("name")
     )
-    available_services_json = json.dumps([{"id": s["pk"], "name": s["name"]} for s in available_services])
+    available_services_data = [{"id": s["pk"], "name": s["name"]} for s in available_services]
     return {
         "form": form,
         "date_str": date_str,
         "appointment": appointment,
-        "service_prices": json.dumps(service_prices),
-        "service_durations": json.dumps(service_durations),
-        "available_services_json": available_services_json,
-        "extra_services_data": json.dumps(extra_services_data or []),
+        "service_prices": service_prices,
+        "service_durations": service_durations,
+        "available_services": available_services_data,
+        "extra_services_data": extra_services_data or [],
     }
 
 
@@ -1035,10 +1034,13 @@ def prices_save_current(request):
         raw = request.POST.get(f"price_{massage.pk}", "").strip()
         if raw:
             try:
-                massage.price = Decimal(raw)
-                massage.save(update_fields=["price"])
+                value = Decimal(raw)
             except InvalidOperation:
-                pass
+                continue
+            if value < 0:
+                continue
+            massage.price = value
+            massage.save(update_fields=["price"])
 
     ctx = _prices_ctx(request.specialist)
     price_list_html = render_to_string(
@@ -1058,7 +1060,7 @@ def prices_save_current(request):
 @prices_manager_required
 @require_POST
 def prices_save_change(request):
-    site_settings = SiteSettings.objects.first()
+    site_settings = SiteSettings.objects.first() or SiteSettings.objects.create()
     date_raw = request.POST.get("price_change_date", "").strip()
     if date_raw:
         try:
@@ -1074,9 +1076,11 @@ def prices_save_change(request):
         raw = request.POST.get(f"new_price_{massage.pk}", "").strip()
         if raw:
             try:
-                massage.new_price = Decimal(raw)
+                value = Decimal(raw)
             except InvalidOperation:
-                pass
+                value = None
+            if value is not None and value >= 0:
+                massage.new_price = value
         else:
             massage.new_price = None
         massage.save(update_fields=["new_price"])
@@ -1104,7 +1108,7 @@ def prices_apply_change(request):
         massage.price = massage.new_price
         massage.new_price = None
         massage.save(update_fields=["price", "new_price"])
-    site_settings = SiteSettings.objects.first()
+    site_settings = SiteSettings.objects.first() or SiteSettings.objects.create()
     site_settings.price_change_date = None
     site_settings.save(update_fields=["price_change_date"])
 
@@ -1217,16 +1221,23 @@ def calendar_events(request):
     except (ValueError, TypeError):
         return JsonResponse([], safe=False)
 
+    # FullCalendar запрашивает максимум ~6 недель; диапазон больше года —
+    # либо ошибка клиента, либо попытка нагрузить сервер посуточным циклом.
+    if end <= start or (end - start).days > 370:
+        return JsonResponse([], safe=False)
+
     events = []
     schedule = WorkSchedule.for_specialist(specialist)
     working_days = schedule.working_weekdays()
-    exceptions = ScheduleException.objects.filter(
-        specialist=specialist, date_from__lte=end, date_to__gte=start
+    exceptions = list(
+        ScheduleException.objects.filter(
+            specialist=specialist, date_from__lte=end, date_to__gte=start
+        )
     )
 
     current = start
     while current < end:
-        is_exception = exceptions.filter(date_from__lte=current, date_to__gte=current).exists()
+        is_exception = any(e.date_from <= current <= e.date_to for e in exceptions)
         if current.weekday() not in working_days or is_exception:
             events.append({
                 "start": current.isoformat(),

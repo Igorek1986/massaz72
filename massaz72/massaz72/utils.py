@@ -91,13 +91,21 @@ def _get_base_filename(instance) -> tuple[str, str]:
     return base_name, folder
 
 
+# Разрешённые расширения загружаемых изображений. Всё остальное (включая svg и
+# html) принудительно сохраняется как .jpg, чтобы файл из /media/ никогда не
+# отдавался браузеру как активный контент (XSS через подделанное расширение).
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "bmp", "avif"}
+
+
 def get_file_path(instance, filename):
     """
     Генерирует путь для файла используя название и короткий уникальный идентификатор.
     Для массажей создает подпапки adults/children.
     """
-    # Получаем расширение файла
-    ext = filename.split(".")[-1]
+    # Получаем расширение файла (только из белого списка изображений)
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        ext = "jpg"
 
     # Получаем базовое имя файла и папку
     base_name, folder = _get_base_filename(instance)

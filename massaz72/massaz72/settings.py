@@ -16,6 +16,7 @@ from logging.handlers import RotatingFileHandler
 from os import getenv
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -27,14 +28,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-7s-(mcr&&n^7fal@$2oke6(!emch(@*9996*79%+a%j85#8y3l",
-)
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = getenv("DJANGO_DEBUG", "0") == "1"
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# В проде ключ обязателен. В режиме разработки допускаем небезопасный дефолт,
+# чтобы не требовать .env для локального запуска.
+SECRET_KEY = getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "django-insecure-dev-only-do-not-use-in-production"
+    else:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY не задан. Задайте секретный ключ в окружении."
+        )
 
 ALLOWED_HOSTS = getenv("ALLOWED_HOSTS", "").split(",")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -63,12 +70,27 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     "django.contrib.sitemaps",
     "sass_processor",
+    "axes",
     # my app
     "main.apps.MainConfig",
     "services.apps.ServicesConfig",
     "tgbot.apps.TgbotConfig",
     "cabinet.apps.CabinetConfig",
 ]
+
+# Защита входа в кабинет от перебора пароля (django-axes).
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Блокировка по паре «логин + IP»: 5 неудачных попыток, разблокировка через 1 час.
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # часов
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_RESET_ON_SUCCESS = True
+AXES_HTTP_RESPONSE_CODE = 429
+AXES_LOCKOUT_TEMPLATE = None
 
 LOGIN_URL = "/cabinet/login/"
 LOGIN_REDIRECT_URL = "/cabinet/"
@@ -83,6 +105,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # AxesMiddleware должен идти последним.
+    "axes.middleware.AxesMiddleware",
 ]
 
 ROOT_URLCONF = "massaz72.urls"

@@ -1,4 +1,5 @@
 from datetime import date, time, timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, RequestFactory
@@ -653,3 +654,344 @@ class PricesApplyConfirmTest(TestCase):
         self.spec.save(update_fields=["can_manage_prices"])
         r = self.client.get(reverse("cabinet:prices_confirm_apply"))
         self.assertEqual(r.status_code, 403)
+
+
+# ---------------------------------------------------------------------------
+# Security: prices reject negative values (save bypasses Model.clean)
+# ---------------------------------------------------------------------------
+
+class PriceNegativeRejectTest(TestCase):
+    def setUp(self):
+        self.spec = _make_specialist("price_neg_spec")
+        self.client.force_login(self.spec.user)
+        self.massage = _make_massage("Спина", duration=60, price=1000)
+
+    def test_save_current_ignores_negative_price(self):
+        r = self.client.post(reverse("cabinet:prices_save_current"), {
+            f"price_{self.massage.pk}": "-500",
+        })
+        self.assertEqual(r.status_code, 200)
+        self.massage.refresh_from_db()
+        self.assertEqual(self.massage.price, Decimal("1000"))
+
+    def test_save_current_accepts_valid_price(self):
+        r = self.client.post(reverse("cabinet:prices_save_current"), {
+            f"price_{self.massage.pk}": "1500",
+        })
+        self.assertEqual(r.status_code, 200)
+        self.massage.refresh_from_db()
+        self.assertEqual(self.massage.price, Decimal("1500"))
+
+    def test_save_change_ignores_negative_new_price(self):
+        from main.models import SiteSettings
+        SiteSettings.objects.create()
+        r = self.client.post(reverse("cabinet:prices_save_change"), {
+            "price_change_date": "",
+            f"new_price_{self.massage.pk}": "-200",
+        })
+        self.assertEqual(r.status_code, 200)
+        self.massage.refresh_from_db()
+        self.assertIsNone(self.massage.new_price)
+
+
+# ---------------------------------------------------------------------------
+# Security: appointment form escapes service names (no script breakout)
+# ---------------------------------------------------------------------------
+
+class AppointmentFormXSSTest(TestCase):
+    def setUp(self):
+        self.spec = _make_specialist("xss_spec")
+        self.client.force_login(self.spec.user)
+
+    def test_service_name_with_script_tag_is_escaped(self):
+        _make_massage('</script><img src=x onerror=alert(1)>', duration=60, price=1000)
+        r = self.client.get(reverse("cabinet:appointment_add"))
+        self.assertEqual(r.status_code, 200)
+        body = r.content.decode()
+        # Полезная нагрузка должна быть экранирована json_script, а не вставлена сырой
+        self.assertNotIn("</script><img src=x", body)
+        self.assertIn("apt-available-services", body)
+
+
+# ---------------------------------------------------------------------------
+# Security: archived massages are not reachable via public detail page
+# ---------------------------------------------------------------------------
+
+class ArchivedMassageDetailTest(TestCase):
+    def test_archived_massage_returns_404(self):
+        m = _make_massage("Архивный", duration=60, price=1000)
+        m.slug = "arhivnyy"
+        m.is_archived = True
+        m.save(update_fields=["slug", "is_archived"])
+        r = self.client.get(reverse("services:massage_detail", args=[m.slug]))
+        self.assertEqual(r.status_code, 404)
+
+    def test_active_massage_is_reachable(self):
+        m = _make_massage("Активный", duration=60, price=1000)
+        m.slug = "aktivnyy"
+        m.save(update_fields=["slug"])
+        r = self.client.get(reverse("services:massage_detail", args=[m.slug]))
+        self.assertEqual(r.status_code, 200)
+
+
+# ---------------------------------------------------------------------------
+# Security: login brute-force protection (django-axes)
+# ---------------------------------------------------------------------------
+
+class LoginBruteForceTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="brute", password="rightpass")
+        self.url = reverse("cabinet:login")
+
+    def tearDown(self):
+        from axes.utils import reset
+        reset()
+
+    def test_lockout_after_failed_attempts(self):
+        for _ in range(5):
+            self.client.post(self.url, {"username": "brute", "password": "wrong"})
+        r = self.client.post(self.url, {"username": "brute", "password": "wrong"})
+        self.assertEqual(r.status_code, 429)
+
+    def test_lockout_blocks_even_correct_password(self):
+        for _ in range(5):
+            self.client.post(self.url, {"username": "brute", "password": "wrong"})
+        r = self.client.post(self.url, {"username": "brute", "password": "rightpass"})
+        self.assertEqual(r.status_code, 429)
+
+    def test_valid_login_succeeds_below_limit(self):
+        self.client.post(self.url, {"username": "brute", "password": "wrong"})
+        r = self.client.post(self.url, {"username": "brute", "password": "rightpass"})
+        self.assertEqual(r.status_code, 302)
+
+
+# ---------------------------------------------------------------------------
+# Security: access control (login, specialist, cross-specialist isolation)
+# ---------------------------------------------------------------------------
+
+class CabinetAccessControlTest(TestCase):
+    def setUp(self):
+        self.spec_a = _make_specialist("spec_a")
+        self.spec_b = _make_specialist("spec_b")
+        self.massage = _make_massage("Спина", duration=60, price=1000)
+        self.apt_a = _make_apt(self.spec_a, date(2026, 6, 10), time(10, 0), service=self.massage)
+
+    def test_anonymous_redirected_to_login(self):
+        for url in [
+            reverse("cabinet:index"),
+            reverse("cabinet:prices"),
+            reverse("cabinet:settings"),
+            reverse("cabinet:day_schedule", args=["2026-06-10"]),
+            reverse("cabinet:calendar_events"),
+            reverse("cabinet:appointment_add"),
+            reverse("cabinet:appointment_edit", args=[self.apt_a.pk]),
+        ]:
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 302, url)
+            self.assertIn("/cabinet/login/", r["Location"], url)
+
+    def test_user_without_specialist_redirected_to_admin(self):
+        user = User.objects.create_user(username="nospec", password="pass")
+        self.client.force_login(user)
+        r = self.client.get(reverse("cabinet:index"))
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(r["Location"], reverse("admin:index"))
+
+    def test_other_specialist_cannot_open_edit_form(self):
+        self.client.force_login(self.spec_b.user)
+        r = self.client.get(reverse("cabinet:appointment_edit", args=[self.apt_a.pk]))
+        self.assertEqual(r.status_code, 404)
+
+    def test_other_specialist_cannot_change_status(self):
+        self.client.force_login(self.spec_b.user)
+        r = self.client.post(
+            reverse("cabinet:appointment_status", args=[self.apt_a.pk]),
+            {"status": Appointment.COMPLETED},
+        )
+        self.assertEqual(r.status_code, 404)
+        self.apt_a.refresh_from_db()
+        self.assertEqual(self.apt_a.status, Appointment.SCHEDULED)
+
+    def test_other_specialist_cannot_delete(self):
+        self.client.force_login(self.spec_b.user)
+        r = self.client.post(reverse("cabinet:appointment_delete", args=[self.apt_a.pk]))
+        self.assertEqual(r.status_code, 404)
+        self.assertTrue(Appointment.objects.filter(pk=self.apt_a.pk).exists())
+
+    def test_other_specialist_cannot_reschedule(self):
+        self.client.force_login(self.spec_b.user)
+        r = self.client.get(reverse("cabinet:series_reschedule", args=[self.apt_a.pk]))
+        self.assertEqual(r.status_code, 404)
+
+    def test_other_specialist_cannot_touch_settings_objects(self):
+        exc = ScheduleException.objects.create(
+            specialist=self.spec_a, date_from=date(2026, 7, 1), date_to=date(2026, 7, 2),
+        )
+        slot = BlockedSlot.objects.create(
+            specialist=self.spec_a, date=date(2026, 7, 1),
+            time_start=time(10, 0), time_end=time(11, 0),
+        )
+        self.client.force_login(self.spec_b.user)
+        r = self.client.post(reverse("cabinet:exception_delete", args=[exc.pk]))
+        self.assertEqual(r.status_code, 404)
+        r = self.client.post(reverse("cabinet:blocked_slot_delete", args=[slot.pk]))
+        self.assertEqual(r.status_code, 404)
+        self.assertTrue(ScheduleException.objects.filter(pk=exc.pk).exists())
+        self.assertTrue(BlockedSlot.objects.filter(pk=slot.pk).exists())
+
+    def test_day_schedule_hides_other_specialists_appointments(self):
+        self.client.force_login(self.spec_b.user)
+        r = self.client.get(reverse("cabinet:day_schedule", args=["2026-06-10"]))
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "Клиент")
+
+
+# ---------------------------------------------------------------------------
+# Security: CSRF is enforced on cabinet POST endpoints
+# ---------------------------------------------------------------------------
+
+class CabinetCSRFTest(TestCase):
+    def test_post_without_csrf_token_rejected(self):
+        spec = _make_specialist("csrf_spec")
+        apt = _make_apt(spec, date(2026, 6, 10), time(10, 0))
+        client = self.client_class(enforce_csrf_checks=True)
+        client.force_login(spec.user)
+        r = client.post(reverse("cabinet:appointment_delete", args=[apt.pk]))
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(Appointment.objects.filter(pk=apt.pk).exists())
+
+
+# ---------------------------------------------------------------------------
+# Security: calendar_events rejects unbounded date ranges (DoS)
+# ---------------------------------------------------------------------------
+
+class CalendarEventsTest(TestCase):
+    def setUp(self):
+        self.spec = _make_specialist("cal_spec")
+        self.client.force_login(self.spec.user)
+        self.url = reverse("cabinet:calendar_events")
+
+    def test_normal_range_returns_events(self):
+        # 2026-06-13/14 — суббота и воскресенье (нерабочие в _make_specialist)
+        _make_apt(self.spec, date(2026, 6, 10), time(10, 0))
+        r = self.client.get(self.url, {"start": "2026-06-08", "end": "2026-06-15"})
+        self.assertEqual(r.status_code, 200)
+        events = r.json()
+        day_off = [e for e in events if "fc-day-off" in e.get("classNames", [])]
+        counts = [e for e in events if "fc-apt-count" in e.get("classNames", [])]
+        self.assertEqual(len(day_off), 2)
+        self.assertEqual(len(counts), 1)
+        self.assertEqual(counts[0]["start"], "2026-06-10")
+
+    def test_schedule_exception_marked_as_day_off(self):
+        ScheduleException.objects.create(
+            specialist=self.spec, date_from=date(2026, 6, 9), date_to=date(2026, 6, 9),
+        )
+        r = self.client.get(self.url, {"start": "2026-06-08", "end": "2026-06-13"})
+        day_off = [e for e in r.json() if "fc-day-off" in e.get("classNames", [])]
+        self.assertEqual([e["start"] for e in day_off], ["2026-06-09"])
+
+    def test_huge_range_returns_empty(self):
+        r = self.client.get(self.url, {"start": "2020-01-01", "end": "9999-12-31"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json(), [])
+
+    def test_reversed_range_returns_empty(self):
+        r = self.client.get(self.url, {"start": "2026-06-15", "end": "2026-06-08"})
+        self.assertEqual(r.json(), [])
+
+    def test_invalid_params_return_empty(self):
+        r = self.client.get(self.url, {"start": "garbage", "end": "also-garbage"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json(), [])
+
+    def test_max_allowed_range_still_works(self):
+        r = self.client.get(self.url, {"start": "2026-01-01", "end": "2026-12-31"})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(len(r.json()) > 0)  # выходные дни года размечены
+
+
+# ---------------------------------------------------------------------------
+# Security: prices endpoints require can_manage_prices
+# ---------------------------------------------------------------------------
+
+class PricesManagerPermissionTest(TestCase):
+    def setUp(self):
+        self.spec = _make_specialist("no_prices_spec")
+        self.spec.can_manage_prices = False
+        self.spec.save(update_fields=["can_manage_prices"])
+        self.client.force_login(self.spec.user)
+        self.massage = _make_massage("Спина", duration=60, price=1000)
+
+    def test_post_endpoints_forbidden(self):
+        for name, args, data in [
+            ("cabinet:prices_save_current", [], {f"price_{self.massage.pk}": "1"}),
+            ("cabinet:prices_save_change", [], {f"new_price_{self.massage.pk}": "1"}),
+            ("cabinet:prices_apply_change", [], {}),
+            ("cabinet:discount_delete", [1], {}),
+            ("cabinet:massage_toggle_archive", [self.massage.pk], {}),
+        ]:
+            r = self.client.post(reverse(name, args=args), data)
+            self.assertEqual(r.status_code, 403, name)
+        self.massage.refresh_from_db()
+        self.assertEqual(self.massage.price, Decimal("1000"))
+        self.assertFalse(self.massage.is_archived)
+
+    def test_form_endpoints_forbidden(self):
+        for name, args in [
+            ("cabinet:discount_add", []),
+            ("cabinet:massage_add", []),
+            ("cabinet:massage_edit", [self.massage.pk]),
+        ]:
+            r = self.client.get(reverse(name, args=args))
+            self.assertEqual(r.status_code, 403, name)
+
+    def test_prices_page_still_viewable(self):
+        r = self.client.get(reverse("cabinet:prices"))
+        self.assertEqual(r.status_code, 200)
+
+
+# ---------------------------------------------------------------------------
+# Security: extra_pk in appointment edit cannot touch foreign children
+# ---------------------------------------------------------------------------
+
+class ExtraServicePkInjectionTest(TestCase):
+    def setUp(self):
+        self.spec_a = _make_specialist("inj_a")
+        self.spec_b = _make_specialist("inj_b")
+        self.massage = _make_massage("Спина", duration=60, price=1000)
+        self.extra = _make_massage("Шея", duration=30, price=500)
+        # Запись специалиста B с доп. услугой
+        self.apt_b = _make_apt(self.spec_b, date(2026, 6, 10), time(10, 0), service=self.massage)
+        self.child_b = _make_apt(
+            self.spec_b, date(2026, 6, 10), time(11, 0),
+            service=self.extra, cost=500, parent=self.apt_b,
+        )
+        # Запись специалиста A
+        self.apt_a = _make_apt(self.spec_a, date(2026, 6, 10), time(14, 0), service=self.massage)
+
+    def test_foreign_extra_pk_does_not_modify_other_child(self):
+        self.client.force_login(self.spec_a.user)
+        r = self.client.post(
+            reverse("cabinet:appointment_edit", args=[self.apt_a.pk]),
+            {
+                "client_name": "Клиент",
+                "date": "2026-06-10",
+                "time_start": "14:00",
+                "cost": "1000",
+                "service": str(self.massage.pk),
+                # Пытаемся «отредактировать» чужого ребёнка по его pk
+                "extra_pk_0": str(self.child_b.pk),
+                "extra_service_0": str(self.extra.pk),
+                "extra_cost_0": "1",
+            },
+        )
+        self.assertEqual(r.status_code, 200)
+        # Чужая дочерняя запись не изменилась и осталась у своего родителя
+        self.child_b.refresh_from_db()
+        self.assertEqual(self.child_b.parent_id, self.apt_b.pk)
+        self.assertEqual(self.child_b.cost, Decimal("500"))
+        # У записи A появилась своя новая доп. услуга
+        children_a = list(self.apt_a.additional_services.all())
+        self.assertEqual(len(children_a), 1)
+        self.assertEqual(children_a[0].cost, Decimal("1"))

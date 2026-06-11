@@ -1,7 +1,7 @@
 import itertools
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.test import Client, TestCase
 
@@ -182,8 +182,12 @@ class WebhookViewTest(TestCase):
         )
 
     def test_valid_secret_ok(self):
-        resp = self._post(self.settings_obj.secret_token)
+        # Мокаем бота: get_bot регистрирует обработчики и ходит в живой
+        # Telegram API (set_my_commands), что в тестах недоступно.
+        with patch("tgbot.views.get_bot", return_value=make_bot()) as mocked:
+            resp = self._post(self.settings_obj.secret_token)
         self.assertEqual(resp.status_code, 200)
+        mocked.assert_called_once_with(self.settings_obj.token)
 
     def test_bad_secret_forbidden(self):
         resp = self._post("wrong")
@@ -194,3 +198,43 @@ class WebhookViewTest(TestCase):
         self.settings_obj.save()
         resp = self._post(self.settings_obj.secret_token)
         self.assertEqual(resp.status_code, 403)
+
+    def test_bad_path_forbidden(self):
+        resp = Client().post(
+            "/tg/webhook/wrong-path/",
+            data=json.dumps({"update_id": 1}),
+            content_type="application/json",
+            **{"HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN": self.settings_obj.secret_token},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_missing_secret_header_forbidden(self):
+        resp = Client().post(
+            self.url,
+            data=json.dumps({"update_id": 1}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_polling_mode_forbidden(self):
+        self.settings_obj.mode = BotSettings.MODE_POLLING
+        self.settings_obj.save()
+        resp = self._post(self.settings_obj.secret_token)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_get_not_allowed(self):
+        resp = Client().get(self.url)
+        self.assertEqual(resp.status_code, 405)
+
+
+class BroadcastFormatTest(TestCase):
+    def test_subject_and_text_are_escaped(self):
+        msg = botmod._format_broadcast_text("Акция <b>", "Скидка 10% на массаж <спина & шея>")
+        self.assertNotIn("<спина", msg)
+        self.assertNotIn("<b>\n", msg)  # инъекция тегов из темы не проходит
+        self.assertIn("&lt;спина &amp; шея&gt;", msg)
+        self.assertIn("<b>Акция &lt;b&gt;</b>", msg)
+
+    def test_without_subject_text_still_escaped(self):
+        msg = botmod._format_broadcast_text("", "1 < 2")
+        self.assertEqual(msg, "1 &lt; 2")
