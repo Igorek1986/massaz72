@@ -89,6 +89,7 @@
           <label class="form-label">{{ form.time_start.label }}<span class="form-req">*</span></label>
           {{ form.time_start }}
           {% if form.time_start.errors %}<span class="form-error">{{ form.time_start.errors.0 }}</span>{% endif %}
+          <span id="apt-end-time" class="form-hint apt-end-time" hidden></span>
         </div>
       </div>
 
@@ -130,6 +131,7 @@
 <script>
 (function () {
   var prices        = {{ service_prices|safe }};
+  var durations     = {{ service_durations|safe }};
   var availableSvcs = {{ available_services_json|safe }};
   var initialExtras = {{ extra_services_data|safe }};
   var extraCount    = 0;
@@ -142,8 +144,36 @@
   var discountAmt  = document.getElementById('id_discount_amount');
   var summaryEl    = document.getElementById('apt-cost-summary');
   var container    = document.getElementById('extra-services-container');
+  var timeEl       = document.getElementById('id_time_start');
+  var endEl        = document.getElementById('apt-end-time');
 
   if (!serviceEl || !costEl) return;
+
+  function totalDurationMinutes() {
+    var total = 0;
+    var mainDur = durations[serviceEl.value];
+    if (mainDur) total += mainDur;
+    container.querySelectorAll('.extra-svc-select').forEach(function(sel) {
+      var d = durations[sel.value];
+      if (d) total += d;
+    });
+    return total;
+  }
+
+  function updateEndTime() {
+    if (!timeEl || !endEl) return;
+    var t = timeEl.value;
+    var total = totalDurationMinutes();
+    if (!t || !total) { endEl.hidden = true; endEl.textContent = ''; return; }
+    var parts = t.split(':');
+    var start = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    var end = start + total;
+    var hh = Math.floor(end / 60) % 24;
+    var mm = end % 60;
+    var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+    endEl.textContent = 'Окончание: ' + pad(hh) + ':' + pad(mm) + ' (' + total + ' мин)';
+    endEl.hidden = false;
+  }
 
   function plural(n) {
     if (n % 10 === 1 && n % 100 !== 11) return '';
@@ -227,14 +257,17 @@
     select.addEventListener('change', function() {
       fillCost(this.value, costInp);
       updateSummary();
+      updateEndTime();
     });
     container.appendChild(div);
     updateSummary();
+    updateEndTime();
   };
 
   window.removeExtraSvc = function(btn) {
     btn.closest('.extra-service-row').remove();
     updateSummary();
+    updateEndTime();
   };
 
   // Refill all costs when either discount field changes
@@ -254,14 +287,17 @@
   serviceEl.addEventListener('change', function() {
     fillCost(this.value, costEl);
     updateSummary();
+    updateEndTime();
   });
   if (sessionsEl)  sessionsEl.addEventListener('input', updateSummary);
   if (transportEl) transportEl.addEventListener('input', updateSummary);
   costEl.addEventListener('input', updateSummary);
+  if (timeEl) timeEl.addEventListener('input', updateEndTime);
 
   // Initial fill
   if (!costEl.value && serviceEl.value) fillCost(serviceEl.value, costEl);
   updateSummary();
+  updateEndTime();
 
   // Pre-populate existing extra services (edit mode)
   initialExtras.forEach(function(es) {

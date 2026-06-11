@@ -23,7 +23,10 @@
   <ul class="apt-list">
     {% for apt in appointments %}
     <li class="apt-card apt-card--{{ apt.status }}">
-      <div class="apt-card__time">{{ apt.time_start|time:"H:i" }}</div>
+      <div class="apt-card__time">
+        {{ apt.time_start|time:"H:i" }}
+        <span class="apt-card__time-end">–{{ apt.end_time|time:"H:i" }}</span>
+      </div>
       <div class="apt-card__body">
         <div class="apt-card__name">{{ apt.client_name }}</div>
         {% if apt.service %}<div class="apt-card__service">{{ apt.service.name }}</div>{% endif %}

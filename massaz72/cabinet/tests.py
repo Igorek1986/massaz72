@@ -7,7 +7,7 @@ from django.urls import reverse
 from services.models import Massage
 from .forms import find_time_conflicts
 from .models import Appointment, AppointmentSeries, Specialist, WorkSchedule
-from .views import _next_series_working_day
+from .views import _appointment_end_time, _next_series_working_day
 
 User = get_user_model()
 
@@ -163,6 +163,48 @@ class FindTimeConflictsTest(TestCase):
             specialist=self.spec, extra_duration=30,
         )
         self.assertEqual(len(with_extra), 1)
+
+
+# ---------------------------------------------------------------------------
+# _appointment_end_time
+# ---------------------------------------------------------------------------
+
+class AppointmentEndTimeTest(TestCase):
+    def setUp(self):
+        self.spec = _make_specialist("endtime_spec")
+        self.day = date(2026, 6, 10)
+
+    def test_main_service_only(self):
+        massage = _make_massage("Спина", duration=60)
+        apt = _make_apt(self.spec, self.day, time(10, 0), service=massage)
+        self.assertEqual(_appointment_end_time(apt), time(11, 0))
+
+    def test_includes_additional_services(self):
+        massage = _make_massage("Спина", duration=60)
+        extra = _make_massage("Шея", duration=30)
+        apt = _make_apt(self.spec, self.day, time(10, 0), service=massage)
+        _make_apt(self.spec, self.day, time(11, 0), service=extra, parent=apt)
+        # 60 (main) + 30 (extra) = 90 min → 11:30
+        self.assertEqual(_appointment_end_time(apt), time(11, 30))
+
+    def test_no_service_returns_start(self):
+        apt = _make_apt(self.spec, self.day, time(10, 0), service=None)
+        self.assertEqual(_appointment_end_time(apt), time(10, 0))
+
+    def test_uses_duration_max(self):
+        massage = Massage.objects.create(
+            name="Диапазон", price=1000,
+            duration_min=30, duration_max=90, massage_type="ADULT",
+        )
+        apt = _make_apt(self.spec, self.day, time(10, 0), service=massage)
+        # duration_max (90) → 11:30
+        self.assertEqual(_appointment_end_time(apt), time(11, 30))
+
+    def test_crosses_midnight(self):
+        massage = _make_massage("Поздний", duration=90)
+        apt = _make_apt(self.spec, self.day, time(23, 0), service=massage)
+        # 23:00 + 90 min = 00:30 next day → time(0, 30)
+        self.assertEqual(_appointment_end_time(apt), time(0, 30))
 
 
 # ---------------------------------------------------------------------------

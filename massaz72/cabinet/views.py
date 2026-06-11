@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
@@ -76,6 +76,17 @@ def _series_dates(start: date, count: int, schedule: WorkSchedule, specialist: S
     return dates
 
 
+def _appointment_end_time(apt) -> time:
+    """Время окончания визита: старт + основная услуга + доп. услуги (использует prefetch)."""
+    minutes = 0
+    if apt.service:
+        minutes += apt.service.duration_max or apt.service.duration_min or 0
+    for child in apt.additional_services.all():
+        if child.service:
+            minutes += child.service.duration_max or child.service.duration_min or 0
+    return (datetime.combine(apt.date, apt.time_start) + timedelta(minutes=minutes)).time()
+
+
 def _day_context(selected_date: date, specialist: Specialist) -> dict:
     appointments = (
         Appointment.objects.filter(date=selected_date, specialist=specialist, parent__isnull=True)
@@ -89,10 +100,11 @@ def _day_context(selected_date: date, specialist: Specialist) -> dict:
     exceptions = ScheduleException.objects.filter(
         specialist=specialist, date_from__lte=selected_date, date_to__gte=selected_date
     )
-    # compute total_visit_cost for each appointment
+    # compute total_visit_cost and end time for each appointment
     for apt in appointments:
         extra = sum(c.cost for c in apt.additional_services.all())
         apt.total_visit_cost = apt.cost + extra + (apt.transport_cost or Decimal("0"))
+        apt.end_time = _appointment_end_time(apt)
     return {
         "selected_date": selected_date,
         "date_str": selected_date.isoformat(),
@@ -201,11 +213,13 @@ def _apt_form_context(specialist, date_str, form, appointment=None, extra_servic
     today = timezone.localdate()
     active_discount = Discount.objects.filter(date_from__lte=today, date_to__gte=today).first()
     service_prices = {}
+    service_durations = {}
     for m in Massage.objects.filter(is_archived=False):
         price = int(m.price)
         if active_discount:
             price = int(active_discount.apply_to(m.price))
         service_prices[m.pk] = price
+        service_durations[m.pk] = m.duration_max or m.duration_min or 0
     available_services = list(
         Massage.objects.filter(is_archived=False).values("pk", "name").order_by("name")
     )
@@ -215,6 +229,7 @@ def _apt_form_context(specialist, date_str, form, appointment=None, extra_servic
         "date_str": date_str,
         "appointment": appointment,
         "service_prices": json.dumps(service_prices),
+        "service_durations": json.dumps(service_durations),
         "available_services_json": available_services_json,
         "extra_services_data": json.dumps(extra_services_data or []),
     }
