@@ -1492,4 +1492,12 @@ body.cabinet-body {
   .price-list__readonly {
     margin-left: auto;
   }
+
+  // Карточка услуги: название отдельной строкой сверху, остальное — ниже
+  .settings-list__item--service {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+
+    .settings-list__name { flex: 1 0 100%; }
+  }
 }

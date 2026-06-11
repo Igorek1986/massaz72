@@ -1159,4 +1159,9 @@ body.cabinet-body {
     flex: 1 0 100%; }
   .price-list__input-wrap,
   .price-list__readonly {
-    margin-left: auto; } }
+    margin-left: auto; }
+  .settings-list__item--service {
+    flex-wrap: wrap;
+    gap: 8px 10px; }
+    .settings-list__item--service .settings-list__name {
+      flex: 1 0 100%; } }

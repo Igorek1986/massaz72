@@ -9,7 +9,7 @@
 {% if all_massages %}
 <ul class="settings-list">
   {% for m in all_massages %}
-  <li class="settings-list__item{% if m.is_archived %} settings-list__item--archived{% endif %}">
+  <li class="settings-list__item settings-list__item--service{% if m.is_archived %} settings-list__item--archived{% endif %}">
     <span class="settings-list__name">{{ m.name }}</span>
     <span class="settings-list__type">{{ m.get_massage_type_display }}</span>
     <span class="settings-list__price">{{ m.price|floatformat:0 }} ₽</span>
