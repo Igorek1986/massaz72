@@ -62,14 +62,15 @@
       </div>
 
       {# ---- Скидка + Транспорт ---- #}
-      <div class="form-field">
-        <label class="form-label">{{ form.discount_percent.label }}</label>
-        {{ form.discount_percent }}
-      </div>
-
-      <div class="form-field">
-        <label class="form-label">{{ form.discount_amount.label }}</label>
-        {{ form.discount_amount }}
+      <div class="form-field form-field--full form-field--discounts">
+        <div class="form-field">
+          <label class="form-label">{{ form.discount_percent.label }}</label>
+          {{ form.discount_percent }}
+        </div>
+        <div class="form-field">
+          <label class="form-label">{{ form.discount_amount.label }}</label>
+          {{ form.discount_amount }}
+        </div>
       </div>
 
       <div class="form-field form-field--full">
@@ -274,8 +275,18 @@
     updateEndTime();
   };
 
+  // Скидка в % — не больше 100 (3 цифры допустимы только для ровно 100)
+  function clampPercent() {
+    if (!discountEl || discountEl.value === '') return;
+    var p = parseInt(discountEl.value, 10);
+    if (isNaN(p)) { discountEl.value = ''; return; }
+    if (p > 100) discountEl.value = '100';
+    else if (p < 0) discountEl.value = '0';
+  }
+
   // Refill all costs when either discount field changes
   function onDiscountChange() {
+    clampPercent();
     if (serviceEl.value) fillCost(serviceEl.value, costEl);
     container.querySelectorAll('.extra-service-row').forEach(function(row) {
       var sel = row.querySelector('.extra-svc-select');

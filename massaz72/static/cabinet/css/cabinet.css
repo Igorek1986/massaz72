@@ -637,6 +637,16 @@ body.cabinet-body {
     gap: 12px; }
     .form-field--dt > .form-field {
       flex: 1; }
+  .form-field--discounts {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px; }
+    .form-field--discounts > .form-field {
+      flex: 0 0 auto; }
+    .form-field--discounts #id_discount_percent {
+      width: 84px; }
+    .form-field--discounts #id_discount_amount {
+      width: 116px; }
   .form-field__row {
     display: flex;
     align-items: center;

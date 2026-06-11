@@ -801,6 +801,18 @@ body.cabinet-body {
     > .form-field { flex: 1; }
   }
 
+  // Скидки % и ₽ — компактные поля в одну строку (включая мобильную версию)
+  &--discounts {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+
+    > .form-field { flex: 0 0 auto; }
+
+    #id_discount_percent { width: 84px; }
+    #id_discount_amount  { width: 116px; }
+  }
+
   &__row {
     display: flex;
     align-items: center;
