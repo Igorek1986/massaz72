@@ -592,18 +592,15 @@ body.cabinet-body {
   }
 }
 
-// ===== Appointment badge =====
-.apt-badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+// ===== Appointment status icon (flat, no background) =====
+.apt-status {
+  font-size: 16px;
+  line-height: 1;
+  cursor: default;
 
-  &--scheduled { background: #dbeafe; color: #1d4ed8; }
-  &--completed { background: #dcfce7; color: #15803d; }
-  &--cancelled { background: #f3f4f6; color: #6b7280; }
+  &--scheduled { color: #1d4ed8; }
+  &--completed { color: #15803d; font-weight: 700; }
+  &--cancelled { color: #6b7280; font-weight: 700; }
 }
 
 // ===== Appointment action buttons =====

@@ -51,7 +51,7 @@
           {% if apt.transport_cost %}
           <div class="apt-card__transport">вкл. {{ apt.transport_cost }} ₽ дорога</div>
           {% endif %}
-          <span class="apt-badge apt-badge--{{ apt.status }}">{{ apt.get_status_display }}</span>
+          <span class="apt-status apt-status--{{ apt.status }}" title="{{ apt.get_status_display }}" aria-label="{{ apt.get_status_display }}">{% if apt.status == 'scheduled' %}🕑{% elif apt.status == 'completed' %}✓{% else %}✕{% endif %}</span>
         </div>
       </div>
       <div class="apt-card__actions">

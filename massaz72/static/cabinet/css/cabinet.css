@@ -453,22 +453,18 @@ body.cabinet-body {
     padding-top: 8px;
     border-top: 1px solid var(--cab-border); }
 
-.apt-badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em; }
-  .apt-badge--scheduled {
-    background: #dbeafe;
+.apt-status {
+  font-size: 16px;
+  line-height: 1;
+  cursor: default; }
+  .apt-status--scheduled {
     color: #1d4ed8; }
-  .apt-badge--completed {
-    background: #dcfce7;
-    color: #15803d; }
-  .apt-badge--cancelled {
-    background: #f3f4f6;
-    color: #6b7280; }
+  .apt-status--completed {
+    color: #15803d;
+    font-weight: 700; }
+  .apt-status--cancelled {
+    color: #6b7280;
+    font-weight: 700; }
 
 .apt-btn {
   width: 30px;
