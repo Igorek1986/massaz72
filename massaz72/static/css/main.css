@@ -537,6 +537,13 @@ a {
   color: #16a34a;
   font-weight: 700; }
 
+.price-promo-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #16a34a;
+  font-weight: 500; }
+
 .massage__book {
   display: flex;
   flex-direction: column;
@@ -706,16 +713,14 @@ a {
     border-radius: 50%;
     background-color: var(--color-on-primary);
     color: var(--color-primary);
-    font-size: 18px;
-    font-weight: 800;
-    line-height: 1;
     box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
     animation: price-notice-pulse 2s ease-out infinite; }
+    .price-notice__icon svg {
+      display: block; }
     @media (max-width: 767px) {
       .price-notice__icon {
         width: 26px;
-        height: 26px;
-        font-size: 16px; } }
+        height: 26px; } }
 @keyframes price-notice-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
@@ -796,6 +801,25 @@ a {
     font-weight: 600;
     line-height: 1.3;
     color: var(--color-ink); }
+  .service-card__promo {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #16a34a; }
+  .service-card__price {
+    margin: 4px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-ink); }
+    .service-card__price .price-original {
+      color: var(--color-muted);
+      text-decoration: line-through;
+      margin-right: 4px;
+      font-size: 0.9em; }
+    .service-card__price .price-discounted {
+      color: #16a34a;
+      font-weight: 700; }
 
 .service__image {
   position: relative;
