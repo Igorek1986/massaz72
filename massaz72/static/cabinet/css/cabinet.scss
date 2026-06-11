@@ -1477,4 +1477,19 @@ body.cabinet-body {
     height: 42px;
     font-size: 18px;
   }
+
+  // Карточка цены: название отдельной строкой сверху, остальное — ниже
+  .price-list__item {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .price-list__name {
+    flex: 1 0 100%;
+  }
+
+  .price-list__input-wrap,
+  .price-list__readonly {
+    margin-left: auto;
+  }
 }

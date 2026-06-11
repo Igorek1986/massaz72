@@ -1151,4 +1151,12 @@ body.cabinet-body {
   .apt-btn {
     width: 42px;
     height: 42px;
-    font-size: 18px; } }
+    font-size: 18px; }
+  .price-list__item {
+    flex-wrap: wrap;
+    gap: 8px 10px; }
+  .price-list__name {
+    flex: 1 0 100%; }
+  .price-list__input-wrap,
+  .price-list__readonly {
+    margin-left: auto; } }
