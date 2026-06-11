@@ -1119,6 +1119,12 @@ def discount_edit(request, pk: int):
 
 
 @prices_manager_required
+def discount_confirm_delete(request, pk: int):
+    discount = get_object_or_404(Discount, pk=pk)
+    return render(request, "cabinet/partials/discount_confirm_delete.html", {"discount": discount})
+
+
+@prices_manager_required
 @require_POST
 def discount_delete(request, pk: int):
     get_object_or_404(Discount, pk=pk).delete()

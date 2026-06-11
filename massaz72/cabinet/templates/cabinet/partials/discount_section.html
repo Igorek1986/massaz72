@@ -28,10 +28,9 @@
               hx-target="#cabinet-modal"
               hx-swap="innerHTML">✎</button>
       <button class="apt-btn apt-btn--del" title="Удалить"
-              hx-post="{% url 'cabinet:discount_delete' d.pk %}"
-              hx-target="#discounts-section"
-              hx-swap="innerHTML"
-              hx-confirm="Удалить скидку?">✕</button>
+              hx-get="{% url 'cabinet:discount_confirm_delete' d.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">✕</button>
     </div>
     {% endif %}
   </li>

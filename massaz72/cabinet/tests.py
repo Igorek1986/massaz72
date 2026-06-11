@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from services.models import Massage
 from .forms import find_time_conflicts
-from .models import Appointment, AppointmentSeries, Specialist, WorkSchedule
+from .models import Appointment, AppointmentSeries, Discount, Specialist, WorkSchedule
 from .views import _appointment_end_time, _next_series_working_day
 
 User = get_user_model()
@@ -540,3 +540,41 @@ class SeriesRescheduleTest(TestCase):
         r = self.client.get(self._url(apts[0].pk))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "2026-06-15")
+
+
+# ---------------------------------------------------------------------------
+# discount_confirm_delete / discount_delete
+# ---------------------------------------------------------------------------
+
+class DiscountDeleteTest(TestCase):
+    def setUp(self):
+        self.spec = _make_specialist("discount_spec")
+        self.discount = Discount.objects.create(
+            discount_type="percentage", value=15,
+            date_from=date(2026, 6, 1), date_to=date(2026, 6, 30),
+        )
+        self.client.force_login(self.spec.user)
+
+    def test_confirm_renders_custom_modal(self):
+        r = self.client.get(reverse("cabinet:discount_confirm_delete", args=[self.discount.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Удалить скидку?")
+        # Кнопка подтверждения постит на discount_delete — модалка в нашем стиле
+        self.assertContains(r, reverse("cabinet:discount_delete", args=[self.discount.pk]))
+        self.assertContains(r, "apt-form--confirm")
+        # Скидка ещё на месте — GET ничего не удаляет
+        self.assertTrue(Discount.objects.filter(pk=self.discount.pk).exists())
+
+    def test_delete_removes_discount_and_closes_modal(self):
+        r = self.client.post(reverse("cabinet:discount_delete", args=[self.discount.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Discount.objects.filter(pk=self.discount.pk).exists())
+        # OOB-закрытие модалки + ретаргет секции скидок
+        self.assertEqual(r["HX-Retarget"], "#discounts-section")
+        self.assertIn('id="cabinet-modal"', r.content.decode())
+
+    def test_confirm_requires_manage_prices(self):
+        self.spec.can_manage_prices = False
+        self.spec.save(update_fields=["can_manage_prices"])
+        r = self.client.get(reverse("cabinet:discount_confirm_delete", args=[self.discount.pk]))
+        self.assertEqual(r.status_code, 403)

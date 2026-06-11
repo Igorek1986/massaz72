@@ -36,6 +36,7 @@ urlpatterns = [
     path("prices/apply-change/", views.prices_apply_change, name="prices_apply_change"),
     path("prices/discounts/add/", views.discount_add, name="discount_add"),
     path("prices/discounts/<int:pk>/edit/", views.discount_edit, name="discount_edit"),
+    path("prices/discounts/<int:pk>/confirm-delete/", views.discount_confirm_delete, name="discount_confirm_delete"),
     path("prices/discounts/<int:pk>/delete/", views.discount_delete, name="discount_delete"),
     path("prices/massages/add/", views.massage_add, name="massage_add"),
     path("prices/massages/<int:pk>/edit/", views.massage_edit, name="massage_edit"),

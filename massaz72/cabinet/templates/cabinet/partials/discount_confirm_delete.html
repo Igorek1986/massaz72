@@ -1,0 +1,23 @@
+<div class="apt-form apt-form--confirm">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">Удалить скидку?</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('cabinet-modal').innerHTML=''">✕</button>
+  </div>
+  <p class="apt-form__confirm-name">
+    {{ discount.date_from|date:"d.m.Y" }} – {{ discount.date_to|date:"d.m.Y" }}
+  </p>
+  <p class="apt-form__confirm-note">
+    {% if discount.discount_type == 'percentage' %}{{ discount.value|floatformat:0 }}%{% else %}{{ discount.value|floatformat:0 }} ₽{% endif %}{% if discount.description %} — {{ discount.description }}{% endif %}
+  </p>
+  <form hx-post="{% url 'cabinet:discount_delete' discount.pk %}"
+        hx-target="#discounts-section"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('cabinet-modal').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--danger">Удалить</button>
+    </div>
+  </form>
+</div>
