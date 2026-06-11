@@ -1438,10 +1438,6 @@ body.cabinet-body {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .form-field--dt {
-    flex-direction: column;
-  }
-
   // iOS не зумит поле при фокусе, если font-size ≥ 16px
   .form-input {
     font-size: 16px;

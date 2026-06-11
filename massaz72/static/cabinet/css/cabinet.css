@@ -1132,8 +1132,6 @@ body.cabinet-body {
   .form-grid,
   .form-grid--3 {
     grid-template-columns: minmax(0, 1fr); }
-  .form-field--dt {
-    flex-direction: column; }
   .form-input {
     font-size: 16px; }
   #cabinet-modal {
