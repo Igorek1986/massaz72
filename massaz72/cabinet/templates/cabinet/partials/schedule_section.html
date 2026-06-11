@@ -1,3 +1,4 @@
+{% load main_tags %}
 <div class="settings-card__header">
   <h2 class="settings-card__title">Рабочие дни</h2>
   {% if saved %}<span class="settings-saved">Сохранено ✓</span>{% endif %}
@@ -10,9 +11,9 @@
   <div class="work-days">
     {% for field in schedule_form %}
     {% if field.field.widget.input_type == 'checkbox' %}
-    <label class="day-toggle">
+    <label class="day-toggle" title="{{ field.label }}">
       {{ field }}
-      <span class="day-toggle__label">{{ field.label }}</span>
+      <span class="day-toggle__label">{{ field.name|weekday_short }}</span>
     </label>
     {% endif %}
     {% endfor %}

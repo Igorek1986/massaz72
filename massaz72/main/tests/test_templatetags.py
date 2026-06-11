@@ -1,8 +1,17 @@
 from django.test import SimpleTestCase
 
-from main.templatetags.main_tags import russian_plural
+from main.templatetags.main_tags import russian_plural, weekday_short
 
 MASSAGE = "массаж,массажа,массажей"
+
+
+class WeekdayShortTest(SimpleTestCase):
+    def test_known_days(self):
+        self.assertEqual(weekday_short("monday"), "Пн")
+        self.assertEqual(weekday_short("sunday"), "Вс")
+
+    def test_unknown_returns_input(self):
+        self.assertEqual(weekday_short("break_between_minutes"), "break_between_minutes")
 
 
 class RussianPluralTest(SimpleTestCase):

@@ -20,6 +20,18 @@ def apply_discount(price, discount):
     return discount.apply_to(Decimal(str(price)))
 
 
+WEEKDAY_SHORT = {
+    "monday": "Пн", "tuesday": "Вт", "wednesday": "Ср", "thursday": "Чт",
+    "friday": "Пт", "saturday": "Сб", "sunday": "Вс",
+}
+
+
+@register.filter
+def weekday_short(name: str) -> str:
+    """Короткое имя дня недели по имени поля: monday → Пн. Иначе вернуть как есть."""
+    return WEEKDAY_SHORT.get(name, name)
+
+
 @register.filter
 def russian_plural(n, forms: str) -> str:
     """Выбрать форму слова по числу. Использование:
