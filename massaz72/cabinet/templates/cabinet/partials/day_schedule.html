@@ -51,7 +51,7 @@
           {% if apt.transport_cost %}
           <div class="apt-card__transport">вкл. {{ apt.transport_cost }} ₽ дорога</div>
           {% endif %}
-          <span class="apt-status apt-status--{{ apt.status }}" title="{{ apt.get_status_display }}" aria-label="{{ apt.get_status_display }}">{% if apt.status == 'scheduled' %}🕑{% elif apt.status == 'completed' %}✓{% else %}✕{% endif %}</span>
+          <span class="apt-status apt-status--{{ apt.status }}" title="{{ apt.get_status_display }}" aria-label="{{ apt.get_status_display }}">{% if apt.status == 'scheduled' %}<svg class="apt-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.5"/></svg>{% elif apt.status == 'completed' %}✓{% else %}✕{% endif %}</span>
         </div>
       </div>
       <div class="apt-card__actions">

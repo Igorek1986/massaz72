@@ -454,9 +454,15 @@ body.cabinet-body {
     border-top: 1px solid var(--cab-border); }
 
 .apt-status {
+  display: inline-flex;
+  align-items: center;
   font-size: 16px;
   line-height: 1;
   cursor: default; }
+  .apt-status__icon {
+    width: 17px;
+    height: 17px;
+    display: block; }
   .apt-status--scheduled {
     color: #1d4ed8; }
   .apt-status--completed {
