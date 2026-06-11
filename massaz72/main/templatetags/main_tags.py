@@ -18,3 +18,24 @@ def apply_discount(price, discount):
     if not discount or price is None:
         return price
     return discount.apply_to(Decimal(str(price)))
+
+
+@register.filter
+def russian_plural(n, forms: str) -> str:
+    """Выбрать форму слова по числу. Использование:
+    {{ n }} {{ n|russian_plural:"массаж,массажа,массажей" }}
+
+    forms — три формы через запятую: для 1, для 2–4, для 0/5–20.
+    """
+    one, few, many = (f.strip() for f in forms.split(","))
+    try:
+        n = abs(int(n))
+    except (TypeError, ValueError):
+        return many
+    if n % 100 in (11, 12, 13, 14):
+        return many
+    if n % 10 == 1:
+        return one
+    if n % 10 in (2, 3, 4):
+        return few
+    return many

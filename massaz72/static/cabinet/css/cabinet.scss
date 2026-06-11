@@ -489,7 +489,8 @@ body.cabinet-body {
 
 .apt-card {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--cab-border);
   transition: background 0.1s;
@@ -500,15 +501,23 @@ body.cabinet-body {
   &--completed { opacity: 0.6; }
   &--cancelled { opacity: 0.4; text-decoration: line-through; }
 
+  &__top {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
   &__time {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--cab-primary);
-    min-width: 44px;
+    min-width: 50px;
     padding-top: 2px;
     display: flex;
     flex-direction: column;
-    line-height: 1.3;
+    align-items: center;
+    text-align: center;
+    line-height: 1.35;
   }
 
   &__time-end {
@@ -540,9 +549,13 @@ body.cabinet-body {
     text-overflow: ellipsis;
   }
 
+  &__series {
+    color: var(--cab-primary);
+    font-weight: 600;
+  }
+
   &__travel {
     display: inline-block;
-    margin-top: 3px;
     font-size: 10px;
     font-weight: 600;
     color: #0369a1;
@@ -572,8 +585,10 @@ body.cabinet-body {
 
   &__actions {
     display: flex;
-    gap: 4px;
-    margin-top: 4px;
+    gap: 6px;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid var(--cab-border);
   }
 }
 
@@ -593,13 +608,13 @@ body.cabinet-body {
 
 // ===== Appointment action buttons =====
 .apt-btn {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--cab-border);
   border-radius: 6px;
   background: var(--cab-surface);
   color: var(--cab-muted);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1301,20 +1316,23 @@ body.cabinet-body {
 
 // ===== Grouped appointment display in schedule =====
 .apt-card__extras {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255,255,255,0.2);
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .apt-card__extra-item {
   font-size: 12px;
-  opacity: 0.9;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  color: var(--cab-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &::before {
+    content: "+ ";
+    color: var(--cab-primary);
+  }
 }
 
 // ===== Series cancel: services checkboxes =====
@@ -1442,5 +1460,16 @@ body.cabinet-body {
       font-size: 11px;
       padding: 4px 2px;
     }
+  }
+
+  // Крупнее кнопки действий записи на мобильном — удобнее попадать пальцем
+  .apt-card__actions {
+    gap: 10px;
+  }
+
+  .apt-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
   }
 }
