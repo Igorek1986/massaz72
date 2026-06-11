@@ -213,8 +213,11 @@ logs_dir.mkdir(parents=True, exist_ok=True)
 
 LOGLEVEL = getenv("DJANGO_LOGLEVEL", "info").upper()
 LOGFILE = getenv("LOGFILE_NAME", "log.txt")
-LOGFILE_SIZE = int(getenv("LOGFILE_SIZE", "10485760"))
-LOGFILE_COUNT = getenv("LOGFILE_COUNT", "3")
+# RotatingFileHandler сравнивает maxBytes/backupCount как числа (при ротации
+# делает backupCount > 0), поэтому оба параметра обязаны быть int. `… or "default"`
+# страхует от пустой переменной в .env — иначе int("") уронит загрузку настроек.
+LOGFILE_SIZE = int(getenv("LOGFILE_SIZE") or "10485760")
+LOGFILE_COUNT = int(getenv("LOGFILE_COUNT") or "3")
 LOGFILE_PATH = BASE_DIR / "logs" / LOGFILE
 
 logging.config.dictConfig(
