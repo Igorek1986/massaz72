@@ -798,7 +798,13 @@ body.cabinet-body {
     align-items: flex-start;
     gap: 12px;
 
-    > .form-field { flex: 1; }
+    > .form-field { flex: 0 0 auto; min-width: 0; }
+
+    // одинаковая высота, даже когда время не заполнено (нативный пустой пикер ниже)
+    #id_date,
+    #id_time_start { height: 38px; }
+    #id_date       { width: 150px; }
+    #id_time_start { width: 110px; }
   }
 
   // Скидки % и ₽ — компактные поля в одну строку (включая мобильную версию)
@@ -813,11 +819,28 @@ body.cabinet-body {
     #id_discount_amount  { width: 116px; }
   }
 
+  // Транспорт — заголовок слева, компактное поле справа
+  &--transport {
+    #id_transport_cost { width: 116px; flex: 0 0 auto; }
+  }
+
   &__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+  }
+}
+
+// iOS Safari: пустой нативный пикер ниже заполненного. Снимаем нативный вид,
+// чтобы высота управлялась через CSS и была одинаковой; пикер по тапу остаётся.
+@supports (-webkit-touch-callout: none) {
+  .form-field--dt #id_date,
+  .form-field--dt #id_time_start {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 38px;
+    line-height: 1.2;
   }
 }
 
@@ -1441,6 +1464,14 @@ body.cabinet-body {
   // iOS не зумит поле при фокусе, если font-size ≥ 16px
   .form-input {
     font-size: 16px;
+  }
+
+  // iOS: компактные нативные пикеры (фикс. ширины заданы на инпутах выше).
+  // Шрифт < 16px тут безопасен: date/time открывают пикер, а не клавиатуру (без зума).
+  .form-field--dt .form-input {
+    font-size: 14px;
+    padding-left: 6px;
+    padding-right: 6px;
   }
 
   // Модалка снизу (bottom sheet) — без горизонтального скролла

@@ -636,7 +636,15 @@ body.cabinet-body {
     align-items: flex-start;
     gap: 12px; }
     .form-field--dt > .form-field {
-      flex: 1; }
+      flex: 0 0 auto;
+      min-width: 0; }
+    .form-field--dt #id_date,
+    .form-field--dt #id_time_start {
+      height: 38px; }
+    .form-field--dt #id_date {
+      width: 150px; }
+    .form-field--dt #id_time_start {
+      width: 110px; }
   .form-field--discounts {
     flex-direction: row;
     align-items: flex-start;
@@ -647,11 +655,22 @@ body.cabinet-body {
       width: 84px; }
     .form-field--discounts #id_discount_amount {
       width: 116px; }
+  .form-field--transport #id_transport_cost {
+    width: 116px;
+    flex: 0 0 auto; }
   .form-field__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px; }
+
+@supports (-webkit-touch-callout: none) {
+  .form-field--dt #id_date,
+  .form-field--dt #id_time_start {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 38px;
+    line-height: 1.2; } }
 
 .form-label {
   font-size: 12px;
@@ -1134,6 +1153,10 @@ body.cabinet-body {
     grid-template-columns: minmax(0, 1fr); }
   .form-input {
     font-size: 16px; }
+  .form-field--dt .form-input {
+    font-size: 14px;
+    padding-left: 6px;
+    padding-right: 6px; }
   #cabinet-modal {
     padding: 0;
     align-items: flex-end;

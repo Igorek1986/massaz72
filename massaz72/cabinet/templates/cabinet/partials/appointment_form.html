@@ -61,7 +61,16 @@
         <button type="button" class="btn--add-service" onclick="addExtraSvcRow()">+ Доп. услуга</button>
       </div>
 
-      {# ---- Скидка + Транспорт ---- #}
+      {# ---- Транспорт: слева заголовок, справа поле ---- #}
+      <div class="form-field form-field--full form-field--transport">
+        <div class="form-field__row">
+          <label class="form-label">{{ form.transport_cost.label }}</label>
+          {{ form.transport_cost }}
+        </div>
+        <span class="form-hint">Проезд до клиента, необязательно</span>
+      </div>
+
+      {# ---- Скидка ---- #}
       <div class="form-field form-field--full form-field--discounts">
         <div class="form-field">
           <label class="form-label">{{ form.discount_percent.label }}</label>
@@ -71,12 +80,6 @@
           <label class="form-label">{{ form.discount_amount.label }}</label>
           {{ form.discount_amount }}
         </div>
-      </div>
-
-      <div class="form-field form-field--full">
-        <label class="form-label">{{ form.transport_cost.label }}</label>
-        {{ form.transport_cost }}
-        <span class="form-hint">Проезд до клиента, необязательно</span>
       </div>
 
       {# ---- Дата и время ---- #}
@@ -90,9 +93,9 @@
           <label class="form-label">{{ form.time_start.label }}<span class="form-req">*</span></label>
           {{ form.time_start }}
           {% if form.time_start.errors %}<span class="form-error">{{ form.time_start.errors.0 }}</span>{% endif %}
-          <span id="apt-end-time" class="form-hint apt-end-time" hidden></span>
         </div>
       </div>
+      <span id="apt-end-time" class="form-hint apt-end-time form-field--full" hidden></span>
 
       {% if not appointment %}
       <div class="form-field">
