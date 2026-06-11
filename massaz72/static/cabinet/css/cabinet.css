@@ -752,7 +752,9 @@ body.cabinet-body {
     font-size: 15px;
     font-weight: 600; }
   .settings-card__footer {
-    padding: 12px 20px 16px; }
+    padding: 12px 20px 16px;
+    display: flex;
+    justify-content: flex-end; }
 
 .settings-saved {
   font-size: 12px;
@@ -912,10 +914,13 @@ body.cabinet-body {
   .price-list__input-wrap {
     display: flex;
     align-items: center;
-    gap: 4px; }
+    gap: 4px;
+    flex-shrink: 0; }
   .price-list__input {
     width: 90px;
     text-align: right; }
+    .price-list__input::placeholder {
+      text-align: center; }
   .price-list__currency {
     font-size: 13px;
     color: var(--cab-muted); }
@@ -923,7 +928,9 @@ body.cabinet-body {
     font-size: 12px;
     color: #16a34a;
     font-weight: 600;
-    white-space: nowrap; }
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: right; }
     .price-list__discounted s {
       color: var(--cab-muted); }
   .price-list__readonly {
@@ -1160,6 +1167,8 @@ body.cabinet-body {
   .price-list__input-wrap,
   .price-list__readonly {
     margin-left: auto; }
+  .price-list__input {
+    width: 110px; }
   .settings-list__item--service {
     flex-wrap: wrap;
     gap: 8px 10px; }

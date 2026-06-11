@@ -57,3 +57,42 @@
   {% endfor %}
 </ul>
 {% endif %}
+
+<script>
+(function () {
+  var section = document.getElementById('price-list-section');
+  if (!section) return;
+
+  // Колонка «скидка» — одинаковой ширины = самому широкому значению
+  var disc = section.querySelectorAll('.price-list__discounted');
+  if (disc.length) {
+    var dmax = 0;
+    disc.forEach(function (el) { el.style.minWidth = ''; });
+    disc.forEach(function (el) { if (el.offsetWidth > dmax) dmax = el.offsetWidth; });
+    disc.forEach(function (el) { el.style.minWidth = dmax + 'px'; });
+  }
+
+  // Поля ввода — ширина по самому длинному значению (ровно и без обрезания)
+  var inputs = section.querySelectorAll('.price-list__input');
+  if (inputs.length) {
+    var cs = getComputedStyle(inputs[0]);
+    var probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre';
+    probe.style.fontFamily = cs.fontFamily;
+    probe.style.fontSize = cs.fontSize;
+    probe.style.fontWeight = cs.fontWeight;
+    probe.style.letterSpacing = cs.letterSpacing;
+    document.body.appendChild(probe);
+    var imax = 0;
+    inputs.forEach(function (inp) {
+      probe.textContent = inp.value || inp.placeholder || '';
+      if (probe.offsetWidth > imax) imax = probe.offsetWidth;
+    });
+    document.body.removeChild(probe);
+    var extra = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+              + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth) + 10;
+    var w = Math.ceil(imax + extra);
+    inputs.forEach(function (inp) { inp.style.width = w + 'px'; });
+  }
+})();
+</script>
