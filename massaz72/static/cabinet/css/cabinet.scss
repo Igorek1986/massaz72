@@ -1364,7 +1364,9 @@ body.cabinet-body {
 }
 
 // ===== Responsive =====
-@media (max-width: 768px) {
+// Мобильная вёрстка: узкие экраны + телефоны в ландшафте (низкая высота).
+// Планшеты в ландшафте имеют высоту ≥ 768px и сюда не попадают.
+@media (max-width: 768px), (max-height: 600px) and (orientation: landscape) {
   .mobile-topbar {
     display: flex;
     align-items: center;

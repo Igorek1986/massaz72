@@ -1082,7 +1082,7 @@ body.cabinet-body {
   color: var(--cab-muted);
   margin: 0 0 4px; }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 600px) and (orientation: landscape) {
   .mobile-topbar {
     display: flex;
     align-items: center;
