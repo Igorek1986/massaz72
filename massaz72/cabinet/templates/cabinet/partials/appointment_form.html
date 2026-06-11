@@ -130,6 +130,10 @@
 
 <script>
 (function () {
+  // Фокус на поле «Имя» сразу при открытии формы
+  var nameEl = document.getElementById('id_client_name');
+  if (nameEl) requestAnimationFrame(function () { nameEl.focus(); });
+
   var prices        = {{ service_prices|safe }};
   var durations     = {{ service_durations|safe }};
   var availableSvcs = {{ available_services_json|safe }};

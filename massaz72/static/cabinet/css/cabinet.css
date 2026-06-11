@@ -1124,6 +1124,8 @@ body.cabinet-body {
     grid-template-columns: minmax(0, 1fr); }
   .form-field--dt {
     flex-direction: column; }
+  .form-input {
+    font-size: 16px; }
   #cabinet-modal {
     padding: 0;
     align-items: flex-end;
