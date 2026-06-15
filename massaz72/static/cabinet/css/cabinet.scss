@@ -1199,9 +1199,10 @@ body.cabinet-body {
   }
 
   &__input {
-    width: 90px;
+    width: 110px;
     text-align: right;
 
+    // placeholder «новая цена» не помещается в узкое поле
     &::placeholder { text-align: center; }
   }
 

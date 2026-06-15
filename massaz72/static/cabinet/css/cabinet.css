@@ -946,7 +946,7 @@ body.cabinet-body {
     gap: 4px;
     flex-shrink: 0; }
   .price-list__input {
-    width: 90px;
+    width: 110px;
     text-align: right; }
     .price-list__input::placeholder {
       text-align: center; }
