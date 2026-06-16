@@ -272,6 +272,21 @@ class CabinetBookingTest(TestCase):
         self.booking.refresh_from_db()
         self.assertEqual(self.booking.status, BookingRequest.Status.DECLINED)
 
+    def test_confirm_assigns_to_requested_specialist(self):
+        """Подтверждающий (напр. главный) создаёт запись выбранному в заявке
+        мастеру, а не себе."""
+        other = make_specialist("other2", "Другой мастер")
+        self.booking.specialist = other
+        self.booking.save()
+        self._login()  # логинимся как self.specialist (не «Другой мастер»)
+        self.client.post(
+            reverse("cabinet:booking_request_confirm", args=[self.booking.pk]),
+            {"status": "pending", "date": future_date().isoformat(),
+             "time": "13:30", "cost": "1500"},
+        )
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.appointment.specialist, other)
+
     def test_confirm_requires_post(self):
         self._login()
         resp = self.client.get(

@@ -23,13 +23,14 @@
   {% if appointments %}
   <ul class="apt-list">
     {% for apt in appointments %}
-    <li class="apt-card apt-card--{{ apt.status }}">
+    <li class="apt-card apt-card--{{ apt.status }}{% if not apt.is_own %} apt-card--other{% endif %}">
       <div class="apt-card__top">
         <div class="apt-card__time">
           {{ apt.time_start|time:"H:i" }}
           <span class="apt-card__time-end">{{ apt.end_time|time:"H:i" }}</span>
         </div>
         <div class="apt-card__body">
+          {% if has_subordinates %}<div class="apt-card__specialist{% if not apt.is_own %} apt-card__specialist--other{% endif %}">{{ apt.specialist.name }}</div>{% endif %}
           <div class="apt-card__name">{{ apt.client_name }}</div>
           {% if apt.series %}<div class="apt-card__series">{{ apt.series.total_sessions }} {{ apt.series.total_sessions|russian_plural:"массаж,массажа,массажей" }}</div>{% endif %}
           {% if apt.service %}<div class="apt-card__service">{{ apt.service.name }}</div>{% endif %}
@@ -54,6 +55,7 @@
           <span class="apt-status apt-status--{{ apt.status }}" title="{{ apt.get_status_display }}" aria-label="{{ apt.get_status_display }}">{% if apt.status == 'scheduled' %}<svg class="apt-status__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.5"/></svg>{% elif apt.status == 'completed' %}✓{% else %}✕{% endif %}</span>
         </div>
       </div>
+      {% if apt.is_own %}
       <div class="apt-card__actions">
         {% if apt.status == 'scheduled' %}
         <button class="apt-btn apt-btn--done" title="Выполнено"
@@ -77,6 +79,7 @@
                 hx-target="#cabinet-modal"
                 hx-swap="innerHTML">✕</button>
       </div>
+      {% endif %}
     </li>
     {% endfor %}
   </ul>

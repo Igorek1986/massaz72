@@ -209,6 +209,14 @@ class CabinetReviewsTest(TestCase):
         resp = self.client.get(reverse("cabinet:reviews"))
         self.assertEqual(resp.status_code, 403)
 
+    def test_specialist_with_can_manage_reviews_allowed(self):
+        spec = self.plain.specialist
+        spec.can_manage_reviews = True
+        spec.save()
+        self.client.force_login(self.plain)
+        resp = self.client.get(reverse("cabinet:reviews"))
+        self.assertEqual(resp.status_code, 200)
+
     def test_anonymous_redirected_to_login(self):
         resp = self.client.get(reverse("cabinet:reviews"))
         self.assertEqual(resp.status_code, 302)

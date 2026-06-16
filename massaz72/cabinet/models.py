@@ -71,11 +71,28 @@ class Specialist(models.Model):
         default=True,
         help_text="Разрешить изменять цены и скидки",
     )
+    head = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="subordinates", verbose_name="Главный специалист",
+        help_text="Главный видит записи своих специалистов в календаре (без редактирования).",
+    )
+    can_manage_reviews = models.BooleanField(
+        "Управление отзывами",
+        default=False,
+        help_text="Доступ к разделу «Отзывы» в кабинете (независимо от прочих ролей).",
+    )
 
     class Meta:
         verbose_name = "Специалист"
         verbose_name_plural = "Специалисты"
         ordering = ["order"]
+
+    def visible_specialist_ids(self) -> list[int]:
+        """ID специалистов, чьи записи видит этот специалист: свои + подчинённые
+        (для главного специалиста)."""
+        ids = [self.pk]
+        ids += list(self.subordinates.values_list("pk", flat=True))
+        return ids
 
     def __str__(self) -> str:
         return self.name

@@ -37,7 +37,9 @@ class SpecialistAdmin(admin.ModelAdmin):
             ("whatsapp_number", "whatsapp_active"),
             ("max_messanger", "max_messanger_active"),
         )}),
-        ("Кабинет", {"fields": ("user", "can_manage_prices")}),
+        ("Кабинет", {"fields": (
+            "user", "head", "can_manage_prices", "can_manage_reviews",
+        )}),
     )
 
 

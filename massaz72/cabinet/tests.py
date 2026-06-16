@@ -995,3 +995,70 @@ class ExtraServicePkInjectionTest(TestCase):
         children_a = list(self.apt_a.additional_services.all())
         self.assertEqual(len(children_a), 1)
         self.assertEqual(children_a[0].cost, Decimal("1"))
+
+
+# ---------------------------------------------------------------------------
+# Главный специалист (видит подчинённых, без редактирования)
+# ---------------------------------------------------------------------------
+
+class HeadSpecialistTest(TestCase):
+    def setUp(self):
+        self.head = _make_specialist("head")
+        self.head.name = "Главный"
+        self.head.save()
+        self.sub = _make_specialist("sub")
+        self.sub.name = "Подчинённый"
+        self.sub.head = self.head
+        self.sub.save()
+        self.other = _make_specialist("other")
+        self.other.name = "Чужой"
+        self.other.save()
+        self.day = date.today() + timedelta(days=1)
+        self.own_apt = Appointment.objects.create(
+            specialist=self.head, client_name="ОВНклиент", date=self.day,
+            time_start=time(10, 0), cost=Decimal("1000"), status="scheduled",
+        )
+        self.sub_apt = Appointment.objects.create(
+            specialist=self.sub, client_name="ПОДклиент", date=self.day,
+            time_start=time(11, 0), cost=Decimal("1000"), status="scheduled",
+        )
+        self.other_apt = Appointment.objects.create(
+            specialist=self.other, client_name="ЧУЖОЙклиент", date=self.day,
+            time_start=time(12, 0), cost=Decimal("1000"), status="scheduled",
+        )
+
+    def test_visible_ids(self):
+        self.assertCountEqual(
+            self.head.visible_specialist_ids(), [self.head.pk, self.sub.pk]
+        )
+        self.assertEqual(self.sub.visible_specialist_ids(), [self.sub.pk])
+
+    def test_head_sees_own_and_subordinate_not_other(self):
+        self.client.force_login(self.head.user)
+        body = self.client.get(
+            reverse("cabinet:day_schedule", args=[self.day.isoformat()])
+        ).content.decode()
+        self.assertIn("ОВНклиент", body)
+        self.assertIn("ПОДклиент", body)
+        self.assertNotIn("ЧУЖОЙклиент", body)
+        self.assertIn("Подчинённый", body)        # подпись специалиста
+        self.assertIn("apt-card--other", body)     # чужая запись помечена
+
+    def test_subordinate_appointment_is_read_only_for_head(self):
+        self.client.force_login(self.head.user)
+        body = self.client.get(
+            reverse("cabinet:day_schedule", args=[self.day.isoformat()])
+        ).content.decode()
+        own_edit = reverse("cabinet:appointment_edit", args=[self.own_apt.pk])
+        sub_edit = reverse("cabinet:appointment_edit", args=[self.sub_apt.pk])
+        self.assertIn(own_edit, body)        # свою запись можно редактировать
+        self.assertNotIn(sub_edit, body)     # чужую — нет (только просмотр)
+
+    def test_subordinate_sees_only_own(self):
+        self.client.force_login(self.sub.user)
+        body = self.client.get(
+            reverse("cabinet:day_schedule", args=[self.day.isoformat()])
+        ).content.decode()
+        self.assertIn("ПОДклиент", body)
+        self.assertNotIn("ОВНклиент", body)
+        self.assertNotIn("apt-card--other", body)

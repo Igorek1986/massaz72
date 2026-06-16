@@ -55,13 +55,14 @@ def prices_manager_required(view_func):
     return wrapper
 
 
-def superuser_required(view_func):
-    """Доступ только специалисту-суперпользователю (модерация отзывов)."""
+def reviews_manager_required(view_func):
+    """Доступ к модерации отзывов: суперпользователь ИЛИ специалист с правом
+    управления отзывами (`can_manage_reviews`). Роль независима от прочих."""
     @wraps(view_func)
     @specialist_required
     def wrapper(request: HttpRequest, *args, **kwargs):
-        if not request.user.is_superuser:
-            return HttpResponse("Доступ только для администратора", status=403)
+        if not (request.user.is_superuser or request.specialist.can_manage_reviews):
+            return HttpResponse("Нет доступа к управлению отзывами", status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -101,9 +102,13 @@ def _appointment_end_time(apt) -> time:
 
 
 def _day_context(selected_date: date, specialist: Specialist) -> dict:
+    # Главный специалист видит ещё и записи своих подчинённых (только просмотр).
+    visible_ids = specialist.visible_specialist_ids()
     appointments = (
-        Appointment.objects.filter(date=selected_date, specialist=specialist, parent__isnull=True)
-        .select_related("service", "series")
+        Appointment.objects.filter(
+            date=selected_date, specialist_id__in=visible_ids, parent__isnull=True
+        )
+        .select_related("service", "series", "specialist")
         .prefetch_related("additional_services__service")
         .order_by("time_start")
     )
@@ -118,7 +123,9 @@ def _day_context(selected_date: date, specialist: Specialist) -> dict:
         extra = sum(c.cost for c in apt.additional_services.all())
         apt.total_visit_cost = apt.cost + extra + (apt.transport_cost or Decimal("0"))
         apt.end_time = _appointment_end_time(apt)
+        apt.is_own = apt.specialist_id == specialist.pk
     return {
+        "has_subordinates": len(visible_ids) > 1,
         "selected_date": selected_date,
         "date_str": selected_date.isoformat(),
         "appointments": appointments,
@@ -1261,7 +1268,8 @@ def calendar_events(request):
             })
         current += timedelta(days=1)
 
-    apt_counts = (
+    # Свои записи (синие).
+    own_counts = (
         Appointment.objects.filter(
             date__gte=start, date__lt=end, specialist=specialist, parent__isnull=True
         )
@@ -1269,7 +1277,7 @@ def calendar_events(request):
         .values("date")
         .annotate(count=Count("id"))
     )
-    for row in apt_counts:
+    for row in own_counts:
         count = row["count"]
         events.append({
             "start": row["date"].isoformat(),
@@ -1280,6 +1288,29 @@ def calendar_events(request):
             "textColor": "#fff",
             "classNames": ["fc-apt-count"],
         })
+
+    # Записи подчинённых (для главного специалиста) — фиолетовые.
+    subordinate_ids = list(specialist.subordinates.values_list("pk", flat=True))
+    if subordinate_ids:
+        sub_counts = (
+            Appointment.objects.filter(
+                date__gte=start, date__lt=end,
+                specialist_id__in=subordinate_ids, parent__isnull=True,
+            )
+            .exclude(status=Appointment.CANCELLED)
+            .values("date")
+            .annotate(count=Count("id"))
+        )
+        for row in sub_counts:
+            events.append({
+                "start": row["date"].isoformat(),
+                "title": f"{row['count']} у спец.",
+                "allDay": True,
+                "backgroundColor": "#8b5cf6",
+                "borderColor": "#7c3aed",
+                "textColor": "#fff",
+                "classNames": ["fc-apt-count", "fc-apt-count--sub"],
+            })
 
     return JsonResponse(events, safe=False)
 
@@ -1341,7 +1372,7 @@ def _review_list_response(request: HttpRequest) -> HttpResponse:
     )
 
 
-@superuser_required
+@reviews_manager_required
 def reviews(request: HttpRequest) -> HttpResponse:
     status = _review_filter(request)
     settings_obj = SiteSettings.objects.first()
@@ -1350,12 +1381,12 @@ def reviews(request: HttpRequest) -> HttpResponse:
     return render(request, "cabinet/reviews.html", context)
 
 
-@superuser_required
+@reviews_manager_required
 def review_list(request: HttpRequest) -> HttpResponse:
     return _review_list_response(request)
 
 
-@superuser_required
+@reviews_manager_required
 @require_POST
 def review_approve(request: HttpRequest, pk: int) -> HttpResponse:
     review = get_object_or_404(Review, pk=pk)
@@ -1365,7 +1396,7 @@ def review_approve(request: HttpRequest, pk: int) -> HttpResponse:
     return _review_list_response(request)
 
 
-@superuser_required
+@reviews_manager_required
 @require_POST
 def review_reject(request: HttpRequest, pk: int) -> HttpResponse:
     review = get_object_or_404(Review, pk=pk)
@@ -1374,7 +1405,7 @@ def review_reject(request: HttpRequest, pk: int) -> HttpResponse:
     return _review_list_response(request)
 
 
-@superuser_required
+@reviews_manager_required
 @require_POST
 def review_archive(request: HttpRequest, pk: int) -> HttpResponse:
     review = get_object_or_404(Review, pk=pk)
@@ -1383,7 +1414,7 @@ def review_archive(request: HttpRequest, pk: int) -> HttpResponse:
     return _review_list_response(request)
 
 
-@superuser_required
+@reviews_manager_required
 @require_POST
 def review_unarchive(request: HttpRequest, pk: int) -> HttpResponse:
     review = get_object_or_404(Review, pk=pk)
@@ -1392,7 +1423,7 @@ def review_unarchive(request: HttpRequest, pk: int) -> HttpResponse:
     return _review_list_response(request)
 
 
-@superuser_required
+@reviews_manager_required
 @require_POST
 def reviews_toggle(request: HttpRequest) -> HttpResponse:
     settings_obj = SiteSettings.objects.first()
@@ -1508,8 +1539,10 @@ def booking_request_confirm(request: HttpRequest, pk: int) -> HttpResponse:
         except InvalidOperation:
             pass
 
+    # Запись создаётся выбранному в заявке мастеру (если указан), иначе —
+    # подтверждающему. Это позволяет главному подтверждать заявки к любому мастеру.
     confirm_booking(
-        booking, specialist=request.specialist,
+        booking, specialist=booking.specialist or request.specialist,
         date=new_date, time_start=new_time, cost=new_cost,
     )
     return _booking_list_response(request)

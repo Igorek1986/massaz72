@@ -1376,3 +1376,15 @@ body.cabinet-body {
   .booking-req__result {
     color: #15803d;
     font-size: 14px; }
+
+.apt-card--other {
+  border-left: 3px solid #8b5cf6;
+  background: rgba(139, 92, 246, 0.04); }
+
+.apt-card__specialist {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cab-muted);
+  margin-bottom: 2px; }
+  .apt-card__specialist--other {
+    color: #7c3aed; }
