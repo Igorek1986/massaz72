@@ -108,6 +108,35 @@ def _active_admin_ids() -> list[int]:
     )
 
 
+def _bind_booking_token(bot, message, token: str) -> bool:
+    """Привязывает Telegram-пользователя к заявке по токену deep-link.
+    Возвращает True, если заявка найдена и привязана."""
+    from booking.models import BookingRequest
+
+    from .notifications import refresh_booking_messages
+
+    booking = BookingRequest.objects.filter(link_token=token).first()
+    if booking is None:
+        return False
+
+    booking.messenger = "telegram"
+    booking.messenger_user_id = message.from_user.id
+    booking.messenger_username = message.from_user.username or ""
+    booking.save(update_fields=[
+        "messenger", "messenger_user_id", "messenger_username", "updated_at",
+    ])
+    bot.send_message(
+        message.chat.id,
+        "✅ Готово! Вы на связи по вашей заявке — мы напишем здесь после подтверждения.",
+        reply_markup=get_keyboard(message.from_user.id),
+    )
+    try:
+        refresh_booking_messages(bot, booking)
+    except Exception:  # noqa: BLE001
+        logger.exception("tgbot: не обновить сообщения заявки %s", booking.pk)
+    return True
+
+
 def _upsert_user(from_user) -> TelegramUser:
     user, _ = TelegramUser.objects.update_or_create(
         telegram_id=from_user.id,
@@ -705,6 +734,13 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         _pending_bookings.pop(message.from_user.id, None)
         settings = BotSettings.load()
         _upsert_user(message.from_user)
+
+        # Deep-link «/start <token>» — привязка клиента к заявке.
+        parts = (message.text or "").split(maxsplit=1)
+        payload = parts[1].strip() if len(parts) > 1 else ""
+        if payload and _bind_booking_token(bot, message, payload):
+            return
+
         bot.send_message(
             message.chat.id,
             settings.welcome_text or "",

@@ -25,6 +25,7 @@
 
     <div class="booking-req__info">
       <div><b>Телефон:</b> {% if b.phone %}{{ b.phone }}{% else %}—{% endif %}</div>
+      {% if b.messenger_user_id %}<div><b>В боте:</b> {% if b.messenger_username %}@{{ b.messenger_username }}{% else %}id {{ b.messenger_user_id }}{% endif %} ({{ b.get_messenger_display }})</div>{% endif %}
       <div><b>Услуга:</b> {{ b.service.name|default:"—" }}</div>
       {% if b.specialist %}<div><b>Мастер:</b> {{ b.specialist.name }}</div>{% endif %}
       <div><b>Желаемые дата/время:</b> {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}</div>

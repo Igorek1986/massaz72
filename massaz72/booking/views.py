@@ -39,13 +39,40 @@ def _booking_enabled() -> bool:
     return bool(s and s.online_booking_enabled)
 
 
-def _bots_context() -> dict:
-    """Ссылки на наших ботов для экрана «спасибо». Telegram сейчас, Max — задел."""
+def _qr_svg(data: str) -> str:
+    """QR-код как inline-SVG (без внешних сервисов, без Pillow)."""
+    import io
+
+    import qrcode
+    import qrcode.image.svg
+
+    img = qrcode.make(data, image_factory=qrcode.image.svg.SvgPathImage, box_size=10)
+    buf = io.BytesIO()
+    img.save(buf)
+    return buf.getvalue().decode()
+
+
+def _bots_context(booking: BookingRequest | None = None) -> dict:
+    """Ссылки на наших ботов для экрана «спасибо». Если есть заявка — даём
+    deep-link с токеном привязки и QR (Telegram сейчас, Max — задел)."""
     bot_settings = BotSettings.load()
-    telegram_url = None
-    if bot_settings and bot_settings.bot_username:
-        telegram_url = f"https://t.me/{bot_settings.bot_username}"
-    return {"telegram_bot_url": telegram_url, "max_bot_url": None}
+    username = (
+        bot_settings.bot_username
+        if bot_settings and bot_settings.is_enabled and bot_settings.bot_username
+        else ""
+    )
+    if not username:
+        return {"telegram_bot_url": None, "telegram_qr_svg": None, "max_bot_url": None}
+
+    if booking is not None:
+        url = f"https://t.me/{username}?start={booking.link_token}"
+    else:
+        url = f"https://t.me/{username}"
+    return {
+        "telegram_bot_url": url,
+        "telegram_qr_svg": _qr_svg(url),
+        "max_bot_url": None,
+    }
 
 
 def _notify_admins(booking: BookingRequest) -> None:
@@ -82,7 +109,7 @@ def booking_page(request: HttpRequest) -> HttpResponse:
             booking.status = BookingRequest.Status.PENDING
             booking.save()
             _notify_admins(booking)
-            return _render_done(request)
+            return _render_done(request, booking)
         return render(request, "booking/booking.html", {"form": form})
 
     # Предвыбор услуги, если пришли со страницы массажа (?service=<id>).
@@ -93,5 +120,5 @@ def booking_page(request: HttpRequest) -> HttpResponse:
     return render(request, "booking/booking.html", {"form": BookingForm(initial=initial)})
 
 
-def _render_done(request: HttpRequest) -> HttpResponse:
-    return render(request, "booking/booking.html", {"done": True, **_bots_context()})
+def _render_done(request: HttpRequest, booking: BookingRequest | None = None) -> HttpResponse:
+    return render(request, "booking/booking.html", {"done": True, **_bots_context(booking)})

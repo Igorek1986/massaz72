@@ -211,6 +211,22 @@ class BookingViewTest(TestCase):
         self.assertEqual(BookingRequest.objects.count(), 0)
         self.assertContains(resp, "booking-form__error")
 
+    def test_thankyou_shows_deeplink_and_qr(self):
+        from unittest.mock import patch
+
+        from tgbot.models import BotSettings
+        bs = BotSettings.load()
+        bs.token = "123:abc"
+        bs.is_enabled = True
+        bs.bot_username = "massaz72_bot"
+        bs.save()
+        # бот мокаем (None) — нас интересует только экран «спасибо», не рассылка
+        with patch("tgbot.bot.get_bot", return_value=None):
+            resp = self._post()
+        booking = BookingRequest.objects.get()
+        self.assertContains(resp, f"start={booking.link_token}")
+        self.assertContains(resp, "<svg")
+
     def test_service_preselected_from_query(self):
         resp = self.client.get(self.url, {"service": self.massage.pk})
         self.assertEqual(resp.status_code, 200)

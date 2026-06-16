@@ -108,3 +108,51 @@ class BookingActionTest(TestCase):
         handle_booking_action(bot, make_call("br_confirm_999999", uid=111))
         self.assertEqual(Appointment.objects.count(), 0)
         bot.delete_message.assert_called_once()
+
+
+class BookingBindTest(TestCase):
+    def setUp(self):
+        self.booking = BookingRequest.objects.create(
+            client_name="Гость",
+            preferred_date=timezone.localdate() + timedelta(days=2),
+            preferred_time=time(10, 0),
+        )
+
+    def _msg(self, uid=555, username="ivan"):
+        return SimpleNamespace(
+            chat=SimpleNamespace(id=uid),
+            from_user=SimpleNamespace(id=uid, username=username),
+        )
+
+    def test_bind_by_token(self):
+        from tgbot.bot import _bind_booking_token
+        bot = MagicMock()
+        ok = _bind_booking_token(bot, self._msg(), self.booking.link_token)
+        self.assertTrue(ok)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.messenger, "telegram")
+        self.assertEqual(self.booking.messenger_user_id, 555)
+        self.assertEqual(self.booking.messenger_username, "ivan")
+        bot.send_message.assert_called()
+
+    def test_bind_unknown_token(self):
+        from tgbot.bot import _bind_booking_token
+        bot = MagicMock()
+        self.assertFalse(_bind_booking_token(bot, self._msg(), "no-such-token"))
+
+    def test_booking_text_shows_contact_when_bound(self):
+        from tgbot.notifications import build_booking_text
+        self.booking.messenger = "telegram"
+        self.booking.messenger_user_id = 999
+        self.booking.messenger_username = "ivan"
+        self.booking.save()
+        self.assertIn("@ivan", build_booking_text(self.booking))
+
+    def test_unique_link_token_generated(self):
+        other = BookingRequest.objects.create(
+            client_name="Второй",
+            preferred_date=timezone.localdate() + timedelta(days=2),
+            preferred_time=time(11, 0),
+        )
+        self.assertTrue(self.booking.link_token)
+        self.assertNotEqual(self.booking.link_token, other.link_token)

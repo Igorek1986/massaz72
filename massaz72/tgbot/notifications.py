@@ -158,9 +158,31 @@ def build_booking_text(booking) -> str:
     if booking.specialist:
         lines.append(f"<b>Мастер:</b> {html.escape(booking.specialist.name)}")
     lines.append(f"<b>Желаемые дата/время:</b> {booking.preferred_date:%d.%m.%Y} {booking.preferred_time:%H:%M}")
+    if booking.messenger_user_id:
+        contact = (
+            f"@{html.escape(booking.messenger_username)}"
+            if booking.messenger_username
+            else f"id {booking.messenger_user_id}"
+        )
+        lines.append(f"<b>На связи в боте:</b> {contact} — можно написать ему здесь")
     if booking.comment:
         lines.append(f"\n{html.escape(booking.comment)}")
     return "\n".join(lines)
+
+
+def refresh_booking_messages(bot, booking) -> None:
+    """Перерисовывает сообщения о заявке у всех админов (напр. после того как
+    клиент подключился к боту — чтобы показать контакт)."""
+    text = build_booking_text(booking)
+    keyboard = build_booking_keyboard(booking)
+    for n in BookingNotification.objects.filter(booking=booking):
+        try:
+            bot.edit_message_text(
+                text, n.admin_telegram_id, n.message_id, reply_markup=keyboard
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("booking %s: не обновить сообщение %s/%s: %s",
+                           booking.pk, n.admin_telegram_id, n.message_id, exc)
 
 
 def build_booking_keyboard(booking) -> types.InlineKeyboardMarkup:

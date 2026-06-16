@@ -1,4 +1,10 @@
+import secrets
+
 from django.db import models
+
+
+def gen_link_token() -> str:
+    return secrets.token_urlsafe(16)
 
 
 class BookingRequestQuerySet(models.QuerySet):
@@ -41,6 +47,23 @@ class BookingRequest(models.Model):
         "Статус", max_length=10, choices=Status.choices, default=Status.PENDING
     )
     ip_address = models.GenericIPAddressField("IP-адрес", null=True, blank=True)
+
+    # Привязка к боту (для связи без телефона). Канал — задел под Telegram/Max.
+    class Messenger(models.TextChoices):
+        TELEGRAM = "telegram", "Telegram"
+        MAX = "max", "Max"
+
+    messenger = models.CharField(
+        "Мессенджер", max_length=10, choices=Messenger.choices, blank=True, default="",
+    )
+    messenger_user_id = models.BigIntegerField("ID в мессенджере", null=True, blank=True)
+    messenger_username = models.CharField(
+        "Username в мессенджере", max_length=150, blank=True, default="",
+    )
+    link_token = models.CharField(
+        "Токен привязки к боту", max_length=43, unique=True,
+        default=gen_link_token, editable=False,
+    )
     appointment = models.ForeignKey(
         "cabinet.Appointment", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="booking_request",

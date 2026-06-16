@@ -347,6 +347,19 @@ files = [
 ]
 
 [[package]]
+name = "colorama"
+version = "0.4.6"
+description = "Cross-platform colored terminal text."
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
+groups = ["main"]
+markers = "sys_platform == \"win32\""
+files = [
+    {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
+    {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
+]
+
+[[package]]
 name = "django"
 version = "5.2.15"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
@@ -1116,6 +1129,26 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "qrcode"
+version = "8.2"
+description = "QR Code image generator"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["main"]
+files = [
+    {file = "qrcode-8.2-py3-none-any.whl", hash = "sha256:16e64e0716c14960108e85d853062c9e8bba5ca8252c0b4d0231b9df4060ff4f"},
+    {file = "qrcode-8.2.tar.gz", hash = "sha256:35c3f2a4172b33136ab9f6b3ef1c00260dd2f66f858f24d88418a015f446506c"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "sys_platform == \"win32\""}
+
+[package.extras]
+all = ["pillow (>=9.1.0)", "pypng"]
+pil = ["pillow (>=9.1.0)"]
+png = ["pypng"]
+
+[[package]]
 name = "rcssmin"
 version = "1.1.2"
 description = "CSS Minifier"
@@ -1458,5 +1491,5 @@ propcache = ">=0.2.1"
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.13"
-content-hash = "d1db8db27658d01122d4e994f49e49013f6ed34977f19a22c2309024fefd06a7"
+python-versions = ">=3.13,<4.0"
+content-hash = "b619ea5e17642a8820425e45f3998b49014139c384c98b42dc03655e53603a77"
