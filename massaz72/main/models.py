@@ -229,6 +229,14 @@ class SiteSettings(models.Model):
             "При выключении секция и приём новых отзывов скрываются."
         ),
     )
+    online_booking_enabled = models.BooleanField(
+        "Онлайн-запись включена",
+        default=False,
+        help_text=(
+            "Показывать на сайте страницу онлайн-записи и принимать заявки. "
+            "При выключении страница записи и кнопки скрываются."
+        ),
+    )
 
     class Meta:
         verbose_name = "Настройки сайта"

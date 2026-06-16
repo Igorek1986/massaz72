@@ -1,0 +1,15 @@
+<div id="booking-toggle-wrap" class="reviews-toggle">
+  <span class="reviews-toggle__label">
+    Онлайн-запись на сайте:
+    <strong class="reviews-toggle__state reviews-toggle__state--{% if online_booking_enabled %}on{% else %}off{% endif %}">
+      {% if online_booking_enabled %}включена{% else %}выключена{% endif %}
+    </strong>
+  </span>
+  <button type="button"
+          class="btn btn--sm {% if online_booking_enabled %}btn--ghost{% else %}btn--primary{% endif %}"
+          hx-post="{% url 'cabinet:booking_toggle' %}"
+          hx-target="#booking-toggle-wrap"
+          hx-swap="outerHTML">
+    {% if online_booking_enabled %}Выключить{% else %}Включить{% endif %}
+  </button>
+</div>

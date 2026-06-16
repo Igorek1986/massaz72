@@ -55,6 +55,13 @@ urlpatterns = [
     path("settings/blocked-slots/<int:pk>/confirm-delete/", views.blocked_slot_confirm_delete, name="blocked_slot_confirm_delete"),
     path("settings/blocked-slots/<int:pk>/delete/", views.blocked_slot_delete, name="blocked_slot_delete"),
 
+    # Booking requests (заявки на запись)
+    path("requests/", views.booking_requests, name="booking_requests"),
+    path("requests/list/", views.booking_request_list, name="booking_request_list"),
+    path("requests/<int:pk>/confirm/", views.booking_request_confirm, name="booking_request_confirm"),
+    path("requests/<int:pk>/decline/", views.booking_request_decline, name="booking_request_decline"),
+    path("requests/toggle/", views.booking_toggle, name="booking_toggle"),
+
     # Reviews moderation (superuser)
     path("reviews/", views.reviews, name="reviews"),
     path("reviews/list/", views.review_list, name="review_list"),

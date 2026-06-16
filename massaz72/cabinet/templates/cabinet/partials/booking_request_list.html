@@ -1,0 +1,70 @@
+{% load static %}
+<div class="review-tabs">
+  {% for key, label in tabs %}
+  <button type="button"
+          class="review-tabs__tab {% if current_filter == key %}review-tabs__tab--active{% endif %}"
+          hx-get="{% url 'cabinet:booking_request_list' %}?status={{ key }}"
+          hx-target="#booking-requests-list"
+          hx-swap="innerHTML">
+    {{ label }}
+    {% if key == 'pending' and pending_count %}<span class="review-tabs__badge">{{ pending_count }}</span>{% endif %}
+  </button>
+  {% endfor %}
+</div>
+
+{% if booking_requests %}
+<div class="booking-req-list">
+  {% for b in booking_requests %}
+  <div class="booking-req" id="booking-req-{{ b.pk }}">
+    <div class="booking-req__head">
+      <span class="booking-req__name">{{ b.client_name }}</span>
+      <span class="review-mod__status review-mod__status--{{ b.status }}">{{ b.get_status_display }}</span>
+      <span class="booking-req__source">{{ b.get_source_display }}</span>
+      <time class="review-mod__date">{{ b.created_at|date:"d.m.Y H:i" }}</time>
+    </div>
+
+    <div class="booking-req__info">
+      <div><b>Телефон:</b> {% if b.phone %}{{ b.phone }}{% else %}—{% endif %}</div>
+      <div><b>Услуга:</b> {{ b.service.name|default:"—" }}</div>
+      {% if b.specialist %}<div><b>Мастер:</b> {{ b.specialist.name }}</div>{% endif %}
+      <div><b>Желаемые дата/время:</b> {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}</div>
+      {% if b.comment %}<div><b>Комментарий:</b> {{ b.comment }}</div>{% endif %}
+    </div>
+
+    {% if b.client_history %}
+    <details class="booking-req__history">
+      <summary>Прошлые записи клиента ({{ b.client_history|length }})</summary>
+      <ul>
+        {% for a in b.client_history %}
+        <li>{{ a.date|date:"d.m.Y" }} {{ a.time_start|time:"H:i" }} — {{ a.service.name|default:"услуга не указана" }} ({{ a.get_status_display }})</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+
+    {% if b.status == 'pending' %}
+    <div class="booking-req__confirm">
+      <label>Дата <input type="date" name="date" class="booking-form__input booking-req__date" value="{{ b.preferred_date|date:'Y-m-d' }}"></label>
+      <label>Время <input type="time" name="time" class="booking-form__input booking-req__time" value="{{ b.preferred_time|time:'H:i' }}"></label>
+      <label>Стоимость <input type="number" min="0" step="1" name="cost" class="booking-form__input booking-req__cost" value="{{ b.service.price|floatformat:0 }}"></label>
+    </div>
+    <div class="booking-req__actions">
+      <button class="btn btn--sm btn--primary"
+              hx-post="{% url 'cabinet:booking_request_confirm' b.pk %}"
+              hx-include="closest .booking-req"
+              hx-vals='{"status": "{{ current_filter }}"}'
+              hx-target="#booking-requests-list" hx-swap="innerHTML">Подтвердить</button>
+      <button class="btn btn--sm btn--ghost"
+              hx-post="{% url 'cabinet:booking_request_decline' b.pk %}"
+              hx-vals='{"status": "{{ current_filter }}"}'
+              hx-target="#booking-requests-list" hx-swap="innerHTML">Отклонить</button>
+    </div>
+    {% elif b.appointment %}
+    <div class="booking-req__result">Создана запись на {{ b.appointment.date|date:"d.m.Y" }} {{ b.appointment.time_start|time:"H:i" }}.</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="settings-empty">Заявок нет</p>
+{% endif %}

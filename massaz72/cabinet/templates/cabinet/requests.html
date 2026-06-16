@@ -1,0 +1,17 @@
+{% extends "cabinet/base.html" %}
+{% load static %}
+
+{% block title %}Заявки{% endblock %}
+{% block nav_requests %}sidebar__link--active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Заявки на запись</h1>
+</div>
+
+{% include "cabinet/partials/booking_toggle.html" %}
+
+<div id="booking-requests-list">
+  {% include "cabinet/partials/booking_request_list.html" %}
+</div>
+{% endblock %}

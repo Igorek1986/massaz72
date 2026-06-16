@@ -10,6 +10,8 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from booking.models import BookingRequest
+from booking.services import confirm_booking, decline_booking
 from main.models import SiteSettings
 from reviews.models import Review
 from services.models import Massage
@@ -1402,4 +1404,134 @@ def reviews_toggle(request: HttpRequest) -> HttpResponse:
         request,
         "cabinet/partials/reviews_toggle.html",
         {"reviews_enabled": settings_obj.reviews_enabled},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Booking requests (заявки на запись)
+# ---------------------------------------------------------------------------
+
+BOOKING_FILTERS = ("pending", "confirmed", "declined", "all")
+
+BOOKING_TABS = (
+    ("pending", "На подтверждении"),
+    ("confirmed", "Подтверждённые"),
+    ("declined", "Отклонённые"),
+    ("all", "Все"),
+)
+
+
+def _booking_queryset(status: str):
+    qs = BookingRequest.objects.select_related("service", "specialist")
+    if status in ("pending", "confirmed", "declined"):
+        return qs.filter(status=status)
+    return qs
+
+
+def _booking_filter(request: HttpRequest) -> str:
+    status = request.POST.get("status") or request.GET.get("status") or "pending"
+    return status if status in BOOKING_FILTERS else "pending"
+
+
+def _client_history(booking: BookingRequest):
+    """Прошлые записи клиента по телефону (для контекста при подтверждении)."""
+    if not booking.phone:
+        return Appointment.objects.none()
+    return (
+        Appointment.objects.filter(client_phone=booking.phone, parent__isnull=True)
+        .select_related("service")
+        .order_by("-date", "-time_start")[:10]
+    )
+
+
+def _booking_list_context(status: str) -> dict:
+    requests_qs = list(_booking_queryset(status))
+    for b in requests_qs:
+        b.client_history = _client_history(b)
+    return {
+        "booking_requests": requests_qs,
+        "current_filter": status,
+        "tabs": BOOKING_TABS,
+        "pending_count": BookingRequest.objects.filter(
+            status=BookingRequest.Status.PENDING
+        ).count(),
+    }
+
+
+def _booking_list_response(request: HttpRequest) -> HttpResponse:
+    status = _booking_filter(request)
+    return render(
+        request, "cabinet/partials/booking_request_list.html",
+        _booking_list_context(status),
+    )
+
+
+@specialist_required
+def booking_requests(request: HttpRequest) -> HttpResponse:
+    status = _booking_filter(request)
+    settings_obj = SiteSettings.objects.first()
+    context = _booking_list_context(status)
+    context["online_booking_enabled"] = bool(
+        settings_obj and settings_obj.online_booking_enabled
+    )
+    return render(request, "cabinet/requests.html", context)
+
+
+@specialist_required
+def booking_request_list(request: HttpRequest) -> HttpResponse:
+    return _booking_list_response(request)
+
+
+@specialist_required
+@require_POST
+def booking_request_confirm(request: HttpRequest, pk: int) -> HttpResponse:
+    booking = get_object_or_404(BookingRequest, pk=pk)
+
+    # Мастер мог поправить дату/время/стоимость в форме подтверждения.
+    new_date = new_time = new_cost = None
+    raw_date = request.POST.get("date", "").strip()
+    raw_time = request.POST.get("time", "").strip()
+    raw_cost = request.POST.get("cost", "").strip()
+    if raw_date:
+        try:
+            new_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if raw_time:
+        try:
+            new_time = datetime.strptime(raw_time, "%H:%M").time()
+        except ValueError:
+            pass
+    if raw_cost:
+        try:
+            new_cost = Decimal(raw_cost)
+        except InvalidOperation:
+            pass
+
+    confirm_booking(
+        booking, specialist=request.specialist,
+        date=new_date, time_start=new_time, cost=new_cost,
+    )
+    return _booking_list_response(request)
+
+
+@specialist_required
+@require_POST
+def booking_request_decline(request: HttpRequest, pk: int) -> HttpResponse:
+    booking = get_object_or_404(BookingRequest, pk=pk)
+    decline_booking(booking)
+    return _booking_list_response(request)
+
+
+@specialist_required
+@require_POST
+def booking_toggle(request: HttpRequest) -> HttpResponse:
+    settings_obj = SiteSettings.objects.first()
+    if settings_obj is None:
+        return HttpResponse("Сначала создайте «Настройки сайта»", status=400)
+    settings_obj.online_booking_enabled = not settings_obj.online_booking_enabled
+    settings_obj.save(update_fields=["online_booking_enabled"])
+    return render(
+        request, "cabinet/partials/booking_toggle.html",
+        {"online_booking_enabled": settings_obj.online_booking_enabled},
     )

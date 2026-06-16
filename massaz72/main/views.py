@@ -26,6 +26,7 @@ def home_context(request, review_form=None):
         is_archived=False, new_price__isnull=False
     ).exists()
 
+    online_booking_enabled = bool(site_settings and site_settings.online_booking_enabled)
     reviews_enabled = bool(site_settings and site_settings.reviews_enabled)
     reviews = review_stats = None
     if reviews_enabled:
@@ -38,6 +39,7 @@ def home_context(request, review_form=None):
         "adult_massages": adult_massages,
         "certificates": certificates,
         "has_upcoming_prices": has_upcoming_prices,
+        "online_booking_enabled": online_booking_enabled,
         "reviews_enabled": reviews_enabled,
         "reviews": reviews,
         "review_stats": review_stats,

@@ -986,6 +986,11 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         from .notifications import handle_review_action
         handle_review_action(bot, call)
 
+    @bot.callback_query_handler(func=lambda c: c.data.startswith("br_"))
+    def cb_booking_request(call):
+        from .notifications import handle_booking_action
+        handle_booking_action(bot, call)
+
     @bot.callback_query_handler(func=lambda c: c.data.startswith("bc_"))
     def cb_broadcast(call):
         uid = call.from_user.id

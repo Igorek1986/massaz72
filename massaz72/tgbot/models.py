@@ -328,3 +328,30 @@ class ReviewNotification(models.Model):
 
     def __str__(self) -> str:
         return f"review {self.review_id} → {self.admin_telegram_id}/{self.message_id}"
+
+
+class BookingNotification(models.Model):
+    """Связь «заявка на запись» → «сообщение с кнопками у администратора».
+    При обработке заявки любым админом удаляем сообщения у всех."""
+
+    booking = models.ForeignKey(
+        "booking.BookingRequest",
+        on_delete=models.CASCADE,
+        related_name="tg_notifications",
+    )
+    admin_telegram_id = models.BigIntegerField()
+    message_id = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Уведомление о заявке"
+        verbose_name_plural = "Уведомления о заявках"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["admin_telegram_id", "message_id"],
+                name="unique_booking_admin_message",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"booking {self.booking_id} → {self.admin_telegram_id}/{self.message_id}"

@@ -1,0 +1,64 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}Онлайн-запись на массаж{% endblock %}
+
+{% block body %}
+<section class="booking">
+  <div class="container">
+    {% if done %}
+      <div class="booking-done">
+        <h1 class="booking__title">Спасибо! Заявка принята</h1>
+        <p class="booking-done__text">
+          Мы свяжемся с вами для подтверждения даты и времени. Чтобы мы могли
+          быстрее связаться с вами и держать вас в курсе — напишите нам в боте:
+        </p>
+        <div class="booking-bots">
+          {% if telegram_bot_url %}
+          <a class="booking-bots__btn booking-bots__btn--tg" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">
+            Telegram-бот
+          </a>
+          {% endif %}
+          {% if max_bot_url %}
+          <a class="booking-bots__btn booking-bots__btn--max" href="{{ max_bot_url }}" target="_blank" rel="noopener">
+            Бот в Max
+          </a>
+          {% endif %}
+        </div>
+        <a class="booking-done__home" href="{% url 'main:index' %}">← На главную</a>
+      </div>
+    {% else %}
+      <h1 class="booking__title">Онлайн-запись на массаж</h1>
+      <p class="booking__subtitle">Оставьте заявку — мы подтвердим запись и свяжемся с вами.</p>
+
+      {% if throttled %}
+      <p class="booking__notice booking__notice--warn">Вы недавно уже оставляли заявку. Попробуйте позже.</p>
+      {% endif %}
+
+      <form class="booking-form" method="post" action="{% url 'booking:page' %}">
+        {% csrf_token %}
+        {{ form.website }}
+        {{ form.ts }}
+
+        {% for field in form.visible_fields %}
+        {% if field.name != 'website' %}
+        <div class="booking-form__row">
+          <label class="booking-form__label" for="{{ field.id_for_label }}">
+            {{ field.label }}{% if field.field.required %} <span class="booking-form__req">*</span>{% endif %}
+          </label>
+          {{ field }}
+          {% if field.errors %}<span class="booking-form__error">{{ field.errors.0 }}</span>{% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <div class="booking-form__actions">
+          <button type="submit" class="booking-form__submit">Записаться</button>
+          <a href="{% url 'main:index' %}" class="booking-form__cancel"
+             onclick="if(window.history.length>1){history.back();return false;}">Отмена</a>
+        </div>
+      </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

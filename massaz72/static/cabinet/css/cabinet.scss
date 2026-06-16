@@ -1678,3 +1678,83 @@ body.cabinet-body {
     gap: 8px;
   }
 }
+
+// ===== Booking requests (заявки) =====
+.booking-req-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booking-req {
+  background: var(--cab-surface);
+  border: 1px solid var(--cab-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  &__name { font-weight: 600; color: var(--cab-text); }
+
+  &__source {
+    font-size: 12px;
+    color: var(--cab-muted);
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--cab-text);
+    font-size: 14px;
+    margin-bottom: 10px;
+
+    b { font-weight: 600; }
+  }
+
+  &__history {
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--cab-muted);
+
+    summary { cursor: pointer; }
+    ul { margin: 6px 0 0; padding-left: 18px; }
+  }
+
+  &__confirm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-bottom: 10px;
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+      color: var(--cab-muted);
+    }
+
+    input { max-width: 150px; }
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__result {
+    color: #15803d;
+    font-size: 14px;
+  }
+}

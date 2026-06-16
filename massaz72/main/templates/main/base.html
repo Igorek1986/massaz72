@@ -44,6 +44,9 @@
         <li class="nav__item"><a href="{% url 'main:index' %}#cids" class="nav__link">{{ site_settings.child_massage_title }}</a></li>
         <li class="nav__item"><a href="{% url 'main:index' %}#massage" class="nav__link">{{ site_settings.massage_title }}</a></li>
         <li class="nav__item"><a href="{% url 'main:index' %}#about" class="nav__link">{{ site_settings.about_title }}</a></li>
+        {% if site_settings.online_booking_enabled %}
+        <li class="nav__item"><a href="{% url 'booking:page' %}{% if massage %}?service={{ massage.id }}{% endif %}" class="nav__link nav__link--book">Записаться онлайн</a></li>
+        {% endif %}
       </ul>
       <button class="header__theme-toggle" aria-label="Переключить тему">
         <svg class="theme-toggle__sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -12,7 +12,9 @@
       {% if site_settings.main_subtitle %}
       <p class="massage__subtitle">{{ site_settings.main_subtitle }}</p>
       {% endif %}
-      {% if has_contacts %}
+      {% if online_booking_enabled %}
+      <a href="{% url 'booking:page' %}" class="massage__cta">Записаться онлайн</a>
+      {% elif has_contacts %}
       <a href="#about" class="massage__cta">Записаться</a>
       {% endif %}
     </div>
@@ -203,7 +205,9 @@
 
   <script>
     var ctaBtn = document.querySelector('.massage__cta');
-    if (ctaBtn) {
+    // Перехватываем клик только у кнопки-якоря (скролл к контактам).
+    // Кнопка «Записаться онлайн» ведёт на /booking/ и должна работать как ссылка.
+    if (ctaBtn && (ctaBtn.getAttribute('href') || '').charAt(0) === '#') {
       ctaBtn.addEventListener('click', function(e) {
         e.preventDefault();
         var firstContactTab = document.querySelector('.about__tab[data-has-contacts="1"]');
