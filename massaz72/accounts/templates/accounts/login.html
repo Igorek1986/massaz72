@@ -1,0 +1,27 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Вход{% endblock %}
+
+{% block body %}
+<section class="account">
+  <div class="container">
+    <div class="account-card">
+      <h1 class="account__title">Вход</h1>
+      <form class="account-form" method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="account-form__error">{{ form.non_field_errors }}</div>{% endif %}
+        {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+        {% for field in form %}
+        <div class="account-form__row">
+          <label class="account-form__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<span class="account-form__error">{{ field.errors.0 }}</span>{% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="account-form__submit">Войти</button>
+      </form>
+      <p class="account__alt">Нет аккаунта? <a href="{% url 'accounts:register' %}">Зарегистрироваться</a></p>
+    </div>
+  </div>
+</section>
+{% endblock %}

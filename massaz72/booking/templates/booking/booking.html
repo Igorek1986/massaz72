@@ -8,31 +8,32 @@
   <div class="container">
     {% if done %}
       <div class="booking-done">
-        <h1 class="booking__title">Спасибо! Заявка принята</h1>
+        <h1 class="booking__title">Заявка принята!</h1>
+        {% if telegram_bot_url %}
         <p class="booking-done__text">
-          Мы свяжемся с вами для подтверждения даты и времени.
-          {% if telegram_bot_url %}Чтобы мы могли связаться с вами прямо в мессенджере
-          (даже без телефона) и держать в курсе — подключитесь к нашему боту:{% endif %}
+          Подтвердите запись в боте — так мы её закрепим и сможем связаться с вами
+          прямо в мессенджере, даже без телефона. Выберите бот, отсканируйте QR
+          или откройте ссылку:
         </p>
-        <div class="booking-bots">
-          {% if telegram_bot_url %}
-          <div class="booking-bots__item">
-            {% if telegram_qr_svg %}<div class="booking-bots__qr">{{ telegram_qr_svg|safe }}</div>{% endif %}
-            <a class="booking-bots__btn booking-bots__btn--tg" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">
-              Открыть Telegram-бота
-            </a>
-            <span class="booking-bots__hint">Наведите камеру на QR или нажмите кнопку</span>
-          </div>
-          {% endif %}
-          {% if max_bot_url %}
-          <div class="booking-bots__item">
-            <a class="booking-bots__btn booking-bots__btn--max" href="{{ max_bot_url }}" target="_blank" rel="noopener">
-              Бот в Max
+        <div class="bot-choice">
+          <div class="bot-choice__card">
+            <div class="bot-choice__name">Telegram</div>
+            {% if telegram_qr_svg %}<div class="bot-choice__qr">{{ telegram_qr_svg|safe }}</div>{% endif %}
+            <a class="bot-choice__btn bot-choice__btn--tg" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">
+              Открыть и подтвердить
             </a>
           </div>
-          {% endif %}
+          <div class="bot-choice__card bot-choice__card--soon">
+            <div class="bot-choice__name">Max</div>
+            <span class="bot-choice__soon">Скоро</span>
+            <span class="bot-choice__soon-hint">Подключение через Max появится позже</span>
+          </div>
         </div>
+        <a class="booking-done__home" href="{% url 'main:index' %}">Пропустить → на главную</a>
+        {% else %}
+        <p class="booking-done__text">Мы свяжемся с вами для подтверждения даты и времени.</p>
         <a class="booking-done__home" href="{% url 'main:index' %}">← На главную</a>
+        {% endif %}
       </div>
     {% else %}
       <h1 class="booking__title">Онлайн-запись на массаж</h1>

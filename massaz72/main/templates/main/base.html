@@ -47,6 +47,15 @@
         {% if site_settings.online_booking_enabled %}
         <li class="nav__item"><a href="{% url 'booking:page' %}{% if massage %}?service={{ massage.id }}{% endif %}" class="nav__link nav__link--book">Записаться онлайн</a></li>
         {% endif %}
+        {% if site_settings.client_cabinet_enabled %}
+        <li class="nav__item">
+          {% if request.user.client_profile %}
+          <a href="{% url 'accounts:dashboard' %}" class="nav__link">Личный кабинет</a>
+          {% else %}
+          <a href="{% url 'accounts:login' %}" class="nav__link">Войти</a>
+          {% endif %}
+        </li>
+        {% endif %}
       </ul>
       <button class="header__theme-toggle" aria-label="Переключить тему">
         <svg class="theme-toggle__sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

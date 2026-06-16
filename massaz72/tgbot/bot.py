@@ -113,7 +113,9 @@ def _bind_booking_token(bot, message, token: str) -> bool:
     Возвращает True, если заявка найдена и привязана."""
     from booking.models import BookingRequest
 
-    from .notifications import refresh_booking_messages
+    from .notifications import (
+        client_booking_summary, client_confirm_keyboard, refresh_booking_messages,
+    )
 
     booking = BookingRequest.objects.filter(link_token=token).first()
     if booking is None:
@@ -125,10 +127,11 @@ def _bind_booking_token(bot, message, token: str) -> bool:
     booking.save(update_fields=[
         "messenger", "messenger_user_id", "messenger_username", "updated_at",
     ])
+    # Показываем сводку заявки и кнопку подтверждения.
     bot.send_message(
         message.chat.id,
-        "✅ Готово! Вы на связи по вашей заявке — мы напишем здесь после подтверждения.",
-        reply_markup=get_keyboard(message.from_user.id),
+        client_booking_summary(booking),
+        reply_markup=client_confirm_keyboard(booking),
     )
     try:
         refresh_booking_messages(bot, booking)
@@ -1026,6 +1029,11 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
     def cb_booking_request(call):
         from .notifications import handle_booking_action
         handle_booking_action(bot, call)
+
+    @bot.callback_query_handler(func=lambda c: c.data.startswith("cbk_"))
+    def cb_client_booking_confirm(call):
+        from .notifications import handle_client_booking_confirm
+        handle_client_booking_confirm(bot, call)
 
     @bot.callback_query_handler(func=lambda c: c.data.startswith("bc_"))
     def cb_broadcast(call):

@@ -20,12 +20,17 @@ class BookingRequest(models.Model):
         PENDING = "pending", "На подтверждении"
         CONFIRMED = "confirmed", "Подтверждена"
         DECLINED = "declined", "Отклонена"
+        CANCELLED = "cancelled", "Отменена клиентом"
 
     class Source(models.TextChoices):
         GUEST = "guest", "Сайт (гость)"
         ACCOUNT = "account", "Сайт (аккаунт)"
         BOT = "bot", "Бот"
 
+    user = models.ForeignKey(
+        "auth.User", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="booking_requests", verbose_name="Аккаунт клиента",
+    )
     client_name = models.CharField("Имя", max_length=255)
     phone = models.CharField("Телефон", max_length=20, blank=True)
     service = models.ForeignKey(
@@ -59,6 +64,10 @@ class BookingRequest(models.Model):
     messenger_user_id = models.BigIntegerField("ID в мессенджере", null=True, blank=True)
     messenger_username = models.CharField(
         "Username в мессенджере", max_length=150, blank=True, default="",
+    )
+    client_confirmed = models.BooleanField(
+        "Подтверждена клиентом", default=False,
+        help_text="Клиент подтвердил заявку в боте.",
     )
     link_token = models.CharField(
         "Токен привязки к боту", max_length=43, unique=True,

@@ -1,0 +1,51 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Личный кабинет{% endblock %}
+
+{% block body %}
+<section class="account">
+  <div class="container">
+    <div class="account__header">
+      <h1 class="account__title">Личный кабинет</h1>
+      <div class="account__actions">
+        <a class="account__link" href="{% url 'accounts:profile' %}">Профиль</a>
+        <a class="account__link" href="{% url 'booking:page' %}">Записаться</a>
+        <form method="post" action="{% url 'accounts:logout' %}">
+          {% csrf_token %}
+          <button class="account__logout" type="submit">Выйти</button>
+        </form>
+      </div>
+    </div>
+
+    <h2 class="account__subtitle">Мои записи</h2>
+    {% if bookings %}
+    <div class="account-bookings">
+      {% for b in bookings %}
+      <div class="account-booking">
+        <div class="account-booking__head">
+          <span class="account-booking__service">{{ b.service.name|default:"Услуга" }}</span>
+          <span class="account-booking__status account-booking__status--{{ b.status }}">{{ b.get_status_display }}</span>
+        </div>
+        <div class="account-booking__when">
+          {% if b.appointment %}
+            Запись: <b>{{ b.appointment.date|date:"d.m.Y" }} {{ b.appointment.time_start|time:"H:i" }}</b>
+          {% else %}
+            Желаемое: {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}
+          {% endif %}
+        </div>
+        {% if b.specialist %}<div class="account-booking__spec">Мастер: {{ b.specialist.name }}</div>{% endif %}
+        {% if b.status == 'pending' %}
+        <form method="post" action="{% url 'accounts:cancel_booking' b.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="account-booking__cancel">Отменить</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="account__empty">Пока нет записей. <a href="{% url 'booking:page' %}">Записаться онлайн</a></p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

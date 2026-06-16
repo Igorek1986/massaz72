@@ -165,9 +165,65 @@ def build_booking_text(booking) -> str:
             else f"id {booking.messenger_user_id}"
         )
         lines.append(f"<b>На связи в боте:</b> {contact} — можно написать ему здесь")
+    if booking.client_confirmed:
+        lines.append("<b>✅ Клиент подтвердил заявку</b>")
     if booking.comment:
         lines.append(f"\n{html.escape(booking.comment)}")
     return "\n".join(lines)
+
+
+def client_booking_summary(booking) -> str:
+    """Сводка заявки для клиента в боте (после привязки)."""
+    lines = ["✅ <b>Вы на связи!</b>\n", "Ваша заявка:"]
+    if booking.service:
+        lines.append(f"• Услуга: <b>{html.escape(booking.service.name)}</b>")
+    lines.append(
+        f"• Желаемые дата/время: <b>{booking.preferred_date:%d.%m.%Y} "
+        f"{booking.preferred_time:%H:%M}</b>"
+    )
+    if booking.client_confirmed:
+        lines.append("\nЗаявка подтверждена. Ждём подтверждения мастера по времени.")
+    else:
+        lines.append("\nНажмите, чтобы подтвердить запись:")
+    return "\n".join(lines)
+
+
+def client_confirm_keyboard(booking) -> types.InlineKeyboardMarkup:
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton(
+        "✅ Подтвердить запись", callback_data=f"cbk_confirm_{booking.pk}"
+    ))
+    return kb
+
+
+def handle_client_booking_confirm(bot, call) -> None:
+    """Клиент нажал «Подтвердить запись» в боте (callback cbk_*)."""
+    from booking.models import BookingRequest
+
+    try:
+        _, _action, pk = call.data.split("_", 2)
+    except ValueError:
+        bot.answer_callback_query(call.id)
+        return
+
+    booking = BookingRequest.objects.filter(pk=pk).first()
+    if booking is None:
+        bot.answer_callback_query(call.id, "Заявка не найдена.")
+        return
+
+    if not booking.client_confirmed:
+        booking.client_confirmed = True
+        booking.save(update_fields=["client_confirmed", "updated_at"])
+        refresh_booking_messages(bot, booking)  # у админов появится отметка
+
+    bot.answer_callback_query(call.id, "Спасибо! Запись подтверждена.")
+    try:
+        bot.edit_message_text(
+            client_booking_summary(booking), call.message.chat.id,
+            call.message.message_id,
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def refresh_booking_messages(bot, booking) -> None:

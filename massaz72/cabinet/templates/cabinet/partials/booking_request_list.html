@@ -19,6 +19,7 @@
     <div class="booking-req__head">
       <span class="booking-req__name">{{ b.client_name }}</span>
       <span class="review-mod__status review-mod__status--{{ b.status }}">{{ b.get_status_display }}</span>
+      {% if b.client_confirmed %}<span class="booking-req__confirmed">✅ клиент подтвердил</span>{% endif %}
       <span class="booking-req__source">{{ b.get_source_display }}</span>
       <time class="review-mod__date">{{ b.created_at|date:"d.m.Y H:i" }}</time>
     </div>

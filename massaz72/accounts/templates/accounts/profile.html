@@ -1,0 +1,42 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block body %}
+<section class="account">
+  <div class="container">
+    <div class="account-card">
+      <h1 class="account__title">Профиль</h1>
+      {% if request.GET.saved %}<p class="account__notice">Профиль сохранён.</p>{% endif %}
+      {% if request.GET.password %}<p class="account__notice">Пароль изменён.</p>{% endif %}
+
+      <form class="account-form" method="post">
+        {% csrf_token %}
+        {% for field in profile_form %}
+        <div class="account-form__row">
+          <label class="account-form__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<span class="account-form__error">{{ field.errors.0 }}</span>{% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" name="save_profile" class="account-form__submit">Сохранить</button>
+      </form>
+
+      <h2 class="account__subtitle">Смена пароля</h2>
+      <form class="account-form" method="post">
+        {% csrf_token %}
+        {% for field in password_form %}
+        <div class="account-form__row">
+          <label class="account-form__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<span class="account-form__error">{{ field.errors.0 }}</span>{% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" name="change_password" class="account-form__submit">Изменить пароль</button>
+      </form>
+
+      <p class="account__alt"><a href="{% url 'accounts:dashboard' %}">← В кабинет</a></p>
+    </div>
+  </div>
+</section>
+{% endblock %}

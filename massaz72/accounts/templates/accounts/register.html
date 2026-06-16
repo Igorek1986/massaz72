@@ -1,0 +1,91 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block body %}
+<section class="account">
+  <div class="container">
+    <div class="account-card">
+      <h1 class="account__title">Регистрация</h1>
+      <form class="account-form" method="post" id="register-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="account-form__error">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="account-form__row">
+          <label class="account-form__label" for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+          {{ form.username }}
+          {% if form.username.errors %}<span class="account-form__error">{{ form.username.errors.0 }}</span>{% endif %}
+        </div>
+
+        <div class="account-form__row">
+          <label class="account-form__label" for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
+          {{ form.password1 }}
+          {% if form.password1.errors %}<span class="account-form__error">{{ form.password1.errors.0 }}</span>{% endif %}
+        </div>
+
+        {# Живой чек-лист требований к паролю #}
+        <ul class="pwd-rules" id="pwd-rules" aria-live="polite">
+          <li class="pwd-rules__item" data-rule="length">Не короче 8 символов</li>
+          <li class="pwd-rules__item" data-rule="letter">Есть буква</li>
+          <li class="pwd-rules__item" data-rule="digit">Есть цифра</li>
+          <li class="pwd-rules__item" data-rule="match">Пароли совпадают</li>
+        </ul>
+
+        <div class="account-form__row">
+          <label class="account-form__label" for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
+          {{ form.password2 }}
+          {% if form.password2.errors %}<span class="account-form__error">{{ form.password2.errors.0 }}</span>{% endif %}
+        </div>
+
+        <div class="account-form__row">
+          <label class="account-form__label" for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+          {{ form.phone }}
+          {% if form.phone.errors %}<span class="account-form__error">{{ form.phone.errors.0 }}</span>{% endif %}
+        </div>
+
+        <button type="submit" class="account-form__submit">Зарегистрироваться</button>
+      </form>
+      <p class="account__alt">Уже есть аккаунт? <a href="{% url 'accounts:login' %}">Войти</a></p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var p1 = document.getElementById('id_password1');
+      var p2 = document.getElementById('id_password2');
+      var rules = document.getElementById('pwd-rules');
+      if (!p1 || !p2 || !rules) return;
+
+      function setRule(name, ok) {
+        var li = rules.querySelector('[data-rule="' + name + '"]');
+        if (li) {
+          li.classList.toggle('pwd-rules__item--ok', ok);
+          li.classList.toggle('pwd-rules__item--bad', !ok);
+        }
+      }
+
+      function clearRule(name) {
+        var li = rules.querySelector('[data-rule="' + name + '"]');
+        if (li) li.classList.remove('pwd-rules__item--ok', 'pwd-rules__item--bad');
+      }
+
+      function check() {
+        var v = p1.value;
+        // Пока ничего не введено — нейтральное состояние (без крестиков).
+        if (!v && !p2.value) {
+          ['length', 'letter', 'digit', 'match'].forEach(clearRule);
+          return;
+        }
+        setRule('length', v.length >= 8);
+        setRule('letter', /[a-zA-Zа-яА-ЯёЁ]/.test(v));
+        setRule('digit', /\d/.test(v));
+        setRule('match', v.length > 0 && v === p2.value);
+      }
+
+      p1.addEventListener('input', check);
+      p2.addEventListener('input', check);
+      check();
+    })();
+  </script>
+</section>
+{% endblock %}

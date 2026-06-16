@@ -105,8 +105,13 @@ def booking_page(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             booking: BookingRequest = form.save(commit=False)
             booking.ip_address = ip
-            booking.source = BookingRequest.Source.GUEST
             booking.status = BookingRequest.Status.PENDING
+            # Залогиненный клиент — привязываем заявку к аккаунту.
+            if request.user.is_authenticated and hasattr(request.user, "client_profile"):
+                booking.user = request.user
+                booking.source = BookingRequest.Source.ACCOUNT
+            else:
+                booking.source = BookingRequest.Source.GUEST
             booking.save()
             _notify_admins(booking)
             return _render_done(request, booking)
@@ -117,6 +122,9 @@ def booking_page(request: HttpRequest) -> HttpResponse:
     service_id = request.GET.get("service", "")
     if service_id.isdigit():
         initial["service"] = int(service_id)
+    # Для залогиненного клиента подставляем телефон из профиля.
+    if request.user.is_authenticated and hasattr(request.user, "client_profile"):
+        initial.setdefault("phone", request.user.client_profile.phone)
     return render(request, "booking/booking.html", {"form": BookingForm(initial=initial)})
 
 

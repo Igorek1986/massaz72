@@ -1,0 +1,215 @@
+.account {
+  padding: 48px 0;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  &__title {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  &__subtitle {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-ink);
+    margin: 24px 0 14px;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  &__link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+
+    &:hover { color: var(--color-primary-active); }
+  }
+
+  &__logout {
+    border: 1px solid var(--color-hairline);
+    background: transparent;
+    color: var(--color-body);
+    border-radius: 8px;
+    padding: 6px 14px;
+    cursor: pointer;
+
+    &:hover { background: var(--color-surface-soft); }
+  }
+
+  &__alt {
+    margin-top: 18px;
+    color: var(--color-muted);
+
+    a { color: var(--color-primary); text-decoration: none; }
+  }
+
+  &__notice {
+    background: #dcfce7;
+    color: #15803d;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+  }
+
+  &__empty {
+    color: var(--color-muted);
+
+    a { color: var(--color-primary); text-decoration: none; }
+  }
+}
+
+.account-card {
+  max-width: 460px;
+  margin: 0 auto;
+  background: var(--color-canvas-card);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--shadow-card);
+}
+
+.account-form {
+  &__row {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-body);
+  }
+
+  input {
+    width: 100%;
+    border: 1px solid var(--color-hairline);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--color-ink);
+    background: var(--color-canvas-card);
+
+    &:focus { outline: none; border-color: var(--color-primary); }
+  }
+
+  &__hint { font-size: 12px; color: var(--color-muted-soft); }
+
+  &__error { color: var(--color-primary-active); font-size: 13px; }
+
+  &__submit {
+    margin-top: 6px;
+    border: none;
+    border-radius: 10px;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    padding: 11px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover { background: var(--color-primary-active); }
+  }
+}
+
+.account-bookings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.account-booking {
+  background: var(--color-canvas-card);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  &__service { font-weight: 600; color: var(--color-ink); }
+
+  &__status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--color-muted);
+
+    &--pending { background: #fef9c3; color: #92400e; }
+    &--confirmed { background: #dcfce7; color: #15803d; }
+    &--declined { background: #fee2e2; color: #b91c1c; }
+    &--cancelled { background: #e2e8f0; color: #475569; }
+  }
+
+  &__when { color: var(--color-body); margin-bottom: 4px; }
+  &__spec { color: var(--color-muted); font-size: 14px; }
+
+  &__cancel {
+    margin-top: 10px;
+    border: 1px solid var(--color-hairline);
+    background: transparent;
+    color: var(--color-primary-active);
+    border-radius: 8px;
+    padding: 6px 14px;
+    cursor: pointer;
+
+    &:hover { background: #fee2e2; }
+  }
+}
+
+// Живой чек-лист требований к паролю
+.pwd-rules {
+  list-style: none;
+  margin: -8px 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &__item {
+    font-size: 13px;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    &::before {
+      content: "○";
+      font-weight: 700;
+      width: 14px;
+      text-align: center;
+      color: var(--color-muted-soft);
+    }
+
+    &--ok {
+      color: #15803d;
+      &::before { content: "✓"; color: #15803d; }
+    }
+
+    &--bad {
+      color: var(--color-body);
+      &::before { content: "✗"; color: #b91c1c; }
+    }
+  }
+}

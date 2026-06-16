@@ -132,6 +132,14 @@ class SiteSettings(models.Model):
             "При выключении страница записи и кнопки скрываются."
         ),
     )
+    client_cabinet_enabled = models.BooleanField(
+        "Личный кабинет клиентов включён",
+        default=False,
+        help_text=(
+            "Разрешить регистрацию, вход и личный кабинет клиентов. "
+            "При выключении регистрация и кабинет недоступны."
+        ),
+    )
 
     class Meta:
         verbose_name = "Настройки сайта"

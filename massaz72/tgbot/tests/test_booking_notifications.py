@@ -148,6 +148,28 @@ class BookingBindTest(TestCase):
         self.booking.save()
         self.assertIn("@ivan", build_booking_text(self.booking))
 
+    def test_client_confirm(self):
+        from tgbot.notifications import handle_client_booking_confirm
+        bot = MagicMock()
+        handle_client_booking_confirm(
+            bot, make_call(f"cbk_confirm_{self.booking.pk}", uid=555)
+        )
+        self.booking.refresh_from_db()
+        self.assertTrue(self.booking.client_confirmed)
+        bot.answer_callback_query.assert_called()
+
+    def test_client_confirm_unknown(self):
+        from tgbot.notifications import handle_client_booking_confirm
+        bot = MagicMock()
+        handle_client_booking_confirm(bot, make_call("cbk_confirm_999999", uid=555))
+        bot.answer_callback_query.assert_called_with("cb-1", "Заявка не найдена.")
+
+    def test_booking_text_shows_client_confirmed(self):
+        from tgbot.notifications import build_booking_text
+        self.booking.client_confirmed = True
+        self.booking.save()
+        self.assertIn("Клиент подтвердил", build_booking_text(self.booking))
+
     def test_unique_link_token_generated(self):
         other = BookingRequest.objects.create(
             client_name="Второй",

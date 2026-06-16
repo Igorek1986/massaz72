@@ -1389,6 +1389,259 @@ a {
   font-size: 13px;
   color: var(--color-muted); }
 
+.bot-choice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin: 8px 0 20px; }
+  .bot-choice__card {
+    flex: 1 1 220px;
+    max-width: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: var(--color-canvas-card);
+    border: 1px solid var(--color-hairline-soft);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--shadow-card); }
+    .bot-choice__card--soon {
+      background: transparent;
+      border-style: dashed;
+      box-shadow: none;
+      justify-content: center;
+      color: var(--color-muted); }
+  .bot-choice__name {
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--color-ink); }
+  .bot-choice__qr {
+    background: #fff;
+    padding: 10px;
+    border-radius: 12px; }
+    .bot-choice__qr svg {
+      display: block;
+      width: 170px;
+      height: 170px; }
+  .bot-choice__btn {
+    display: inline-block;
+    padding: 11px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    background: #2aabee; }
+    .bot-choice__btn:hover {
+      background: #1d97d6; }
+  .bot-choice__soon {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--color-surface-strong);
+    color: var(--color-body);
+    font-size: 13px;
+    font-weight: 600; }
+  .bot-choice__soon-hint {
+    font-size: 13px;
+    color: var(--color-muted-soft);
+    text-align: center; }
+
+.account {
+  padding: 48px 0; }
+  .account__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px; }
+  .account__title {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--color-ink); }
+  .account__subtitle {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-ink);
+    margin: 24px 0 14px; }
+  .account__actions {
+    display: flex;
+    align-items: center;
+    gap: 14px; }
+  .account__link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500; }
+    .account__link:hover {
+      color: var(--color-primary-active); }
+  .account__logout {
+    border: 1px solid var(--color-hairline);
+    background: transparent;
+    color: var(--color-body);
+    border-radius: 8px;
+    padding: 6px 14px;
+    cursor: pointer; }
+    .account__logout:hover {
+      background: var(--color-surface-soft); }
+  .account__alt {
+    margin-top: 18px;
+    color: var(--color-muted); }
+    .account__alt a {
+      color: var(--color-primary);
+      text-decoration: none; }
+  .account__notice {
+    background: #dcfce7;
+    color: #15803d;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px; }
+  .account__empty {
+    color: var(--color-muted); }
+    .account__empty a {
+      color: var(--color-primary);
+      text-decoration: none; }
+
+.account-card {
+  max-width: 460px;
+  margin: 0 auto;
+  background: var(--color-canvas-card);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--shadow-card); }
+
+.account-form__row {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px; }
+
+.account-form__label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-body); }
+
+.account-form input {
+  width: 100%;
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--color-ink);
+  background: var(--color-canvas-card); }
+  .account-form input:focus {
+    outline: none;
+    border-color: var(--color-primary); }
+
+.account-form__hint {
+  font-size: 12px;
+  color: var(--color-muted-soft); }
+
+.account-form__error {
+  color: var(--color-primary-active);
+  font-size: 13px; }
+
+.account-form__submit {
+  margin-top: 6px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  padding: 11px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer; }
+  .account-form__submit:hover {
+    background: var(--color-primary-active); }
+
+.account-bookings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px; }
+
+.account-booking {
+  background: var(--color-canvas-card);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card); }
+  .account-booking__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px; }
+  .account-booking__service {
+    font-weight: 600;
+    color: var(--color-ink); }
+  .account-booking__status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--color-muted); }
+    .account-booking__status--pending {
+      background: #fef9c3;
+      color: #92400e; }
+    .account-booking__status--confirmed {
+      background: #dcfce7;
+      color: #15803d; }
+    .account-booking__status--declined {
+      background: #fee2e2;
+      color: #b91c1c; }
+    .account-booking__status--cancelled {
+      background: #e2e8f0;
+      color: #475569; }
+  .account-booking__when {
+    color: var(--color-body);
+    margin-bottom: 4px; }
+  .account-booking__spec {
+    color: var(--color-muted);
+    font-size: 14px; }
+  .account-booking__cancel {
+    margin-top: 10px;
+    border: 1px solid var(--color-hairline);
+    background: transparent;
+    color: var(--color-primary-active);
+    border-radius: 8px;
+    padding: 6px 14px;
+    cursor: pointer; }
+    .account-booking__cancel:hover {
+      background: #fee2e2; }
+
+.pwd-rules {
+  list-style: none;
+  margin: -8px 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px; }
+  .pwd-rules__item {
+    font-size: 13px;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 7px; }
+    .pwd-rules__item::before {
+      content: "○";
+      font-weight: 700;
+      width: 14px;
+      text-align: center;
+      color: var(--color-muted-soft); }
+    .pwd-rules__item--ok {
+      color: #15803d; }
+      .pwd-rules__item--ok::before {
+        content: "✓";
+        color: #15803d; }
+    .pwd-rules__item--bad {
+      color: var(--color-body); }
+      .pwd-rules__item--bad::before {
+        content: "✗";
+        color: #b91c1c; }
+
 .reviews {
   padding: 48px 0; }
   .reviews__title {

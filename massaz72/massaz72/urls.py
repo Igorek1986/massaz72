@@ -40,6 +40,7 @@ urlpatterns = [
     path("cabinet/", include("cabinet.urls", "cabinet")),
     path("reviews/", include("reviews.urls", "reviews")),
     path("booking/", include("booking.urls", "booking")),
+    path("account/", include("accounts.urls", "accounts")),
     path(
         "sitemap.xml",
         sitemap,

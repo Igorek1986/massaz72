@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "cabinet.apps.CabinetConfig",
     "reviews.apps.ReviewsConfig",
     "booking.apps.BookingConfig",
+    "accounts.apps.AccountsConfig",
 ]
 
 # Защита входа в кабинет от перебора пароля (django-axes).

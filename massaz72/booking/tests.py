@@ -238,6 +238,16 @@ class BookingViewTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.context["form"].initial.get("service"))
 
+    def test_logged_in_booking_links_to_account(self):
+        from accounts.models import Client as ClientProfile
+        user = User.objects.create_user("clientacc", password="pw")
+        ClientProfile.objects.create(user=user, phone="555")
+        self.client.force_login(user)
+        self._post()
+        booking = BookingRequest.objects.get()
+        self.assertEqual(booking.user, user)
+        self.assertEqual(booking.source, BookingRequest.Source.ACCOUNT)
+
 
 class CabinetBookingTest(TestCase):
     def setUp(self):

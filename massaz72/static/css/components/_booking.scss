@@ -219,3 +219,76 @@
   font-size: 13px;
   color: var(--color-muted);
 }
+
+// Выбор мессенджера на экране «спасибо»
+.bot-choice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin: 8px 0 20px;
+
+  &__card {
+    flex: 1 1 220px;
+    max-width: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: var(--color-canvas-card);
+    border: 1px solid var(--color-hairline-soft);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--shadow-card);
+
+    &--soon {
+      background: transparent;
+      border-style: dashed;
+      box-shadow: none;
+      justify-content: center;
+      color: var(--color-muted);
+    }
+  }
+
+  &__name {
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--color-ink);
+  }
+
+  &__qr {
+    background: #fff;
+    padding: 10px;
+    border-radius: 12px;
+
+    svg { display: block; width: 170px; height: 170px; }
+  }
+
+  &__btn {
+    display: inline-block;
+    padding: 11px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    background: #2aabee;
+
+    &:hover { background: #1d97d6; }
+  }
+
+  &__soon {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--color-surface-strong);
+    color: var(--color-body);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  &__soon-hint {
+    font-size: 13px;
+    color: var(--color-muted-soft);
+    text-align: center;
+  }
+}
