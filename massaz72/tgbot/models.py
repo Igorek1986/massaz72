@@ -298,3 +298,33 @@ class AdminForward(models.Model):
 
     def __str__(self) -> str:
         return f"{self.admin_telegram_id}/{self.admin_message_id} → {self.user_id}"
+
+
+class ReviewNotification(models.Model):
+    """
+    Связь «отзыв» → «сообщение с кнопками, доставленное администратору».
+    Один отзыв рассылается всем активным админам; когда кто-то из них
+    обрабатывает отзыв, по этим записям удаляем сообщения у всех админов.
+    """
+
+    review = models.ForeignKey(
+        "reviews.Review",
+        on_delete=models.CASCADE,
+        related_name="tg_notifications",
+    )
+    admin_telegram_id = models.BigIntegerField()
+    message_id = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Уведомление об отзыве"
+        verbose_name_plural = "Уведомления об отзывах"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["admin_telegram_id", "message_id"],
+                name="unique_review_admin_message",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"review {self.review_id} → {self.admin_telegram_id}/{self.message_id}"

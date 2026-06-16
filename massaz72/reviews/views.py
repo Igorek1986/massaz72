@@ -1,3 +1,5 @@
+import logging
+
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -8,6 +10,18 @@ from main.models import SiteSettings
 from .forms import ReviewForm
 from .models import Review
 from .spam import is_rate_limited, timing_is_human
+
+logger = logging.getLogger(__name__)
+
+
+def _notify_admins(review: Review) -> None:
+    """Шлёт уведомление админам в Telegram. Никогда не ломает отправку отзыва."""
+    try:
+        from tgbot.notifications import notify_new_review
+
+        notify_new_review(review)
+    except Exception:  # noqa: BLE001
+        logger.exception("Не удалось уведомить админов об отзыве %s", review.pk)
 
 
 def get_client_ip(request: HttpRequest) -> str | None:
@@ -51,6 +65,7 @@ def create(request: HttpRequest) -> HttpResponse:
         review.ip_address = ip
         review.status = Review.Status.PENDING
         review.save()
+        _notify_admins(review)
         return _redirect_to_reviews("ok")
 
     # Ошибки валидации — перерисовываем главную с заполненной формой.
