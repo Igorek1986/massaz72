@@ -4,7 +4,7 @@ import tempfile
 from datetime import date
 from unittest.mock import patch
 
-from cabinet.models import Specialist
+from cabinet.models import Specialist, Specialty
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -81,6 +81,19 @@ class SpecialistModelTest(TestCase):
         """Специалист создаётся без привязки к пользователю."""
         spec = Specialist.objects.create(name="Без аккаунта")
         self.assertIsNone(spec.user)
+
+    def test_specialty_is_addable_fk(self):
+        """Специальность — отдельная управляемая таблица (можно добавлять)."""
+        cosmetolog = Specialty.objects.create(name="Косметолог")
+        self.specialist.specialty = cosmetolog
+        self.specialist.save()
+        self.specialist.refresh_from_db()
+        self.assertEqual(self.specialist.specialty.name, "Косметолог")
+
+    def test_legacy_specialties_seeded(self):
+        """Миграция данных создала прежние специальности."""
+        self.assertTrue(Specialty.objects.filter(name="Массажист").exists())
+        self.assertTrue(Specialty.objects.filter(name="Другое").exists())
 
 
 class CertificateModelTest(TempMediaRootMixin, TestCase):

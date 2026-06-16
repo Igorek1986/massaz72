@@ -5,12 +5,21 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 
-class Specialist(models.Model):
-    SPECIALTY_CHOICES = [
-        ("masseur", "Массажист"),
-        ("other", "Другое"),
-    ]
+class Specialty(models.Model):
+    """Справочник специальностей (управляется в админке)."""
+    name = models.CharField("Название", max_length=100, unique=True)
+    order = models.PositiveIntegerField("Порядок", default=0)
 
+    class Meta:
+        verbose_name = "Специальность"
+        verbose_name_plural = "Специальности"
+        ordering = ["order", "name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Specialist(models.Model):
     # Вход в кабинет — необязательная привязка к пользователю.
     # Специалист первичен; аккаунт прикрепляется по желанию.
     user = models.OneToOneField(
@@ -22,8 +31,9 @@ class Specialist(models.Model):
         verbose_name="Аккаунт для входа",
         help_text="Необязательно. Привяжите пользователя, если специалисту нужен вход в кабинет.",
     )
-    specialty = models.CharField(
-        "Специальность", max_length=30, choices=SPECIALTY_CHOICES, default="masseur"
+    specialty = models.ForeignKey(
+        "Specialty", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="specialists", verbose_name="Специальность",
     )
     name = models.CharField("Имя", max_length=100)
     photo = models.ImageField("Фото", upload_to="specialists/", null=True, blank=True)

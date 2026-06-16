@@ -4,8 +4,15 @@ from main.models import Certificate
 
 from .models import (
     Appointment, AppointmentSeries, BlockedSlot,
-    Discount, ScheduleException, Specialist, WorkSchedule,
+    Discount, ScheduleException, Specialist, Specialty, WorkSchedule,
 )
+
+
+@admin.register(Specialty)
+class SpecialtyAdmin(admin.ModelAdmin):
+    list_display = ("name", "order")
+    list_editable = ("order",)
+    search_fields = ("name",)
 
 
 class CertificateInline(admin.TabularInline):
