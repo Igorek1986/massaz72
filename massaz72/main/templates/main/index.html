@@ -221,4 +221,8 @@
     }
   </script>
   {% endif %}
+
+  {% if reviews_enabled %}
+    {% include "reviews/section.html" %}
+  {% endif %}
 {% endblock %}

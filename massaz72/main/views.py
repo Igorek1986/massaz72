@@ -1,3 +1,4 @@
+from django.db.models import Avg, Count
 from django.shortcuts import render
 from main.models import Certificate
 from services.models import Massage
@@ -5,8 +6,13 @@ from services.models import Massage
 from .models import SiteSettings
 
 
-def index(request):
-    # about = About.objects.first()
+def home_context(request, review_form=None):
+    """Контекст главной страницы. Вынесен отдельно, чтобы view приёма отзывов
+    мог перерисовать главную с заполненной формой при ошибке валидации."""
+    from reviews.forms import ReviewForm
+    from reviews.models import Review
+
+    site_settings = SiteSettings.objects.first()
     child_massages = Massage.objects.filter(
         massage_type=Massage.CHILD, is_archived=False
     )
@@ -20,16 +26,28 @@ def index(request):
         is_archived=False, new_price__isnull=False
     ).exists()
 
+    reviews_enabled = bool(site_settings and site_settings.reviews_enabled)
+    reviews = review_stats = None
+    if reviews_enabled:
+        reviews = Review.objects.public()
+        review_stats = reviews.aggregate(avg=Avg("rating"), total=Count("id"))
+
     context = {
-        # 'about': about,
-        "site_settings": SiteSettings.objects.first(),
+        "site_settings": site_settings,
         "child_massages": child_massages,
         "adult_massages": adult_massages,
         "certificates": certificates,
         "has_upcoming_prices": has_upcoming_prices,
-        # 'banner': MainBanner.objects.first(),
+        "reviews_enabled": reviews_enabled,
+        "reviews": reviews,
+        "review_stats": review_stats,
+        "review_form": review_form if review_form is not None else ReviewForm(),
     }
-    return render(request, "main/index.html", context=context)
+    return context
+
+
+def index(request):
+    return render(request, "main/index.html", context=home_context(request))
 
 
 def cookies(request):

@@ -1,0 +1,121 @@
+<section class="reviews" id="reviews">
+  <div class="container">
+    <h2 class="reviews__title">Отзывы</h2>
+
+    {% if review_stats.total %}
+    <div class="reviews__summary">
+      <span class="reviews__avg">{{ review_stats.avg|floatformat:1 }}</span>
+      <span class="reviews__avg-stars" aria-hidden="true">
+        {% with avg=review_stats.avg|default:0 %}
+        {% for i in "12345"|make_list %}
+          <span class="star {% if forloop.counter <= avg %}star--on{% endif %}">★</span>
+        {% endfor %}
+        {% endwith %}
+      </span>
+      <span class="reviews__count">{{ review_stats.total }} отзыв(ов)</span>
+    </div>
+    {% endif %}
+
+    {% if reviews %}
+    <div class="reviews__grid">
+      {% for review in reviews %}
+      <article class="review-card">
+        <div class="review-card__head">
+          <span class="review-card__name">{{ review.name }}</span>
+          <span class="review-card__stars" aria-label="Оценка {{ review.rating }} из 5">
+            {% for i in "12345"|make_list %}<span class="star {% if forloop.counter <= review.rating %}star--on{% endif %}">★</span>{% endfor %}
+          </span>
+        </div>
+        <p class="review-card__text">{{ review.text|linebreaksbr }}</p>
+        <time class="review-card__date" datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:'d.m.Y' }}</time>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="reviews__empty">Пока нет отзывов. Будьте первым!</p>
+    {% endif %}
+
+    {% if request.GET.review == 'ok' %}
+    <p class="reviews__notice reviews__notice--ok">Спасибо! Ваш отзыв появится на сайте после проверки.</p>
+    {% elif request.GET.review == 'throttled' %}
+    <p class="reviews__notice reviews__notice--warn">Вы недавно уже оставляли отзыв. Попробуйте позже.</p>
+    {% endif %}
+
+    <form class="review-form" method="post" action="{% url 'reviews:create' %}">
+      {% csrf_token %}
+      <h3 class="review-form__title">Оставить отзыв</h3>
+
+      {# honeypot + time-trap #}
+      {{ review_form.website }}
+      {{ review_form.ts }}
+
+      <div class="review-form__row">
+        <label class="review-form__label" for="{{ review_form.name.id_for_label }}">Имя</label>
+        {{ review_form.name }}
+        {% if review_form.name.errors %}<span class="review-form__error">{{ review_form.name.errors.0 }}</span>{% endif %}
+      </div>
+
+      <div class="review-form__row">
+        <span class="review-form__label">Оценка</span>
+        <fieldset class="rating-input">
+          {% for val in "54321"|make_list %}
+          <input type="radio" id="rating-{{ val }}" name="rating" value="{{ val }}"
+                 {% if review_form.rating.value|stringformat:'s' == val %}checked{% endif %}>
+          <label for="rating-{{ val }}" title="{{ val }}">★</label>
+          {% endfor %}
+        </fieldset>
+        <span class="review-form__error" data-rating-error {% if not review_form.rating.errors %}hidden{% endif %}>{{ review_form.rating.errors.0|default:"Пожалуйста, поставьте оценку." }}</span>
+      </div>
+
+      <div class="review-form__row">
+        <label class="review-form__label" for="{{ review_form.text.id_for_label }}">Отзыв</label>
+        {{ review_form.text }}
+        {% if review_form.text.errors %}<span class="review-form__error">{{ review_form.text.errors.0 }}</span>{% endif %}
+      </div>
+
+      <button type="submit" class="review-form__submit">Отправить</button>
+    </form>
+  </div>
+
+  <script>
+    (function () {
+      // Убираем ?review=... из URL, чтобы уведомление не висело после перезагрузки.
+      if (window.history.replaceState) {
+        var url = new URL(window.location.href);
+        if (url.searchParams.has('review')) {
+          url.searchParams.delete('review');
+          window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+        }
+      }
+
+      // Уведомление само исчезает через несколько секунд.
+      var notice = document.querySelector('.reviews__notice');
+      if (notice) {
+        setTimeout(function () {
+          notice.classList.add('reviews__notice--fade');
+          setTimeout(function () { notice.remove(); }, 400);
+        }, 5000);
+      }
+
+      var form = document.querySelector('.review-form');
+      if (!form) return;
+      var ratingError = form.querySelector('[data-rating-error]');
+      function ratingChosen() {
+        return !!form.querySelector('input[name="rating"]:checked');
+      }
+      form.addEventListener('submit', function (e) {
+        if (!ratingChosen()) {
+          e.preventDefault();
+          if (ratingError) ratingError.hidden = false;
+          var stars = form.querySelector('.rating-input');
+          if (stars) stars.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+      form.querySelectorAll('input[name="rating"]').forEach(function (input) {
+        input.addEventListener('change', function () {
+          if (ratingError) ratingError.hidden = true;
+        });
+      });
+    })();
+  </script>
+</section>

@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "services.apps.ServicesConfig",
     "tgbot.apps.TgbotConfig",
     "cabinet.apps.CabinetConfig",
+    "reviews.apps.ReviewsConfig",
 ]
 
 # Защита входа в кабинет от перебора пароля (django-axes).

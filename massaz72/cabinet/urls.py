@@ -54,4 +54,13 @@ urlpatterns = [
     path("settings/blocked-slots/<int:pk>/edit/", views.blocked_slot_edit, name="blocked_slot_edit"),
     path("settings/blocked-slots/<int:pk>/confirm-delete/", views.blocked_slot_confirm_delete, name="blocked_slot_confirm_delete"),
     path("settings/blocked-slots/<int:pk>/delete/", views.blocked_slot_delete, name="blocked_slot_delete"),
+
+    # Reviews moderation (superuser)
+    path("reviews/", views.reviews, name="reviews"),
+    path("reviews/list/", views.review_list, name="review_list"),
+    path("reviews/<int:pk>/approve/", views.review_approve, name="review_approve"),
+    path("reviews/<int:pk>/reject/", views.review_reject, name="review_reject"),
+    path("reviews/<int:pk>/archive/", views.review_archive, name="review_archive"),
+    path("reviews/<int:pk>/unarchive/", views.review_unarchive, name="review_unarchive"),
+    path("reviews/toggle/", views.reviews_toggle, name="reviews_toggle"),
 ]

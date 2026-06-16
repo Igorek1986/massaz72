@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from main.models import SiteSettings
+from reviews.models import Review
 from services.models import Massage
 
 from massaz72.utils import _slugify_ru
@@ -48,6 +49,17 @@ def prices_manager_required(view_func):
     def wrapper(request: HttpRequest, *args, **kwargs):
         if not request.specialist.can_manage_prices:
             return HttpResponse("Нет доступа к управлению ценами", status=403)
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def superuser_required(view_func):
+    """Доступ только специалисту-суперпользователю (модерация отзывов)."""
+    @wraps(view_func)
+    @specialist_required
+    def wrapper(request: HttpRequest, *args, **kwargs):
+        if not request.user.is_superuser:
+            return HttpResponse("Доступ только для администратора", status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -1268,3 +1280,126 @@ def calendar_events(request):
         })
 
     return JsonResponse(events, safe=False)
+
+
+# ---------------------------------------------------------------------------
+# Reviews moderation (superuser only)
+# ---------------------------------------------------------------------------
+
+REVIEW_FILTERS = ("pending", "approved", "rejected", "archived", "all")
+
+
+def _review_queryset(status: str):
+    qs = Review.objects.all()
+    if status == "archived":
+        return qs.filter(is_archived=True)
+    if status in ("pending", "approved", "rejected"):
+        return qs.filter(status=status, is_archived=False)
+    return qs  # "all"
+
+
+def _review_filter(request: HttpRequest) -> str:
+    status = request.POST.get("status") or request.GET.get("status") or "pending"
+    return status if status in REVIEW_FILTERS else "pending"
+
+
+REVIEW_TABS = (
+    ("pending", "На модерации"),
+    ("approved", "Одобренные"),
+    ("rejected", "Отклонённые"),
+    ("archived", "Архив"),
+    ("all", "Все"),
+)
+
+
+def _review_list_context(status: str) -> dict:
+    return {
+        "reviews": _review_queryset(status),
+        "current_filter": status,
+        "tabs": REVIEW_TABS,
+        "counts": {
+            "pending": Review.objects.filter(
+                status=Review.Status.PENDING, is_archived=False
+            ).count(),
+            "approved": Review.objects.filter(
+                status=Review.Status.APPROVED, is_archived=False
+            ).count(),
+            "rejected": Review.objects.filter(
+                status=Review.Status.REJECTED, is_archived=False
+            ).count(),
+            "archived": Review.objects.filter(is_archived=True).count(),
+        },
+    }
+
+
+def _review_list_response(request: HttpRequest) -> HttpResponse:
+    status = _review_filter(request)
+    return render(
+        request, "cabinet/partials/review_list.html", _review_list_context(status)
+    )
+
+
+@superuser_required
+def reviews(request: HttpRequest) -> HttpResponse:
+    status = _review_filter(request)
+    settings_obj = SiteSettings.objects.first()
+    context = _review_list_context(status)
+    context["reviews_enabled"] = bool(settings_obj and settings_obj.reviews_enabled)
+    return render(request, "cabinet/reviews.html", context)
+
+
+@superuser_required
+def review_list(request: HttpRequest) -> HttpResponse:
+    return _review_list_response(request)
+
+
+@superuser_required
+@require_POST
+def review_approve(request: HttpRequest, pk: int) -> HttpResponse:
+    review = get_object_or_404(Review, pk=pk)
+    review.status = Review.Status.APPROVED
+    review.is_archived = False
+    review.save(update_fields=["status", "is_archived", "updated_at"])
+    return _review_list_response(request)
+
+
+@superuser_required
+@require_POST
+def review_reject(request: HttpRequest, pk: int) -> HttpResponse:
+    review = get_object_or_404(Review, pk=pk)
+    review.status = Review.Status.REJECTED
+    review.save(update_fields=["status", "updated_at"])
+    return _review_list_response(request)
+
+
+@superuser_required
+@require_POST
+def review_archive(request: HttpRequest, pk: int) -> HttpResponse:
+    review = get_object_or_404(Review, pk=pk)
+    review.is_archived = True
+    review.save(update_fields=["is_archived", "updated_at"])
+    return _review_list_response(request)
+
+
+@superuser_required
+@require_POST
+def review_unarchive(request: HttpRequest, pk: int) -> HttpResponse:
+    review = get_object_or_404(Review, pk=pk)
+    review.is_archived = False
+    review.save(update_fields=["is_archived", "updated_at"])
+    return _review_list_response(request)
+
+
+@superuser_required
+@require_POST
+def reviews_toggle(request: HttpRequest) -> HttpResponse:
+    settings_obj = SiteSettings.objects.first()
+    if settings_obj is None:
+        return HttpResponse("Сначала создайте «Настройки сайта»", status=400)
+    settings_obj.reviews_enabled = not settings_obj.reviews_enabled
+    settings_obj.save(update_fields=["reviews_enabled"])
+    return render(
+        request,
+        "cabinet/partials/reviews_toggle.html",
+        {"reviews_enabled": settings_obj.reviews_enabled},
+    )

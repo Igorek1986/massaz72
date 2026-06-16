@@ -221,6 +221,15 @@ class SiteSettings(models.Model):
         ),
     )
 
+    reviews_enabled = models.BooleanField(
+        "Отзывы включены",
+        default=False,
+        help_text=(
+            "Показывать на сайте секцию отзывов и форму «Оставить отзыв». "
+            "При выключении секция и приём новых отзывов скрываются."
+        ),
+    )
+
     class Meta:
         verbose_name = "Настройки сайта"
         verbose_name_plural = "Настройки сайта"

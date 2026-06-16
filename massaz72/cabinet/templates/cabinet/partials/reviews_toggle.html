@@ -1,0 +1,15 @@
+<div id="reviews-toggle-wrap" class="reviews-toggle">
+  <span class="reviews-toggle__label">
+    Отзывы на сайте:
+    <strong class="reviews-toggle__state reviews-toggle__state--{% if reviews_enabled %}on{% else %}off{% endif %}">
+      {% if reviews_enabled %}включены{% else %}выключены{% endif %}
+    </strong>
+  </span>
+  <button type="button"
+          class="btn btn--sm {% if reviews_enabled %}btn--ghost{% else %}btn--primary{% endif %}"
+          hx-post="{% url 'cabinet:reviews_toggle' %}"
+          hx-target="#reviews-toggle-wrap"
+          hx-swap="outerHTML">
+    {% if reviews_enabled %}Выключить{% else %}Включить{% endif %}
+  </button>
+</div>

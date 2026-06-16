@@ -38,6 +38,7 @@ urlpatterns = [
     path("services/", include("services.urls", "services")),
     path("", include("tgbot.urls", "tgbot")),
     path("cabinet/", include("cabinet.urls", "cabinet")),
+    path("reviews/", include("reviews.urls", "reviews")),
     path(
         "sitemap.xml",
         sitemap,

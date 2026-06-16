@@ -1,0 +1,17 @@
+{% extends "cabinet/base.html" %}
+{% load static %}
+
+{% block title %}Отзывы{% endblock %}
+{% block nav_reviews %}sidebar__link--active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Отзывы</h1>
+</div>
+
+{% include "cabinet/partials/reviews_toggle.html" %}
+
+<div id="reviews-list">
+  {% include "cabinet/partials/review_list.html" %}
+</div>
+{% endblock %}

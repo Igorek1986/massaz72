@@ -1,0 +1,46 @@
+{% load static %}
+<div class="review-tabs">
+  {% for key, label in tabs %}
+  <button type="button"
+          class="review-tabs__tab {% if current_filter == key %}review-tabs__tab--active{% endif %}"
+          hx-get="{% url 'cabinet:review_list' %}?status={{ key }}"
+          hx-target="#reviews-list"
+          hx-swap="innerHTML">
+    {{ label }}
+    {% if key == 'pending' and counts.pending %}<span class="review-tabs__badge">{{ counts.pending }}</span>{% endif %}
+  </button>
+  {% endfor %}
+</div>
+
+{% if reviews %}
+<ul class="review-mod-list">
+  {% for r in reviews %}
+  <li class="review-mod" id="review-{{ r.pk }}">
+    <div class="review-mod__head">
+      <span class="review-mod__name">{{ r.name }}</span>
+      <span class="review-mod__stars">{% for i in "12345"|make_list %}<span class="star {% if forloop.counter <= r.rating %}star--on{% endif %}">★</span>{% endfor %}</span>
+      <span class="review-mod__status review-mod__status--{{ r.status }}{% if r.is_archived %} review-mod__status--archived{% endif %}">
+        {% if r.is_archived %}В архиве{% else %}{{ r.get_status_display }}{% endif %}
+      </span>
+      <time class="review-mod__date">{{ r.created_at|date:"d.m.Y H:i" }}</time>
+    </div>
+    <p class="review-mod__text">{{ r.text|linebreaksbr }}</p>
+    <div class="review-mod__actions">
+      {% if r.is_archived %}
+        <button class="btn btn--sm btn--ghost" hx-post="{% url 'cabinet:review_unarchive' r.pk %}" hx-vals='{"status": "{{ current_filter }}"}' hx-target="#reviews-list" hx-swap="innerHTML">Вернуть из архива</button>
+      {% else %}
+        {% if r.status != 'approved' %}
+        <button class="btn btn--sm btn--primary" hx-post="{% url 'cabinet:review_approve' r.pk %}" hx-vals='{"status": "{{ current_filter }}"}' hx-target="#reviews-list" hx-swap="innerHTML">Одобрить</button>
+        {% endif %}
+        {% if r.status != 'rejected' %}
+        <button class="btn btn--sm btn--ghost" hx-post="{% url 'cabinet:review_reject' r.pk %}" hx-vals='{"status": "{{ current_filter }}"}' hx-target="#reviews-list" hx-swap="innerHTML">Отклонить</button>
+        {% endif %}
+        <button class="btn btn--sm btn--ghost" hx-post="{% url 'cabinet:review_archive' r.pk %}" hx-vals='{"status": "{{ current_filter }}"}' hx-target="#reviews-list" hx-swap="innerHTML">В архив</button>
+      {% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="settings-empty">Отзывов нет</p>
+{% endif %}
