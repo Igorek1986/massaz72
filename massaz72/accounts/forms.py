@@ -13,6 +13,12 @@ class RegisterForm(UserCreationForm):
         widget=forms.TextInput(attrs={**_INPUT, "type": "tel",
                                       "placeholder": "Телефон"}),
     )
+    consent = forms.BooleanField(
+        required=True,
+        error_messages={
+            "required": "Необходимо согласие на обработку персональных данных.",
+        },
+    )
 
     class Meta(UserCreationForm.Meta):
         model = User

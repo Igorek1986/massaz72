@@ -5,7 +5,7 @@ from cabinet.models import Specialist
 from reviews.spam import make_timestamp_token
 from services.models import Massage
 
-from .models import BookingRequest
+from .models import BookingRequest, BookingSessionOption
 
 
 class BookingForm(forms.ModelForm):
@@ -18,12 +18,18 @@ class BookingForm(forms.ModelForm):
         label="",
     )
     ts = forms.CharField(required=False, widget=forms.HiddenInput)
+    consent = forms.BooleanField(
+        required=True,
+        error_messages={
+            "required": "Необходимо согласие на обработку персональных данных.",
+        },
+    )
 
     class Meta:
         model = BookingRequest
         fields = [
-            "client_name", "service", "specialist",
-            "preferred_date", "preferred_time", "phone", "comment",
+            "client_name", "service", "specialist", "sessions",
+            "preferred_date", "preferred_time", "phone", "address", "comment",
         ]
         widgets = {
             "client_name": forms.TextInput(attrs={
@@ -32,6 +38,7 @@ class BookingForm(forms.ModelForm):
             }),
             "service": forms.Select(attrs={"class": "booking-form__input"}),
             "specialist": forms.Select(attrs={"class": "booking-form__input"}),
+            "sessions": forms.Select(attrs={"class": "booking-form__input"}),
             "preferred_date": forms.DateInput(attrs={
                 "type": "date", "class": "booking-form__input",
             }),
@@ -40,6 +47,10 @@ class BookingForm(forms.ModelForm):
             }),
             "phone": forms.TextInput(attrs={
                 "type": "tel", "maxlength": 20, "placeholder": "Телефон (необязательно)",
+                "class": "booking-form__input",
+            }),
+            "address": forms.TextInput(attrs={
+                "maxlength": 500, "placeholder": "Адрес (для выезда на дом)",
                 "class": "booking-form__input",
             }),
             "comment": forms.Textarea(attrs={
@@ -51,6 +62,7 @@ class BookingForm(forms.ModelForm):
             "client_name": "Имя",
             "service": "Услуга",
             "specialist": "Мастер",
+            "sessions": "Количество сеансов",
             "preferred_date": "Желаемая дата",
             "preferred_time": "Желаемое время",
             "phone": "Телефон",
@@ -73,6 +85,16 @@ class BookingForm(forms.ModelForm):
         else:
             self.fields["specialist"].queryset = specialists
             self.fields["specialist"].required = True
+
+        # Онлайн-запись — только курсом: количество сеансов обязательно.
+        # Показываем поле, только если варианты заданы в админке.
+        session_options = BookingSessionOption.objects.filter(is_active=True)
+        if not session_options.exists():
+            self.fields.pop("sessions")
+        else:
+            self.fields["sessions"].queryset = session_options
+            self.fields["sessions"].required = True
+            self.fields["sessions"].empty_label = "Выберите количество сеансов"
 
         if not self.is_bound:
             self.fields["ts"].initial = make_timestamp_token()

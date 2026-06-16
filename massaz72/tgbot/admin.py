@@ -7,7 +7,6 @@ from .models import (
     AdminForward,
     BotAdmin,
     BotSettings,
-    BookingSessionOption,
     BookingTimeSlot,
     Broadcast,
     DialogMessage,
@@ -116,12 +115,6 @@ class TelegramUserAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
-
-
-@admin.register(BookingSessionOption)
-class BookingSessionOptionAdmin(admin.ModelAdmin):
-    list_display = ["__str__", "count", "is_active", "order"]
-    list_editable = ["is_active", "order"]
 
 
 @admin.register(BookingTimeSlot)

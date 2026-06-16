@@ -12,9 +12,30 @@
 import html
 import logging
 
+from django.utils import timezone
 from telebot import types
 
 from .models import BookingNotification, BotAdmin, ReviewNotification
+
+
+def _policy_url() -> str:
+    """Абсолютная ссылка на «Политику обработки ПД» для сообщений в боте."""
+    from django.conf import settings
+    from django.contrib.sites.models import Site
+    from django.urls import reverse
+
+    path = reverse("main:personal_data")
+    domain = ""
+    try:
+        domain = Site.objects.get_current().domain
+    except Exception:  # noqa: BLE001
+        pass
+    # Если домен Site не настроен (example.com) — берём из ALLOWED_HOSTS.
+    if not domain or domain == "example.com":
+        hosts = [h for h in getattr(settings, "ALLOWED_HOSTS", []) if h not in ("*", "")]
+        if hosts:
+            domain = hosts[0]
+    return f"https://{domain}{path}" if domain and domain != "example.com" else path
 
 logger = logging.getLogger(__name__)
 
@@ -153,10 +174,14 @@ def build_booking_text(booking) -> str:
         lines.append(f"<b>Телефон:</b> {html.escape(booking.phone)}")
     else:
         lines.append("<b>Телефон:</b> не указан")
+    if booking.address:
+        lines.append(f"<b>Адрес (выезд):</b> {html.escape(booking.address)}")
     if booking.service:
         lines.append(f"<b>Услуга:</b> {html.escape(booking.service.name)}")
     if booking.specialist:
         lines.append(f"<b>Мастер:</b> {html.escape(booking.specialist.name)}")
+    if booking.sessions:
+        lines.append(f"<b>Сеансов:</b> {html.escape(booking.sessions.button_label)}")
     lines.append(f"<b>Желаемые дата/время:</b> {booking.preferred_date:%d.%m.%Y} {booking.preferred_time:%H:%M}")
     if booking.messenger_user_id:
         contact = (
@@ -166,7 +191,7 @@ def build_booking_text(booking) -> str:
         )
         lines.append(f"<b>На связи в боте:</b> {contact} — можно написать ему здесь")
     if booking.client_confirmed:
-        lines.append("<b>✅ Клиент подтвердил заявку</b>")
+        lines.append("<b>✅ Клиент подтвердил заявку и согласие на обработку ПД</b>")
     if booking.comment:
         lines.append(f"\n{html.escape(booking.comment)}")
     return "\n".join(lines)
@@ -177,6 +202,8 @@ def client_booking_summary(booking) -> str:
     lines = ["✅ <b>Вы на связи!</b>\n", "Ваша заявка:"]
     if booking.service:
         lines.append(f"• Услуга: <b>{html.escape(booking.service.name)}</b>")
+    if booking.sessions:
+        lines.append(f"• Сеансов: <b>{html.escape(booking.sessions.button_label)}</b>")
     lines.append(
         f"• Желаемые дата/время: <b>{booking.preferred_date:%d.%m.%Y} "
         f"{booking.preferred_time:%H:%M}</b>"
@@ -184,7 +211,10 @@ def client_booking_summary(booking) -> str:
     if booking.client_confirmed:
         lines.append("\nЗаявка подтверждена. Ждём подтверждения мастера по времени.")
     else:
-        lines.append("\nНажмите, чтобы подтвердить запись:")
+        lines.append(
+            f"\nНажимая «Подтвердить запись», вы соглашаетесь на обработку "
+            f"персональных данных (<a href=\"{_policy_url()}\">Политика</a>):"
+        )
     return "\n".join(lines)
 
 
@@ -213,7 +243,10 @@ def handle_client_booking_confirm(bot, call) -> None:
 
     if not booking.client_confirmed:
         booking.client_confirmed = True
-        booking.save(update_fields=["client_confirmed", "updated_at"])
+        booking.consent_at = timezone.now()  # согласие на обработку ПД
+        booking.save(update_fields=[
+            "client_confirmed", "consent_at", "updated_at",
+        ])
         refresh_booking_messages(bot, booking)  # у админов появится отметка
 
     bot.answer_callback_query(call.id, "Спасибо! Запись подтверждена.")

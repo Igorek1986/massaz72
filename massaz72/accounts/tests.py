@@ -32,21 +32,21 @@ class RegistrationTest(TestCase):
     def test_register_creates_user_and_client(self):
         resp = self.client.post(reverse("accounts:register"), {
             "username": "ivan", "password1": PWD, "password2": PWD,
-            "phone": "+79990001122",
+            "phone": "+70000000000", "consent": "on",
         })
         self.assertRedirects(resp, reverse("accounts:dashboard"))
         user = User.objects.get(username="ivan")
         self.assertTrue(hasattr(user, "client_profile"))
-        self.assertEqual(user.client_profile.phone, "+79990001122")
+        self.assertEqual(user.client_profile.phone, "+70000000000")
 
     def test_register_links_past_bookings_by_phone(self):
         booking = BookingRequest.objects.create(
-            client_name="Иван", phone="+79990001122",
+            client_name="Иван", phone="+70000000000",
             preferred_date=future_date(), preferred_time=time(10, 0),
         )
         self.client.post(reverse("accounts:register"), {
             "username": "ivan", "password1": PWD, "password2": PWD,
-            "phone": "+79990001122",
+            "phone": "+70000000000", "consent": "on",
         })
         booking.refresh_from_db()
         self.assertEqual(booking.user, User.objects.get(username="ivan"))
@@ -124,10 +124,10 @@ class CabinetTest(TestCase):
     def test_profile_update_phone(self):
         self.client.force_login(self.user)
         self.client.post(reverse("accounts:profile"), {
-            "save_profile": "1", "phone": "+79995554433",
+            "save_profile": "1", "phone": "+70000000001",
         })
         self.profile.refresh_from_db()
-        self.assertEqual(self.profile.phone, "+79995554433")
+        self.assertEqual(self.profile.phone, "+70000000001")
 
     def test_change_password(self):
         self.client.force_login(self.user)

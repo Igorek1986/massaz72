@@ -7,6 +7,31 @@ def gen_link_token() -> str:
     return secrets.token_urlsafe(16)
 
 
+class BookingSessionOption(models.Model):
+    """Вариант количества сеансов (настраивается в админке). Используется
+    и онлайн-формой записи, и Telegram-ботом."""
+
+    count = models.PositiveIntegerField("Количество сеансов")
+    label = models.CharField(
+        "Метка", max_length=50, blank=True, default="",
+        help_text="Если пусто — отображается «N сеансов».",
+    )
+    is_active = models.BooleanField("Активен", default=True)
+    order = models.PositiveIntegerField("Порядок", default=0)
+
+    class Meta:
+        verbose_name = "Вариант кол-ва сеансов"
+        verbose_name_plural = "Варианты кол-ва сеансов"
+        ordering = ["order", "count"]
+
+    def __str__(self) -> str:
+        return self.label if self.label else f"{self.count} сеансов"
+
+    @property
+    def button_label(self) -> str:
+        return self.label if self.label else f"{self.count} сеансов"
+
+
 class BookingRequestQuerySet(models.QuerySet):
     def pending(self):
         return self.filter(status=BookingRequest.Status.PENDING)
@@ -33,6 +58,7 @@ class BookingRequest(models.Model):
     )
     client_name = models.CharField("Имя", max_length=255)
     phone = models.CharField("Телефон", max_length=20, blank=True)
+    address = models.CharField("Адрес", max_length=500, blank=True)
     service = models.ForeignKey(
         "services.Massage", on_delete=models.SET_NULL,
         null=True, blank=True, verbose_name="Услуга",
@@ -41,6 +67,11 @@ class BookingRequest(models.Model):
         "cabinet.Specialist", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="booking_requests",
         verbose_name="Мастер",
+    )
+    sessions = models.ForeignKey(
+        "BookingSessionOption", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="booking_requests",
+        verbose_name="Количество сеансов",
     )
     preferred_date = models.DateField("Желаемая дата")
     preferred_time = models.TimeField("Желаемое время")
@@ -68,6 +99,10 @@ class BookingRequest(models.Model):
     client_confirmed = models.BooleanField(
         "Подтверждена клиентом", default=False,
         help_text="Клиент подтвердил заявку в боте.",
+    )
+    consent_at = models.DateTimeField(
+        "Согласие на обработку ПД", null=True, blank=True,
+        help_text="Момент согласия клиента на обработку ПД (через бота).",
     )
     link_token = models.CharField(
         "Токен привязки к боту", max_length=43, unique=True,

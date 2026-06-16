@@ -17,6 +17,12 @@ class ReviewForm(forms.ModelForm):
     )
     # Time-trap: подписанная метка момента рендера формы.
     ts = forms.CharField(required=False, widget=forms.HiddenInput)
+    consent = forms.BooleanField(
+        required=True,
+        error_messages={
+            "required": "Необходимо согласие на обработку персональных данных.",
+        },
+    )
 
     class Meta:
         model = Review

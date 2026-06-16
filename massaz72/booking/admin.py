@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import BookingRequest
+from .models import BookingRequest, BookingSessionOption
+
+
+@admin.register(BookingSessionOption)
+class BookingSessionOptionAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "count", "is_active", "order")
+    list_editable = ("is_active", "order")
 
 
 @admin.register(BookingRequest)

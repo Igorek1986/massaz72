@@ -93,7 +93,7 @@ class ReviewFormTest(TestCase):
 
     def test_valid_form(self):
         form = ReviewForm(data={"name": "Ann", "text": "good", "rating": 5,
-                                "ts": _human_token()})
+                                "ts": _human_token(), "consent": "on"})
         self.assertTrue(form.is_valid())
 
     def test_unbound_form_has_ts_token(self):
@@ -113,6 +113,7 @@ class ReviewCreateViewTest(TestCase):
             "rating": "5",
             "ts": _human_token(),
             "website": "",
+            "consent": "on",
         }
         data.update(overrides)
         return self.client.post(self.url, data)

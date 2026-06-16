@@ -292,3 +292,27 @@
     text-align: center;
   }
 }
+
+// Чекбокс согласия на обработку ПД (запись/отзыв/регистрация)
+.consent-row {
+  margin: 4px 0 16px;
+
+  &__label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-body);
+    line-height: 1.45;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      margin-top: 2px;
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+    }
+
+    a { color: var(--color-primary); }
+  }
+}

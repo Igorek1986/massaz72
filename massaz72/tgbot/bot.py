@@ -398,7 +398,7 @@ def _bk_therapist_keyboard() -> types.InlineKeyboardMarkup | None:
 
 
 def _bk_sessions_keyboard() -> types.InlineKeyboardMarkup | None:
-    from .models import BookingSessionOption
+    from booking.models import BookingSessionOption
 
     options = list(BookingSessionOption.objects.filter(is_active=True))
     if not options:
@@ -959,7 +959,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 opt_id = int(data[5:])
             except ValueError:
                 return
-            from .models import BookingSessionOption
+            from booking.models import BookingSessionOption
 
             try:
                 opt = BookingSessionOption.objects.get(id=opt_id, is_active=True)

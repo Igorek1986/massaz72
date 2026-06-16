@@ -156,7 +156,12 @@ class BookingBindTest(TestCase):
         )
         self.booking.refresh_from_db()
         self.assertTrue(self.booking.client_confirmed)
+        self.assertIsNotNone(self.booking.consent_at)  # согласие зафиксировано
         bot.answer_callback_query.assert_called()
+
+    def test_summary_has_policy_link(self):
+        from tgbot.notifications import client_booking_summary
+        self.assertIn("Политика", client_booking_summary(self.booking))
 
     def test_client_confirm_unknown(self):
         from tgbot.notifications import handle_client_booking_confirm
@@ -169,6 +174,14 @@ class BookingBindTest(TestCase):
         self.booking.client_confirmed = True
         self.booking.save()
         self.assertIn("Клиент подтвердил", build_booking_text(self.booking))
+
+    def test_booking_text_shows_sessions(self):
+        from booking.models import BookingSessionOption
+        from tgbot.notifications import build_booking_text
+        opt = BookingSessionOption.objects.create(count=5, label="5 сеансов")
+        self.booking.sessions = opt
+        self.booking.save()
+        self.assertIn("5 сеансов", build_booking_text(self.booking))
 
     def test_unique_link_token_generated(self):
         other = BookingRequest.objects.create(

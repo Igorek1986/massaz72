@@ -49,7 +49,7 @@
         {{ form.ts }}
 
         {% for field in form.visible_fields %}
-        {% if field.name != 'website' %}
+        {% if field.name != 'website' and field.name != 'consent' %}
         <div class="booking-form__row">
           <label class="booking-form__label" for="{{ field.id_for_label }}">
             {{ field.label }}{% if field.field.required %} <span class="booking-form__req">*</span>{% endif %}
@@ -59,6 +59,15 @@
         </div>
         {% endif %}
         {% endfor %}
+
+        <div class="consent-row">
+          <label class="consent-row__label">
+            {{ form.consent }}
+            <span>Я согласен(а) на обработку персональных данных в соответствии с
+              <a href="{% url 'main:personal_data' %}" target="_blank" rel="noopener">Политикой обработки персональных данных</a>.</span>
+          </label>
+          {% if form.consent.errors %}<span class="booking-form__error">{{ form.consent.errors.0 }}</span>{% endif %}
+        </div>
 
         <div class="booking-form__actions">
           <button type="submit" class="booking-form__submit">Записаться</button>

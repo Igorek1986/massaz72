@@ -43,6 +43,15 @@
           {% if form.phone.errors %}<span class="account-form__error">{{ form.phone.errors.0 }}</span>{% endif %}
         </div>
 
+        <div class="consent-row">
+          <label class="consent-row__label">
+            {{ form.consent }}
+            <span>Я согласен(а) на обработку персональных данных в соответствии с
+              <a href="{% url 'main:personal_data' %}" target="_blank" rel="noopener">Политикой обработки персональных данных</a>.</span>
+          </label>
+          {% if form.consent.errors %}<span class="account-form__error">{{ form.consent.errors.0 }}</span>{% endif %}
+        </div>
+
         <button type="submit" class="account-form__submit">Зарегистрироваться</button>
       </form>
       <p class="account__alt">Уже есть аккаунт? <a href="{% url 'accounts:login' %}">Войти</a></p>

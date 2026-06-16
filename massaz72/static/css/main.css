@@ -1448,6 +1448,24 @@ a {
     color: var(--color-muted-soft);
     text-align: center; }
 
+.consent-row {
+  margin: 4px 0 16px; }
+  .consent-row__label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-body);
+    line-height: 1.45;
+    cursor: pointer; }
+    .consent-row__label input[type="checkbox"] {
+      margin-top: 2px;
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px; }
+    .consent-row__label a {
+      color: var(--color-primary); }
+
 .account {
   padding: 48px 0; }
   .account__header {

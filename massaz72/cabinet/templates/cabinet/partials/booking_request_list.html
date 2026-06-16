@@ -26,10 +26,13 @@
 
     <div class="booking-req__info">
       <div><b>Телефон:</b> {% if b.phone %}{{ b.phone }}{% else %}—{% endif %}</div>
+      {% if b.address %}<div><b>Адрес (выезд):</b> {{ b.address }}</div>{% endif %}
       {% if b.messenger_user_id %}<div><b>В боте:</b> {% if b.messenger_username %}@{{ b.messenger_username }}{% else %}id {{ b.messenger_user_id }}{% endif %} ({{ b.get_messenger_display }})</div>{% endif %}
       <div><b>Услуга:</b> {{ b.service.name|default:"—" }}</div>
+      {% if b.sessions %}<div><b>Сеансов:</b> {{ b.sessions.button_label }}</div>{% endif %}
       {% if b.specialist %}<div><b>Мастер:</b> {{ b.specialist.name }}</div>{% endif %}
       <div><b>Желаемые дата/время:</b> {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}</div>
+      {% if b.consent_at %}<div><b>Согласие на ПД:</b> {{ b.consent_at|date:"d.m.Y H:i" }}</div>{% endif %}
       {% if b.comment %}<div><b>Комментарий:</b> {{ b.comment }}</div>{% endif %}
     </div>
 

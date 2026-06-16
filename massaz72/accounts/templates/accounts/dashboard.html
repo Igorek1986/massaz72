@@ -33,6 +33,7 @@
             Желаемое: {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}
           {% endif %}
         </div>
+        {% if b.sessions %}<div class="account-booking__spec">Сеансов: {{ b.sessions.button_label }}</div>{% endif %}
         {% if b.specialist %}<div class="account-booking__spec">Мастер: {{ b.specialist.name }}</div>{% endif %}
         {% if b.status == 'pending' %}
         <form method="post" action="{% url 'accounts:cancel_booking' b.pk %}">

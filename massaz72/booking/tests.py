@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from booking.forms import BookingForm
-from booking.models import BookingRequest
+from booking.models import BookingRequest, BookingSessionOption
 from booking.services import confirm_booking, decline_booking
 from cabinet.models import Appointment, Specialist
 from main.models import SiteSettings
@@ -39,6 +39,11 @@ def future_date():
     return timezone.localdate() + timedelta(days=3)
 
 
+def active_session_pk():
+    """PK активного варианта кол-ва сеансов (засеяны миграцией)."""
+    return BookingSessionOption.objects.filter(is_active=True).first().pk
+
+
 class BookingModelTest(TestCase):
     def test_pending_filter(self):
         a = BookingRequest.objects.create(
@@ -59,12 +64,14 @@ class BookingFormTest(TestCase):
         data = {
             "client_name": "Иван",
             "service": self.massage.pk,
+            "sessions": active_session_pk(),
             "preferred_date": future_date().isoformat(),
             "preferred_time": "10:00",
             "phone": "",
             "comment": "",
             "ts": human_token(),
             "website": "",
+            "consent": "on",
         }
         data.update(over)
         return data
@@ -109,6 +116,16 @@ class BookingFormTest(TestCase):
         qs = BookingForm().fields["specialist"].queryset
         self.assertEqual(qs.count(), 2)
         self.assertNotIn(inactive, list(qs))
+
+    def test_sessions_hidden_when_no_options(self):
+        from booking.models import BookingSessionOption
+        BookingSessionOption.objects.all().delete()
+        self.assertNotIn("sessions", BookingForm().fields)
+
+    def test_sessions_shown_when_options(self):
+        from booking.models import BookingSessionOption
+        BookingSessionOption.objects.create(count=5, label="5 сеансов", order=0)
+        self.assertIn("sessions", BookingForm().fields)
 
 
 class BookingServicesTest(TestCase):
@@ -163,12 +180,14 @@ class BookingViewTest(TestCase):
         data = {
             "client_name": "Иван",
             "service": self.massage.pk,
+            "sessions": active_session_pk(),
             "preferred_date": future_date().isoformat(),
             "preferred_time": "10:00",
             "phone": "",
             "comment": "",
             "ts": human_token(),
             "website": "",
+            "consent": "on",
         }
         data.update(over)
         return self.client.post(self.url, data)
@@ -237,6 +256,18 @@ class BookingViewTest(TestCase):
         resp = self.client.get(self.url, {"service": "abc"})
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.context["form"].initial.get("service"))
+
+    def test_consent_required(self):
+        resp = self._post(consent="")
+        self.assertEqual(BookingRequest.objects.count(), 0)
+        self.assertContains(resp, "Необходимо согласие")
+
+    def test_booking_saves_sessions(self):
+        from booking.models import BookingSessionOption
+        opt = BookingSessionOption.objects.create(count=5, label="5 сеансов", order=0)
+        self._post(sessions=opt.pk)
+        booking = BookingRequest.objects.get()
+        self.assertEqual(booking.sessions, opt)
 
     def test_logged_in_booking_links_to_account(self):
         from accounts.models import Client as ClientProfile

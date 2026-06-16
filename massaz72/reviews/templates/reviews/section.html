@@ -73,6 +73,15 @@
         {% if review_form.text.errors %}<span class="review-form__error">{{ review_form.text.errors.0 }}</span>{% endif %}
       </div>
 
+      <div class="consent-row">
+        <label class="consent-row__label">
+          {{ review_form.consent }}
+          <span>Я согласен(а) на обработку персональных данных в соответствии с
+            <a href="{% url 'main:personal_data' %}" target="_blank" rel="noopener">Политикой обработки персональных данных</a>.</span>
+        </label>
+        {% if review_form.consent.errors %}<span class="review-form__error">{{ review_form.consent.errors.0 }}</span>{% endif %}
+      </div>
+
       <button type="submit" class="review-form__submit">Отправить</button>
     </form>
   </div>

@@ -60,6 +60,10 @@ def privacy(request):
     return render(request, "main/privacy.html")
 
 
+def personal_data(request):
+    return render(request, "main/personal_data.html")
+
+
 def custom_404(request, exception):
     """Обработчик ошибки 404"""
     return render(request, "errors/404.html", status=404)

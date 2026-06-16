@@ -202,33 +202,6 @@ class DialogMessage(models.Model):
         return f"{self.get_direction_display()}: {self.text[:50]}"
 
 
-class BookingSessionOption(models.Model):
-    """Вариант количества сеансов в мастере записи (настраивается в админке)."""
-
-    count = models.PositiveIntegerField("Количество сеансов")
-    label = models.CharField(
-        "Метка кнопки",
-        max_length=50,
-        blank=True,
-        default="",
-        help_text="Если пусто — отображается «N сеансов».",
-    )
-    is_active = models.BooleanField("Активна", default=True)
-    order = models.PositiveIntegerField("Порядок", default=0)
-
-    class Meta:
-        verbose_name = "Вариант кол-ва сеансов"
-        verbose_name_plural = "Варианты кол-ва сеансов"
-        ordering = ["order", "count"]
-
-    def __str__(self) -> str:
-        return self.label if self.label else f"{self.count} сеансов"
-
-    @property
-    def button_label(self) -> str:
-        return self.label if self.label else f"{self.count} сеансов"
-
-
 class BookingTimeSlot(models.Model):
     """Временной слот для записи (настраивается в админке)."""
 
