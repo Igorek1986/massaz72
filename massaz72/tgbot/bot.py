@@ -352,9 +352,9 @@ def _bk_massage_page(
 
 def _bk_therapist_keyboard() -> types.InlineKeyboardMarkup | None:
     """Возвращает клавиатуру выбора массажиста, или None если он один."""
-    from main.models import About
+    from cabinet.models import Specialist
 
-    therapists = list(About.objects.filter(is_active=True).order_by("order"))
+    therapists = list(Specialist.objects.filter(is_active=True).order_by("order"))
     if len(therapists) <= 1:
         return None
     kb = types.InlineKeyboardMarkup()
@@ -505,9 +505,9 @@ def _bk_proceed_after_massage(bot: telebot.TeleBot, uid: int, chat_id: int, msg_
         )
         return
     # Один массажист — автовыбор
-    from main.models import About
+    from cabinet.models import Specialist
 
-    therapist = About.objects.filter(is_active=True).order_by("order").first()
+    therapist = Specialist.objects.filter(is_active=True).order_by("order").first()
     if therapist:
         state["therapist_id"] = therapist.id
         state["therapist_name"] = therapist.name
@@ -902,13 +902,13 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 therapist_id = int(data[5:])
             except ValueError:
                 return
-            from main.models import About
+            from cabinet.models import Specialist
 
             try:
-                t = About.objects.get(id=therapist_id, is_active=True)
+                t = Specialist.objects.get(id=therapist_id, is_active=True)
                 state["therapist_id"] = t.id
                 state["therapist_name"] = t.name
-            except About.DoesNotExist:
+            except Specialist.DoesNotExist:
                 pass
             _pending_bookings[uid] = state
             _bk_show_sessions(bot, chat_id, msg_id)

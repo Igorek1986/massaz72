@@ -1,13 +1,14 @@
 import os
 import shutil
 import tempfile
-from datetime import date, datetime
+from datetime import date
 from unittest.mock import patch
 
+from cabinet.models import Specialist
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
-from main.models import About, Certificate, SiteSettings
+from main.models import Certificate, SiteSettings
 
 
 class TempMediaRootMixin:
@@ -29,10 +30,9 @@ class TempMediaRootMixin:
         super().tearDownClass()
 
 
-class AboutModelTest(TestCase):
+class SpecialistModelTest(TestCase):
     def setUp(self):
-        """Создаем тестовые данные"""
-        self.about = About.objects.create(
+        self.specialist = Specialist.objects.create(
             name="Тест Тестович",
             description="Тестовое описание",
             start_date=date(2020, 1, 1),
@@ -41,25 +41,19 @@ class AboutModelTest(TestCase):
         )
 
     def test_str_representation(self):
-        """Тест строкового представления модели"""
-        self.assertEqual(str(self.about), "Тест Тестович")
+        self.assertEqual(str(self.specialist), "Тест Тестович")
 
     def test_experience_calculation(self):
-        """Тест расчета опыта работы"""
         with patch("datetime.date") as mock_date:
             mock_date.today.return_value = date(2024, 3, 23)
-            self.assertEqual(self.about.experience, 4)
+            self.assertEqual(self.specialist.experience, 4)
 
     def test_experience_without_start_date(self):
-        """Тест опыта работы без даты начала"""
-        about = About.objects.create(name="Без опыта", description="Тестовое описание")
-        self.assertEqual(about.experience, 0)
+        spec = Specialist.objects.create(name="Без опыта")
+        self.assertEqual(spec.experience, 0)
 
     def test_experience_text_formatting(self):
-        """Тест форматирования текста опыта работы"""
-        # Фиксируем текущую дату для теста
-        fixed_date = date(2024, 3, 23)  # используем фиксированную дату
-
+        fixed_date = date(2024, 3, 23)
         test_cases = [
             (date(2023, 3, 23), "1 год"),
             (date(2022, 3, 23), "2 года"),
@@ -69,41 +63,36 @@ class AboutModelTest(TestCase):
             (date(2002, 3, 23), "22 года"),
             (date(1999, 3, 23), "25 лет"),
         ]
-
         for test_date, expected in test_cases:
             with self.subTest(test_date=test_date):
-                self.about.start_date = test_date
-                self.about.save()
-                # Подменяем date.today() на нашу фиксированную дату
+                self.specialist.start_date = test_date
+                self.specialist.save()
                 with patch("datetime.date") as mock_date:
                     mock_date.today.return_value = fixed_date
-                    self.assertEqual(self.about.experience_text, expected)
+                    self.assertEqual(self.specialist.experience_text, expected)
 
     def test_default_values(self):
-        """Тест значений по умолчанию"""
-        about = About.objects.create(name="Тест")
-        self.assertTrue(about.is_active)
-        self.assertEqual(about.order, 0)
-        self.assertIsInstance(about.created_at, datetime)
-        self.assertIsInstance(about.updated_at, datetime)
+        spec = Specialist.objects.create(name="Тест")
+        self.assertTrue(spec.is_active)
+        self.assertEqual(spec.order, 0)
+        self.assertIsNone(spec.user)
+
+    def test_user_is_optional(self):
+        """Специалист создаётся без привязки к пользователю."""
+        spec = Specialist.objects.create(name="Без аккаунта")
+        self.assertIsNone(spec.user)
 
 
 class CertificateModelTest(TempMediaRootMixin, TestCase):
     def setUp(self):
-        """Создаем тестовые данные"""
-        self.about = About.objects.create(
+        self.specialist = Specialist.objects.create(
             name="Тест Тестович", description="Тестовое описание"
         )
-
-        # Создаем тестовый файл
         self.test_image = SimpleUploadedFile(
-            name="test_image.jpg",
-            content=b"x" * 10,  # маленький тестовый файл
-            content_type="image/jpeg",
+            name="test_image.jpg", content=b"x" * 10, content_type="image/jpeg",
         )
-
         self.certificate = Certificate.objects.create(
-            about=self.about,
+            specialist=self.specialist,
             title="Тестовый сертификат",
             image=self.test_image,
             date_received=date(2022, 1, 1),
@@ -111,42 +100,35 @@ class CertificateModelTest(TempMediaRootMixin, TestCase):
         )
 
     def test_str_representation(self):
-        """Тест строкового представления модели"""
         self.assertEqual(str(self.certificate), "Тестовый сертификат")
 
     def test_default_values(self):
-        """Тест значений по умолчанию"""
         certificate = Certificate.objects.create(
-            about=self.about, title="Тест", image=self.test_image
+            specialist=self.specialist, title="Тест", image=self.test_image
         )
         self.assertEqual(certificate.order, 0)
         self.assertFalse(certificate.is_archived)
-        self.assertIsInstance(certificate.created_at, datetime)
 
     def test_file_size_validation(self):
-        """Тест валидации размера файла"""
-        # Создаем файл большего размера, чем разрешено
         large_file = SimpleUploadedFile(
             name="large_file.jpg",
-            content=b"x" * (6 * 1024 * 1024),  # 6MB
+            content=b"x" * (6 * 1024 * 1024),
             content_type="image/jpeg",
         )
-
         with self.assertRaises(ValidationError):
             certificate = Certificate(
-                about=self.about, title="Большой файл", image=large_file
+                specialist=self.specialist, title="Большой файл", image=large_file
             )
             certificate.full_clean()
 
     def test_related_name(self):
-        """Тест related_name для связи с About"""
-        certificate = self.about.certificates.first()
+        certificate = self.specialist.certificates.first()
         self.assertEqual(certificate, self.certificate)
 
     def test_ordering(self):
-        """Тест сортировки сертификатов"""
         Certificate.objects.create(
-            about=self.about, title="Второй сертификат", image=self.test_image, order=0
+            specialist=self.specialist, title="Второй сертификат",
+            image=self.test_image, order=0,
         )
         certificates = Certificate.objects.all()
         self.assertEqual(certificates[0].title, "Второй сертификат")
@@ -155,7 +137,6 @@ class CertificateModelTest(TempMediaRootMixin, TestCase):
 
 class SiteSettingsTest(TempMediaRootMixin, TestCase):
     def setUp(self):
-        """Создаем тестовые данные"""
         self.settings = SiteSettings.objects.create(
             head_title="Тестовый заголовок",
             main_title="Главный заголовок",
@@ -167,11 +148,9 @@ class SiteSettingsTest(TempMediaRootMixin, TestCase):
         )
 
     def test_str_representation(self):
-        """Тест строкового представления модели"""
         self.assertEqual(str(self.settings), "Настройки")
 
     def test_default_values(self):
-        """Тест значений по умолчанию"""
         settings = SiteSettings.objects.create()
         self.assertEqual(settings.head_title, "Детский массаж в Тюмени | Женский массаж")
         self.assertEqual(settings.main_title, "Детский и женский массаж в Тюмени")
@@ -183,7 +162,6 @@ class SiteSettingsTest(TempMediaRootMixin, TestCase):
         self.assertIsNone(settings.price_change_date)
 
     def test_background_upload(self):
-        """Тест загрузки фонового изображения"""
         test_image = SimpleUploadedFile(
             name="test_background.jpg", content=b"x" * 10, content_type="image/jpeg"
         )
@@ -193,6 +171,5 @@ class SiteSettingsTest(TempMediaRootMixin, TestCase):
         self.assertTrue(os.path.exists(self.settings.background.path))
 
     def test_verbose_names(self):
-        """Тест verbose_names"""
         self.assertEqual(SiteSettings._meta.verbose_name, "Настройки сайта")
         self.assertEqual(SiteSettings._meta.verbose_name_plural, "Настройки сайта")

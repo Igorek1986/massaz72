@@ -1,16 +1,37 @@
 from django.contrib import admin
 
+from main.models import Certificate
+
 from .models import (
     Appointment, AppointmentSeries, BlockedSlot,
     Discount, ScheduleException, Specialist, WorkSchedule,
 )
 
 
+class CertificateInline(admin.TabularInline):
+    model = Certificate
+    extra = 1
+
+
 @admin.register(Specialist)
 class SpecialistAdmin(admin.ModelAdmin):
-    list_display = ("name", "specialty", "user")
-    list_filter = ("specialty",)
+    inlines = [CertificateInline]
+    list_display = ("name", "experience", "is_active", "order", "user")
+    list_editable = ("is_active", "order")
+    list_filter = ("specialty", "is_active")
     search_fields = ("name", "user__username", "user__email")
+    fieldsets = (
+        (None, {"fields": (
+            "name", "photo", "description", "start_date",
+            "specialty", "is_active", "order",
+        )}),
+        ("Контакты", {"fields": (
+            ("telegram_username", "telegram_active"),
+            ("whatsapp_number", "whatsapp_active"),
+            ("max_messanger", "max_messanger_active"),
+        )}),
+        ("Кабинет", {"fields": ("user", "can_manage_prices")}),
+    )
 
 
 @admin.register(WorkSchedule)

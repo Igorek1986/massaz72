@@ -72,15 +72,15 @@ def _get_base_filename(instance) -> tuple[str, str]:
             "massages", "children" if instance.massage_type == "child" else "adults"
         )
     elif model_name == "certificate":
-        # Получаем имя массажиста из связанной модели About
+        # Имя специалиста из связанной модели Specialist
         masseur_name = (
-            _slugify_ru(instance.about.name) if instance.about else "massazhist"
+            _slugify_ru(instance.specialist.name) if instance.specialist else "massazhist"
         )
-        base_name = f"sertifikat-{masseur_name}-{_slugify_ru(instance.title)}"  # Добавляем имя массажиста
+        base_name = f"sertifikat-{masseur_name}-{_slugify_ru(instance.title)}"
         folder = "certificates"
-    elif model_name == "about":
-        base_name = _slugify_ru(instance.name)  # Имя массажиста
-        folder = "about"
+    elif model_name == "specialist":
+        base_name = _slugify_ru(instance.name)
+        folder = "specialists"
     elif model_name == "sitesettings":
         base_name = "sitesettings"
         folder = "sitesettings"

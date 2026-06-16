@@ -2,13 +2,14 @@ from datetime import datetime
 
 from django.utils import timezone
 
+from cabinet.models import Specialist
 from tgbot.models import BotSettings
 
-from .models import About, SiteSettings
+from .models import SiteSettings
 
 
 def common_context(request):
-    therapists = About.objects.filter(is_active=True).order_by("order")
+    therapists = Specialist.objects.filter(is_active=True).order_by("order")
     primary = therapists.first()
 
     # Ссылка на Telegram-бота (один на сайт): показываем, если бот включён.

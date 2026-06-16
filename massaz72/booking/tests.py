@@ -93,6 +93,23 @@ class BookingFormTest(TestCase):
         make_specialist("m2", "М2")
         self.assertIn("specialist", BookingForm().fields)
 
+    def test_specialist_hidden_when_one_active(self):
+        make_specialist("m1", "М1")
+        inactive = make_specialist("m2", "М2")
+        inactive.is_active = False
+        inactive.save()
+        self.assertNotIn("specialist", BookingForm().fields)
+
+    def test_specialist_excludes_inactive(self):
+        make_specialist("m1", "М1")
+        make_specialist("m2", "М2")
+        inactive = make_specialist("m3", "М3")
+        inactive.is_active = False
+        inactive.save()
+        qs = BookingForm().fields["specialist"].queryset
+        self.assertEqual(qs.count(), 2)
+        self.assertNotIn(inactive, list(qs))
+
 
 class BookingServicesTest(TestCase):
     def setUp(self):

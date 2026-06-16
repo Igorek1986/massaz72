@@ -66,8 +66,8 @@ class BookingForm(forms.ModelForm):
         self.fields["preferred_time"].required = True
         self.fields["phone"].required = False
 
-        # Выбор мастера показываем только если их больше одного.
-        specialists = Specialist.objects.all()
+        # Выбор мастера показываем только если активных больше одного.
+        specialists = Specialist.objects.filter(is_active=True)
         if specialists.count() <= 1:
             self.fields.pop("specialist")
         else:

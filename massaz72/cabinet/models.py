@@ -11,17 +11,51 @@ class Specialist(models.Model):
         ("other", "Другое"),
     ]
 
+    # Вход в кабинет — необязательная привязка к пользователю.
+    # Специалист первичен; аккаунт прикрепляется по желанию.
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="specialist",
-        verbose_name="Пользователь",
+        verbose_name="Аккаунт для входа",
+        help_text="Необязательно. Привяжите пользователя, если специалисту нужен вход в кабинет.",
     )
     specialty = models.CharField(
         "Специальность", max_length=30, choices=SPECIALTY_CHOICES, default="masseur"
     )
     name = models.CharField("Имя", max_length=100)
     photo = models.ImageField("Фото", upload_to="specialists/", null=True, blank=True)
+    description = models.TextField(
+        "Описание", blank=True,
+        help_text="Опыт, специализация и подход к работе (показывается на сайте)",
+    )
+    start_date = models.DateField(
+        "Дата начала работы", blank=True, null=True,
+    )
+    telegram_username = models.CharField(
+        "Telegram (username без @)", max_length=100, blank=True, default="",
+    )
+    telegram_active = models.BooleanField("Telegram активен", default=True)
+    whatsapp_number = models.CharField(
+        "WhatsApp (номер с кодом страны, без +)", max_length=20, blank=True, default="",
+    )
+    whatsapp_active = models.BooleanField("WhatsApp активен", default=True)
+    max_messanger = models.CharField(
+        "MAX Messenger (ссылка профиля)", max_length=255, blank=True, default="",
+        help_text=(
+            "Полная ссылка профиля из приложения MAX. "
+            "MAX → Настройки → QR-код профиля → Поделиться → Скопировать ссылку. "
+            "Выглядит так: https://max.ru/u/xxxxxxxx"
+        ),
+    )
+    max_messanger_active = models.BooleanField("MAX активен", default=True)
+    is_active = models.BooleanField(
+        "Активный специалист", default=True,
+        help_text="Показывать на сайте и в выборе при записи",
+    )
+    order = models.PositiveIntegerField("Порядок сортировки", default=0)
     can_manage_prices = models.BooleanField(
         "Управление ценами",
         default=True,
@@ -31,9 +65,35 @@ class Specialist(models.Model):
     class Meta:
         verbose_name = "Специалист"
         verbose_name_plural = "Специалисты"
+        ordering = ["order"]
 
     def __str__(self) -> str:
-        return f"{self.name} ({self.get_specialty_display()})"
+        return self.name
+
+    @property
+    def experience(self) -> int:
+        """Число полных лет опыта по дате начала работы."""
+        if not self.start_date:
+            return 0
+        from datetime import date
+        today = date.today()
+        years = today.year - self.start_date.year
+        if today.month < self.start_date.month or (
+            today.month == self.start_date.month and today.day < self.start_date.day
+        ):
+            years -= 1
+        return years
+
+    @property
+    def experience_text(self) -> str:
+        """Опыт с правильным склонением слова «год»."""
+        years = self.experience
+        if years % 10 == 1 and years % 100 != 11:
+            return f"{years} год"
+        elif 2 <= years % 10 <= 4 and (years % 100 < 10 or years % 100 >= 20):
+            return f"{years} года"
+        else:
+            return f"{years} лет"
 
 
 class WorkSchedule(models.Model):
