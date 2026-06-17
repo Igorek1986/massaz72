@@ -113,6 +113,7 @@ def _bind_booking_token(bot, message, token: str) -> bool:
     Возвращает True, если заявка найдена и привязана."""
     from booking.models import BookingRequest
 
+    from .models import BookingNotification
     from .notifications import (
         client_booking_summary, client_confirm_keyboard, refresh_booking_messages,
     )
@@ -134,9 +135,13 @@ def _bind_booking_token(bot, message, token: str) -> bool:
         reply_markup=client_confirm_keyboard(booking),
     )
     try:
-        refresh_booking_messages(bot, booking)
+        # Если мастера уже уведомляли (был телефон) — обновляем сообщение,
+        # показывая контакт. Без телефона мастеру пока ничего не шлём — уведомим,
+        # когда клиент нажмёт «Подтвердить запись».
+        if BookingNotification.objects.filter(booking=booking).exists():
+            refresh_booking_messages(bot, booking)
     except Exception:  # noqa: BLE001
-        logger.exception("tgbot: не обновить сообщения заявки %s", booking.pk)
+        logger.exception("tgbot: не обновить заявку %s", booking.pk)
     return True
 
 
@@ -1034,6 +1039,11 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
     def cb_client_booking_confirm(call):
         from .notifications import handle_client_booking_confirm
         handle_client_booking_confirm(bot, call)
+
+    @bot.callback_query_handler(func=lambda c: c.data.startswith("rs_"))
+    def cb_reschedule(call):
+        from .notifications import handle_reschedule_action
+        handle_reschedule_action(bot, call)
 
     @bot.callback_query_handler(func=lambda c: c.data.startswith("bc_"))
     def cb_broadcast(call):

@@ -1,0 +1,30 @@
+<div class="day-panel">
+  <div class="day-panel__header">
+    <h3 class="day-panel__title">Перенос сеанса</h3>
+  </div>
+  <div class="reschedule">
+    <p class="reschedule__current">
+      Текущее: <b>{{ appt.date|date:"d.m.Y" }} {{ appt.time_start|time:"H:i" }}</b> —
+      {{ appt.service.name|default:"Сеанс" }}
+    </p>
+    {% if error %}<p class="account-form__error">{{ error }}</p>{% endif %}
+
+    <form class="reschedule-form"
+          hx-post="{% url 'accounts:session_reschedule' appt.pk %}"
+          hx-target="#day-panel" hx-swap="innerHTML">
+      <label class="reschedule-form__row">Новая дата
+        <input type="date" name="new_date" required>
+      </label>
+      <label class="reschedule-form__row">Новое время
+        <input type="time" name="new_time" required>
+      </label>
+      <div class="reschedule-form__actions">
+        <button type="submit" class="apt-action apt-action--tg">Отправить запрос</button>
+        <button type="button" class="apt-action"
+                hx-get="{% url 'accounts:day_sessions' appt.date|date:'Y-m-d' %}"
+                hx-target="#day-panel" hx-swap="innerHTML">Отмена</button>
+      </div>
+    </form>
+    <p class="account__muted">Перенос вступит в силу после подтверждения мастером.</p>
+  </div>
+</div>

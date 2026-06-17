@@ -6,4 +6,5 @@ app_name = "booking"
 
 urlpatterns = [
     path("", views.booking_page, name="page"),
+    path("status/<str:token>/", views.booking_status, name="status"),
 ]

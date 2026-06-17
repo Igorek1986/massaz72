@@ -41,10 +41,10 @@ class BookingForm(forms.ModelForm):
             "sessions": forms.Select(attrs={"class": "booking-form__input"}),
             "preferred_date": forms.DateInput(attrs={
                 "type": "date", "class": "booking-form__input",
-            }),
+            }, format="%Y-%m-%d"),
             "preferred_time": forms.TimeInput(attrs={
                 "type": "time", "class": "booking-form__input",
-            }),
+            }, format="%H:%M"),
             "phone": forms.TextInput(attrs={
                 "type": "tel", "maxlength": 20, "placeholder": "Телефон (необязательно)",
                 "class": "booking-form__input",

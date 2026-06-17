@@ -93,6 +93,89 @@ class CabinetTest(TestCase):
         self.assertIn("МойМассаж", body)
         self.assertNotIn("ЧужойМассаж", body)
 
+    def test_dashboard_shows_calendar_when_sessions(self):
+        from booking.models import BookingSessionOption
+        from booking.services import confirm_booking
+        from cabinet.models import Specialist
+
+        spec = Specialist.objects.create(name="Мастер")
+        self.booking.sessions = BookingSessionOption.objects.create(count=3, label="3 сеанса")
+        self.booking.save()
+        confirm_booking(self.booking, specialist=spec)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.appointment.series.appointments.count(), 3)
+
+        self.client.force_login(self.user)
+        body = self.client.get(reverse("accounts:dashboard")).content.decode()
+        # Календарь и день-панель присутствуют (детали сеансов грузятся через HTMX).
+        self.assertIn("account-calendar", body)
+        self.assertIn('id="day-panel"', body)
+
+    def test_events_endpoint(self):
+        from booking.models import BookingSessionOption
+        from booking.services import confirm_booking
+        from cabinet.models import Specialist
+
+        spec = Specialist.objects.create(name="Мастер")
+        self.booking.sessions = BookingSessionOption.objects.create(count=3, label="3 сеанса")
+        self.booking.save()
+        confirm_booking(self.booking, specialist=spec)
+        self.client.force_login(self.user)
+        data = self.client.get(reverse("accounts:events")).json()
+        self.assertEqual(len(data), 3)
+        self.assertIn("start", data[0])
+        self.assertIn("title", data[0])
+
+    def test_events_requires_login(self):
+        resp = self.client.get(reverse("accounts:events"))
+        self.assertEqual(resp.status_code, 302)
+
+    def _appointment(self, days_ahead=5):
+        from booking.services import confirm_booking
+        from cabinet.models import Specialist
+        spec = Specialist.objects.create(name="М")
+        b = BookingRequest.objects.create(
+            client_name="Кл", user=self.user, service=self.massage,
+            preferred_date=timezone.localdate() + timedelta(days=days_ahead),
+            preferred_time=time(10, 0),
+        )
+        return confirm_booking(b, specialist=spec)
+
+    def test_day_sessions_shows_own(self):
+        apt = self._appointment(5)
+        self.client.force_login(self.user)
+        body = self.client.get(
+            reverse("accounts:day_sessions", args=[apt.date.isoformat()])
+        ).content.decode()
+        self.assertIn("МойМассаж", body)
+        self.assertIn("Перенести", body)
+        self.assertIn("Отменить", body)
+
+    def test_cancel_future_session(self):
+        apt = self._appointment(5)
+        self.client.force_login(self.user)
+        self.client.post(reverse("accounts:session_cancel", args=[apt.pk]))
+        apt.refresh_from_db()
+        self.assertEqual(apt.status, "cancelled")
+
+    def test_cannot_cancel_today_session(self):
+        apt = self._appointment(0)  # сегодня
+        self.client.force_login(self.user)
+        self.client.post(reverse("accounts:session_cancel", args=[apt.pk]))
+        apt.refresh_from_db()
+        self.assertEqual(apt.status, "scheduled")  # без изменений
+
+    def test_reschedule_creates_request(self):
+        from booking.models import RescheduleRequest
+        apt = self._appointment(5)
+        self.client.force_login(self.user)
+        new_date = (timezone.localdate() + timedelta(days=8)).isoformat()
+        self.client.post(reverse("accounts:session_reschedule", args=[apt.pk]),
+                         {"new_date": new_date, "new_time": "11:00"})
+        self.assertTrue(
+            RescheduleRequest.objects.filter(appointment=apt, status="pending").exists()
+        )
+
     def test_cancel_pending(self):
         self.client.force_login(self.user)
         resp = self.client.post(

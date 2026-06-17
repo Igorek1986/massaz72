@@ -1,0 +1,52 @@
+<div class="day-panel">
+  <div class="day-panel__header">
+    <h3 class="day-panel__title">{{ day|date:"l, j F Y" }}</h3>
+  </div>
+
+  {% if sessions %}
+  <ul class="apt-list">
+    {% for a in sessions %}
+    <li class="apt-card apt-card--{{ a.status }}">
+      <div class="apt-card__top">
+        <div class="apt-card__time">{{ a.time_start|time:"H:i" }}</div>
+        <div class="apt-card__body">
+          <div class="apt-card__name">{{ a.service.name|default:"Сеанс" }}</div>
+          {% if a.specialist and multiple_specialists %}<div class="apt-card__service">{{ a.specialist.name }}</div>{% endif %}
+          <span class="apt-status apt-status--{{ a.status }}">{{ a.get_status_display }}</span>
+        </div>
+      </div>
+      {% if a.can_edit %}
+        {% if a.has_pending_reschedule %}
+        <div class="apt-card__note">Запрос на перенос отправлен — ждём мастера</div>
+        {% else %}
+        <div class="apt-card__actions">
+          <button class="apt-action"
+                  hx-get="{% url 'accounts:session_reschedule' a.pk %}"
+                  hx-target="#day-panel" hx-swap="innerHTML">Перенести</button>
+          <button class="apt-action apt-action--danger"
+                  hx-post="{% url 'accounts:session_cancel' a.pk %}"
+                  hx-target="#day-panel" hx-swap="innerHTML"
+                  hx-confirm="Отменить этот сеанс?">Отменить</button>
+        </div>
+        {% endif %}
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="day-panel__empty">На этот день записей нет.</div>
+  {% endif %}
+
+  {% if site_settings.online_booking_enabled %}
+  <div class="day-panel__footer">
+    <a class="apt-action apt-action--primary" href="{% url 'booking:page' %}?date={{ day|date:'Y-m-d' }}">＋ Записаться</a>
+  </div>
+  {% endif %}
+
+  {% if telegram_bot_url %}
+  <div class="day-panel__contact">
+    <a class="apt-action apt-action--tg" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">💬 Связаться в Telegram</a>
+    <span class="day-panel__soon">Связь через Max — скоро</span>
+  </div>
+  {% endif %}
+</div>

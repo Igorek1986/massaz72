@@ -1,40 +1,39 @@
 {% extends 'main/base.html' %}
+{% load static %}
 
 {% block title %}Личный кабинет{% endblock %}
 
 {% block body %}
-<section class="account">
+<section class="account" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   <div class="container">
     <div class="account__header">
       <h1 class="account__title">Личный кабинет</h1>
-      <div class="account__actions">
-        <a class="account__link" href="{% url 'accounts:profile' %}">Профиль</a>
-        <a class="account__link" href="{% url 'booking:page' %}">Записаться</a>
-        <form method="post" action="{% url 'accounts:logout' %}">
-          {% csrf_token %}
-          <button class="account__logout" type="submit">Выйти</button>
-        </form>
-      </div>
     </div>
 
-    <h2 class="account__subtitle">Мои записи</h2>
-    {% if bookings %}
+    {% if has_sessions %}
+    <div class="account-schedule">
+      <div class="account-calendar"><div id="account-calendar"></div></div>
+      <div class="account-day-panel">
+        <div id="day-panel"
+             hx-get="{% url 'accounts:day_sessions' today %}"
+             hx-trigger="load" hx-swap="innerHTML">
+          <p class="account__muted">Загрузка…</p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if requests %}
+    <h2 class="account__subtitle">Заявки на подтверждении</h2>
     <div class="account-bookings">
-      {% for b in bookings %}
+      {% for b in requests %}
       <div class="account-booking">
         <div class="account-booking__head">
           <span class="account-booking__service">{{ b.service.name|default:"Услуга" }}</span>
-          <span class="account-booking__status account-booking__status--{{ b.status }}">{{ b.get_status_display }}</span>
+          <span class="account-booking__status account-booking__status--{{ b.status }}">{% if b.status == 'pending' and b.client_confirmed %}Вы подтвердили — ожидает мастера{% else %}{{ b.get_status_display }}{% endif %}</span>
         </div>
-        <div class="account-booking__when">
-          {% if b.appointment %}
-            Запись: <b>{{ b.appointment.date|date:"d.m.Y" }} {{ b.appointment.time_start|time:"H:i" }}</b>
-          {% else %}
-            Желаемое: {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}
-          {% endif %}
-        </div>
+        <div class="account-booking__when">Желаемое: {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}</div>
         {% if b.sessions %}<div class="account-booking__spec">Сеансов: {{ b.sessions.button_label }}</div>{% endif %}
-        {% if b.specialist %}<div class="account-booking__spec">Мастер: {{ b.specialist.name }}</div>{% endif %}
         {% if b.status == 'pending' %}
         <form method="post" action="{% url 'accounts:cancel_booking' b.pk %}">
           {% csrf_token %}
@@ -44,9 +43,50 @@
       </div>
       {% endfor %}
     </div>
-    {% else %}
+    {% endif %}
+
+    {% if not has_sessions and not requests %}
     <p class="account__empty">Пока нет записей. <a href="{% url 'booking:page' %}">Записаться онлайн</a></p>
     {% endif %}
   </div>
 </section>
+
+<script src="{% static 'cabinet/js/htmx.min.js' %}"></script>
+{% if has_sessions %}
+<script src="{% static 'cabinet/js/fullcalendar.min.js' %}"></script>
+<script src="{% static 'cabinet/js/fullcalendar-ru.min.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('account-calendar');
+    if (!el || !window.FullCalendar) return;
+    var dayTpl = "{% url 'accounts:day_sessions' 'DATE' %}";
+    function openDay(d) {
+      window.htmx.ajax('GET', dayTpl.replace('DATE', d),
+        { target: '#day-panel', swap: 'innerHTML' });
+    }
+    var cal = new FullCalendar.Calendar(el, {
+      locale: 'ru',
+      initialView: 'dayGridMonth',
+      firstDay: 1,
+      height: 'auto',
+      titleFormat: function (range) {
+        return range.start.marker
+          .toLocaleString('ru', { month: 'long', year: 'numeric' })
+          .replace(/\s*г\./, '');
+      },
+      customButtons: {
+        gotoToday: { text: 'Сегодня', click: function () { cal.today(); } }
+      },
+      headerToolbar: { left: 'prev,next gotoToday', center: 'title', right: '' },
+      events: '{% url "accounts:events" %}',
+      dateClick: function (info) { openDay(info.dateStr); },
+      eventClick: function (info) {
+        info.jsEvent.preventDefault();
+        openDay(info.event.startStr.slice(0, 10));
+      },
+    });
+    cal.render();
+  });
+</script>
+{% endif %}
 {% endblock %}

@@ -149,6 +149,20 @@ class BookingServicesTest(TestCase):
         self.assertEqual(apt.date, self.booking.preferred_date)
         self.assertEqual(apt.time_start, time(14, 30))
 
+    def test_confirm_creates_series_for_course(self):
+        from cabinet.models import Appointment, AppointmentSeries
+        opt = BookingSessionOption.objects.create(count=10, label="10 сеансов")
+        self.booking.sessions = opt
+        self.booking.save()
+        apt = confirm_booking(self.booking, specialist=self.specialist)
+        self.assertEqual(
+            Appointment.objects.filter(specialist=self.specialist).count(), 10
+        )
+        self.assertEqual(AppointmentSeries.objects.count(), 1)
+        self.assertEqual(apt.series.total_sessions, 10)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, BookingRequest.Status.CONFIRMED)
+
     def test_confirm_with_overrides(self):
         new_d = future_date() + timedelta(days=1)
         apt = confirm_booking(
@@ -158,6 +172,19 @@ class BookingServicesTest(TestCase):
         self.assertEqual(apt.date, new_d)
         self.assertEqual(apt.time_start, time(16, 0))
         self.assertEqual(apt.cost, Decimal("999"))
+
+    def test_confirm_fallback_picks_active_specialist(self):
+        """Без выбранного мастера берём активного, а не первого попавшегося."""
+        inactive = make_specialist("inact", "Неактивный")
+        inactive.is_active = False
+        inactive.order = 0
+        inactive.save()
+        booking = BookingRequest.objects.create(
+            client_name="X", preferred_date=future_date(), preferred_time=time(9, 0),
+        )
+        apt = confirm_booking(booking)  # мастер не задан
+        self.assertEqual(apt.specialist, self.specialist)  # активный, не «Неактивный»
+        self.assertTrue(apt.specialist.is_active)
 
     def test_confirm_no_specialist_returns_none(self):
         apt = confirm_booking(self.booking)  # ни одного Specialist (никого не создавали тут? создан в setUp)
@@ -252,10 +279,41 @@ class BookingViewTest(TestCase):
         self.assertEqual(resp.context["form"].initial.get("service"), self.massage.pk)
         self.assertContains(resp, f'value="{self.massage.pk}" selected')
 
+    def test_date_preselected_from_query(self):
+        d = (timezone.localdate() + timedelta(days=4)).isoformat()
+        resp = self.client.get(self.url, {"date": d})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, f'value="{d}"')
+
     def test_bad_service_query_ignored(self):
         resp = self.client.get(self.url, {"service": "abc"})
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.context["form"].initial.get("service"))
+
+    def test_status_endpoint(self):
+        b = BookingRequest.objects.create(
+            client_name="X", preferred_date=future_date(), preferred_time=time(10, 0),
+        )
+        data = self.client.get(reverse("booking:status", args=[b.link_token])).json()
+        self.assertTrue(data["found"])
+        self.assertFalse(data["confirmed"])
+        b.client_confirmed = True
+        b.save()
+        data = self.client.get(reverse("booking:status", args=[b.link_token])).json()
+        self.assertTrue(data["confirmed"])
+
+    def test_status_endpoint_unknown(self):
+        data = self.client.get(reverse("booking:status", args=["nope"])).json()
+        self.assertFalse(data["found"])
+
+    def test_master_notified_only_when_phone(self):
+        from unittest.mock import patch
+        with patch("booking.views._notify_admins") as m:
+            self._post(phone="")
+            m.assert_not_called()  # без телефона — отложено до бота
+        with patch("booking.views._notify_admins") as m:
+            self._post(phone="+70000000000")
+            m.assert_called_once()  # есть телефон — уведомляем сразу
 
     def test_consent_required(self):
         resp = self._post(consent="")

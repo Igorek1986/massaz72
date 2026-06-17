@@ -50,7 +50,19 @@
         {% if site_settings.client_cabinet_enabled %}
         <li class="nav__item">
           {% if request.user.client_profile %}
-          <a href="{% url 'accounts:dashboard' %}" class="nav__link">Личный кабинет</a>
+          <div class="user-menu" id="userMenu">
+            <button class="user-menu__toggle" type="button" aria-label="Аккаунт" aria-haspopup="true">
+              <span class="user-menu__avatar">{{ request.user.username|first|upper }}</span>
+            </button>
+            <div class="user-menu__dropdown">
+              <a href="{% url 'accounts:dashboard' %}" class="user-menu__item">Личный кабинет</a>
+              <a href="{% url 'accounts:profile' %}" class="user-menu__item">Профиль</a>
+              <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="user-menu__item user-menu__item--logout">Выйти</button>
+              </form>
+            </div>
+          </div>
           {% else %}
           <a href="{% url 'accounts:login' %}" class="nav__link">Войти</a>
           {% endif %}
@@ -243,6 +255,20 @@
       const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
       setTheme(next);
       localStorage.setItem('theme', next);
+    });
+  })();
+
+  /* Меню аккаунта (аватар → выпадашка) */
+  (function () {
+    const menu = document.getElementById('userMenu');
+    if (!menu) return;
+    const toggle = menu.querySelector('.user-menu__toggle');
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      menu.classList.toggle('user-menu--open');
+    });
+    document.addEventListener('click', function (e) {
+      if (!menu.contains(e.target)) menu.classList.remove('user-menu--open');
     });
   })();
 </script>

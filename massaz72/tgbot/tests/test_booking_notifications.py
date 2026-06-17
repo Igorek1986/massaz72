@@ -140,6 +140,40 @@ class BookingBindTest(TestCase):
         bot = MagicMock()
         self.assertFalse(_bind_booking_token(bot, self._msg(), "no-such-token"))
 
+    def test_bind_does_not_notify_master(self):
+        """Привязка к боту мастеру ничего не шлёт — ждём подтверждения клиента."""
+        BotAdmin.objects.create(telegram_id=111, name="A", is_active=True)
+        from tgbot.bot import _bind_booking_token
+        _bind_booking_token(make_bot(), self._msg(), self.booking.link_token)
+        self.assertEqual(
+            BookingNotification.objects.filter(booking=self.booking).count(), 0
+        )
+
+    def test_confirm_sends_deferred_notification(self):
+        """Заявка без телефона: мастера уведомляем при нажатии «Подтвердить»."""
+        BotAdmin.objects.create(telegram_id=111, name="A", is_active=True)
+        from tgbot.notifications import handle_client_booking_confirm
+        handle_client_booking_confirm(
+            make_bot(), make_call(f"cbk_confirm_{self.booking.pk}", uid=555)
+        )
+        self.assertEqual(
+            BookingNotification.objects.filter(booking=self.booking).count(), 1
+        )
+
+    def test_bind_refreshes_when_already_notified(self):
+        """Если мастера уже уведомляли (был телефон) — обновляем, не дублируем."""
+        BotAdmin.objects.create(telegram_id=111, name="A", is_active=True)
+        BookingNotification.objects.create(
+            booking=self.booking, admin_telegram_id=111, message_id=10
+        )
+        from tgbot.bot import _bind_booking_token
+        bot = make_bot()
+        _bind_booking_token(bot, self._msg(), self.booking.link_token)
+        self.assertEqual(
+            BookingNotification.objects.filter(booking=self.booking).count(), 1
+        )
+        bot.edit_message_text.assert_called()
+
     def test_booking_text_shows_contact_when_bound(self):
         from tgbot.notifications import build_booking_text
         self.booking.messenger = "telegram"
@@ -191,3 +225,42 @@ class BookingBindTest(TestCase):
         )
         self.assertTrue(self.booking.link_token)
         self.assertNotEqual(self.booking.link_token, other.link_token)
+
+
+class RescheduleActionTest(TestCase):
+    def setUp(self):
+        from cabinet.models import Appointment, Specialist
+        from booking.models import RescheduleRequest
+        BotAdmin.objects.create(telegram_id=111, name="A", is_active=True)
+        user = User.objects.create_user("m", password="pw")
+        spec = Specialist.objects.create(user=user, name="М")
+        self.appt = Appointment.objects.create(
+            specialist=spec, client_name="К",
+            date=timezone.localdate() + timedelta(days=5), time_start=time(10, 0),
+            cost=Decimal("1000"), status="scheduled",
+        )
+        self.req = RescheduleRequest.objects.create(
+            appointment=self.appt,
+            new_date=timezone.localdate() + timedelta(days=7), new_time=time(11, 0),
+        )
+
+    def test_confirm_applies(self):
+        from tgbot.notifications import handle_reschedule_action
+        handle_reschedule_action(MagicMock(), make_call(f"rs_confirm_{self.req.pk}", uid=111))
+        self.appt.refresh_from_db()
+        self.req.refresh_from_db()
+        self.assertEqual(self.appt.time_start, time(11, 0))
+        self.assertEqual(self.appt.date, self.req.new_date)
+        self.assertEqual(self.req.status, "approved")
+
+    def test_decline(self):
+        from tgbot.notifications import handle_reschedule_action
+        handle_reschedule_action(MagicMock(), make_call(f"rs_decline_{self.req.pk}", uid=111))
+        self.req.refresh_from_db()
+        self.assertEqual(self.req.status, "declined")
+
+    def test_non_admin_denied(self):
+        from tgbot.notifications import handle_reschedule_action
+        handle_reschedule_action(MagicMock(), make_call(f"rs_confirm_{self.req.pk}", uid=999))
+        self.req.refresh_from_db()
+        self.assertEqual(self.req.status, "pending")

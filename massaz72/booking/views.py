@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
@@ -113,15 +113,28 @@ def booking_page(request: HttpRequest) -> HttpResponse:
             else:
                 booking.source = BookingRequest.Source.GUEST
             booking.save()
-            _notify_admins(booking)
+            # Уведомляем мастера сразу, только если с клиентом можно связаться
+            # (указан телефон). Иначе — отложим до подключения клиента к боту:
+            # уведомление уйдёт в _bind_booking_token, когда появится контакт.
+            if booking.phone:
+                _notify_admins(booking)
             return _render_done(request, booking)
         return render(request, "booking/booking.html", {"form": form})
 
-    # Предвыбор услуги, если пришли со страницы массажа (?service=<id>).
+    # Предвыбор услуги (?service=<id>) и даты (?date=YYYY-MM-DD) — из кабинета.
     initial = {}
     service_id = request.GET.get("service", "")
     if service_id.isdigit():
         initial["service"] = int(service_id)
+    raw_date = request.GET.get("date", "")
+    if raw_date:
+        from datetime import datetime
+        try:
+            d = datetime.strptime(raw_date, "%Y-%m-%d").date()
+            if d >= timezone.localdate():
+                initial["preferred_date"] = d
+        except ValueError:
+            pass
     # Для залогиненного клиента подставляем телефон из профиля.
     if request.user.is_authenticated and hasattr(request.user, "client_profile"):
         initial.setdefault("phone", request.user.client_profile.phone)
@@ -129,4 +142,19 @@ def booking_page(request: HttpRequest) -> HttpResponse:
 
 
 def _render_done(request: HttpRequest, booking: BookingRequest | None = None) -> HttpResponse:
-    return render(request, "booking/booking.html", {"done": True, **_bots_context(booking)})
+    context = {"done": True, **_bots_context(booking)}
+    if booking is not None:
+        context["booking_token"] = booking.link_token
+    return render(request, "booking/booking.html", context)
+
+
+def booking_status(request: HttpRequest, token: str) -> JsonResponse:
+    """Статус заявки по токену (для опроса со страницы «спасибо»)."""
+    booking = BookingRequest.objects.filter(link_token=token).first()
+    if booking is None:
+        return JsonResponse({"found": False})
+    return JsonResponse({
+        "found": True,
+        "linked": bool(booking.messenger_user_id),
+        "confirmed": booking.client_confirmed,
+    })

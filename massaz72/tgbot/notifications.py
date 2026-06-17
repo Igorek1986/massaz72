@@ -247,7 +247,12 @@ def handle_client_booking_confirm(bot, call) -> None:
         booking.save(update_fields=[
             "client_confirmed", "consent_at", "updated_at",
         ])
-        refresh_booking_messages(bot, booking)  # у админов появится отметка
+        # Уведомляем мастера именно сейчас: если ещё не уведомляли (заявка без
+        # телефона) — шлём заявку; иначе обновляем существующие сообщения.
+        if BookingNotification.objects.filter(booking=booking).exists():
+            refresh_booking_messages(bot, booking)
+        else:
+            send_booking_to_admins(bot, booking)
 
     bot.answer_callback_query(call.id, "Спасибо! Запись подтверждена.")
     try:
@@ -283,14 +288,8 @@ def build_booking_keyboard(booking) -> types.InlineKeyboardMarkup:
     return kb
 
 
-def notify_new_booking(booking) -> int:
-    """Рассылает уведомление о новой заявке всем активным админам."""
-    from .bot import get_bot
-
-    bot = get_bot()
-    if bot is None:
-        return 0
-
+def send_booking_to_admins(bot, booking) -> int:
+    """Шлёт заявку всем активным админам через переданный бот."""
     text = build_booking_text(booking)
     keyboard = build_booking_keyboard(booking)
     sent = 0
@@ -307,6 +306,16 @@ def notify_new_booking(booking) -> int:
             logger.warning("booking %s: не доставлено админу %s: %s",
                            booking.pk, admin_id, exc)
     return sent
+
+
+def notify_new_booking(booking) -> int:
+    """Рассылает уведомление о новой заявке всем активным админам."""
+    from .bot import get_bot
+
+    bot = get_bot()
+    if bot is None:
+        return 0
+    return send_booking_to_admins(bot, booking)
 
 
 def delete_booking_messages(bot, booking) -> None:
@@ -356,3 +365,113 @@ def handle_booking_action(bot, call) -> None:
 
     delete_booking_messages(bot, booking)
     bot.answer_callback_query(call.id, f"Заявка {_BOOKING_ACTION_LABELS[action]}.")
+
+
+# ─── Отмена и перенос сеанса клиентом ─────────────────────────────────────────
+
+def _admins():
+    return BotAdmin.objects.filter(is_active=True).values_list("telegram_id", flat=True)
+
+
+def notify_master_cancel(appointment) -> int:
+    """Уведомляет мастеров об отмене сеанса клиентом."""
+    from .bot import get_bot
+
+    bot = get_bot()
+    if bot is None:
+        return 0
+    a = appointment
+    text = (
+        "🚫 <b>Клиент отменил сеанс</b>\n"
+        f"<b>Клиент:</b> {html.escape(a.client_name)}\n"
+        f"<b>Дата/время:</b> {a.date:%d.%m.%Y} {a.time_start:%H:%M}"
+    )
+    if a.service:
+        text += f"\n<b>Услуга:</b> {html.escape(a.service.name)}"
+    sent = 0
+    for admin_id in _admins():
+        try:
+            bot.send_message(admin_id, text)
+            sent += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("cancel notify: %s: %s", admin_id, exc)
+    return sent
+
+
+def reschedule_keyboard(req) -> types.InlineKeyboardMarkup:
+    kb = types.InlineKeyboardMarkup()
+    kb.row(
+        types.InlineKeyboardButton("✅ Подтвердить перенос", callback_data=f"rs_confirm_{req.pk}"),
+        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"rs_decline_{req.pk}"),
+    )
+    return kb
+
+
+def notify_master_reschedule(req) -> int:
+    """Уведомляет мастеров о запросе на перенос (с кнопками подтверждения)."""
+    from .bot import get_bot
+
+    bot = get_bot()
+    if bot is None:
+        return 0
+    a = req.appointment
+    text = (
+        "🔁 <b>Запрос на перенос сеанса</b>\n"
+        f"<b>Клиент:</b> {html.escape(a.client_name)}\n"
+        f"<b>Сейчас:</b> {a.date:%d.%m.%Y} {a.time_start:%H:%M}\n"
+        f"<b>Перенести на:</b> {req.new_date:%d.%m.%Y} {req.new_time:%H:%M}"
+    )
+    if a.service:
+        text += f"\n<b>Услуга:</b> {html.escape(a.service.name)}"
+    kb = reschedule_keyboard(req)
+    sent = 0
+    for admin_id in _admins():
+        try:
+            bot.send_message(admin_id, text, reply_markup=kb)
+            sent += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("reschedule notify: %s: %s", admin_id, exc)
+    return sent
+
+
+def handle_reschedule_action(bot, call) -> None:
+    """Кнопка переноса (callback rs_*): мастер подтверждает/отклоняет."""
+    from booking.models import RescheduleRequest
+    from booking.services import apply_reschedule, decline_reschedule
+
+    if not _is_admin(call.from_user.id):
+        bot.answer_callback_query(call.id, "Нет доступа.")
+        return
+    try:
+        _, action, pk = call.data.split("_", 2)
+    except ValueError:
+        bot.answer_callback_query(call.id)
+        return
+
+    req = RescheduleRequest.objects.filter(pk=pk).first()
+    if req is None:
+        bot.answer_callback_query(call.id, "Запрос не найден.")
+        return
+    if req.status != RescheduleRequest.Status.PENDING:
+        bot.answer_callback_query(call.id, "Уже обработано.")
+        try:
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+        except Exception:  # noqa: BLE001
+            pass
+        return
+
+    if action == "confirm":
+        apply_reschedule(req)
+        label = "Перенос подтверждён"
+    elif action == "decline":
+        decline_reschedule(req)
+        label = "Перенос отклонён"
+    else:
+        bot.answer_callback_query(call.id)
+        return
+
+    try:
+        bot.edit_message_text(f"🔁 {label}.", call.message.chat.id, call.message.message_id)
+    except Exception:  # noqa: BLE001
+        pass
+    bot.answer_callback_query(call.id, label)

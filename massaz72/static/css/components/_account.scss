@@ -213,3 +213,275 @@
     }
   }
 }
+
+// Расписание серии в кабинете клиента
+.account-booking__schedule {
+  margin: 4px 0 6px;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.account-booking__session {
+  color: var(--color-body);
+  font-size: 14px;
+
+  &--completed { color: var(--color-muted); }
+  &--cancelled { color: var(--color-muted-soft); text-decoration: line-through; }
+}
+
+.account-booking__done { color: #15803d; }
+.account-booking__cancelled { color: #b91c1c; font-size: 12px; }
+
+// ===== Кабинет клиента: расписание (как у мастера) =====
+.account-schedule {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 24px;
+
+  @media (max-width: 820px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.account-calendar {  // обёртка календаря
+  background: var(--color-canvas-card);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+
+  .fc { font-size: 13px; }
+  .fc .fc-toolbar-title { font-size: 16px; font-weight: 600; text-transform: capitalize; }
+  .fc .fc-button {
+    background: var(--color-canvas-card);
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+    text-transform: none;
+    box-shadow: none;
+    padding: 5px 10px;
+    &:hover { background: var(--color-surface-soft); }
+    &:focus { box-shadow: none; }
+  }
+  .fc .fc-button-primary:not(:disabled).fc-button-active,
+  .fc .fc-button-primary:not(:disabled):active {
+    background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+  }
+  .fc .fc-gotoToday-button {
+    background: var(--color-canvas-card) !important;
+    border-color: var(--color-hairline) !important;
+    color: var(--color-ink) !important;
+    opacity: 1 !important;
+    &:hover { background: var(--color-surface-soft) !important; }
+  }
+  .fc .fc-daygrid-day-number { font-size: 12px; color: var(--color-muted); text-decoration: none; }
+  .fc .fc-col-header-cell-cushion {
+    font-size: 12px; font-weight: 600; color: var(--color-muted);
+    text-transform: uppercase; text-decoration: none;
+  }
+  .fc .fc-apt-count { font-size: 11px; padding: 1px 5px; border-radius: 4px; }
+  .fc .fc-day-today { background: rgba(245, 158, 11, 0.10) !important; }
+  .fc .fc-daygrid-day {
+    cursor: pointer;
+    &:hover .fc-daygrid-day-frame { background: var(--color-surface-soft); }
+  }
+}
+
+.account__muted { color: var(--color-muted); font-size: 14px; }
+
+.day-panel {
+  background: var(--color-canvas-card);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+
+  &__header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--color-hairline-soft);
+  }
+  &__title { font-size: 15px; font-weight: 600; color: var(--color-ink); text-transform: capitalize; }
+  &__empty { padding: 24px 16px; color: var(--color-muted); font-size: 14px; text-align: center; }
+  &__contact {
+    padding: 14px 16px;
+    border-top: 1px solid var(--color-hairline-soft);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  &__soon { font-size: 12px; color: var(--color-muted-soft); }
+}
+
+.apt-list { list-style: none; margin: 0; padding: 0; }
+
+.apt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-hairline-soft);
+
+  &:last-child { border-bottom: none; }
+  &--completed { opacity: .6; }
+  &--cancelled { opacity: .45; text-decoration: line-through; }
+
+  &__top { display: flex; gap: 12px; align-items: flex-start; }
+  &__time {
+    font-size: 14px; font-weight: 700; color: var(--color-ink);
+    min-width: 46px; text-align: center; align-self: center;
+  }
+  &__body { flex: 1; min-width: 0; }
+  &__name { font-weight: 600; font-size: 14px; color: var(--color-ink); }
+  &__service { font-size: 12px; color: var(--color-muted); margin-top: 2px; }
+  &__note { font-size: 13px; color: var(--color-muted-soft); }
+  &__actions { display: flex; gap: 8px; }
+}
+
+.apt-status {
+  display: inline-block;
+  font-size: 12px;
+  margin-top: 3px;
+  &--scheduled { color: #2563eb; }
+  &--completed { color: #15803d; }
+  &--cancelled { color: #b91c1c; }
+}
+
+.apt-action {
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas-card);
+  color: var(--color-body);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+
+  &:hover { background: var(--color-surface-soft); }
+  &--danger {
+    &:hover { border-color: #b91c1c; color: #b91c1c; background: var(--color-canvas-card); }
+  }
+  &--tg { background: #2aabee; border-color: #2aabee; color: #fff; &:hover { background: #1d97d6; } }
+  &--primary {
+    background: #16a34a; border-color: #16a34a; color: #fff;
+    &:hover { background: #15803d; border-color: #15803d; }
+  }
+}
+
+.day-panel__footer {
+  padding: 14px 16px;
+  border-top: 1px solid var(--color-hairline-soft);
+}
+
+.reschedule {
+  padding: 14px 16px;
+
+  &__current { color: var(--color-body); margin-bottom: 10px; }
+}
+
+.reschedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__row { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--color-body); }
+  &__row input {
+    border: 1px solid var(--color-hairline);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 15px;
+    font-family: inherit;
+  }
+  &__actions { display: flex; gap: 8px; }
+}
+
+// ===== Меню аккаунта в шапке (аватар + выпадашка) =====
+.user-menu {
+  position: relative;
+
+  // Кружок-аватар в стиле кнопки темы (цвета хедера).
+  &__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 9999px;
+    border: 1px solid var(--color-header-btn-border);
+    background: none;
+    color: var(--color-header-text);
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+
+    &:hover {
+      background-color: var(--color-header-hover-bg);
+      color: var(--color-header-text-hover);
+    }
+  }
+
+  &__avatar { line-height: 1; }
+
+  &__dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 180px;
+    background: var(--color-canvas-card);
+    border: 1px solid var(--color-hairline-soft);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    padding: 6px;
+    display: none;
+    z-index: 100;
+
+    form { margin: 0; }
+  }
+
+  &--open &__dropdown { display: block; }
+
+  &__item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: var(--color-ink);
+    text-decoration: none;
+    font-size: 15px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+
+    &:hover { background: var(--color-surface-soft); }
+  }
+
+  // Мобильное меню: пункты как обычные строки навигации (без кружка/выпадашки).
+  @media (max-width: 767px) {
+    width: 100%;
+
+    &__toggle { display: none; }
+    &__dropdown {
+      display: block;
+      position: static;
+      min-width: auto;
+      border: none;
+      box-shadow: none;
+      background: none;
+      padding: 0;
+    }
+    &__item {
+      padding: 14px 24px;
+      border-radius: 0;
+      border-bottom: 1px solid var(--color-header-border);
+      color: var(--color-header-text);
+      font-size: 17px;
+    }
+  }
+}

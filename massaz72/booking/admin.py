@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import BookingRequest, BookingSessionOption
+from .models import BookingRequest, BookingSessionOption, RescheduleRequest
+
+
+@admin.register(RescheduleRequest)
+class RescheduleRequestAdmin(admin.ModelAdmin):
+    list_display = ("appointment", "new_date", "new_time", "status", "created_at")
+    list_filter = ("status",)
 
 
 @admin.register(BookingSessionOption)

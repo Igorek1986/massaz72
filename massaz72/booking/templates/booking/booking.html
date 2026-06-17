@@ -30,6 +30,42 @@
           </div>
         </div>
         <a class="booking-done__home" href="{% url 'main:index' %}">Пропустить → на главную</a>
+
+        {% if booking_token %}
+        <script>
+          (function () {
+            var token = "{{ booking_token|escapejs }}";
+            var done = document.querySelector('.booking-done');
+            if (!token || !done) return;
+            var homeUrl = "{% url 'main:index' %}";
+            var statusUrl = "/booking/status/" + encodeURIComponent(token) + "/";
+            var tries = 0, stopped = false;
+
+            function showConfirmed() {
+              stopped = true;
+              done.innerHTML =
+                '<h1 class="booking__title">Запись подтверждена! ✅</h1>' +
+                '<p class="booking-done__text">Спасибо! Мы свяжемся с вами для согласования времени.</p>' +
+                '<a class="booking-done__home" href="' + homeUrl + '">На главную</a>';
+            }
+            function poll() {
+              if (stopped) return;
+              fetch(statusUrl, { headers: { 'X-Requested-With': 'fetch' } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) { if (d && d.confirmed) showConfirmed(); })
+                .catch(function () {});
+            }
+            var timer = setInterval(function () {
+              if (stopped || ++tries > 150) { clearInterval(timer); return; }
+              poll();
+            }, 4000);
+            // Мгновенная проверка при возврате на вкладку (после Telegram).
+            document.addEventListener('visibilitychange', function () {
+              if (document.visibilityState === 'visible') poll();
+            });
+          })();
+        </script>
+        {% endif %}
         {% else %}
         <p class="booking-done__text">Мы свяжемся с вами для подтверждения даты и времени.</p>
         <a class="booking-done__home" href="{% url 'main:index' %}">← На главную</a>

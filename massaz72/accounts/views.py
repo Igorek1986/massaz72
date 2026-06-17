@@ -1,10 +1,12 @@
+from datetime import datetime
 from functools import wraps
 
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from main.models import SiteSettings
@@ -84,12 +86,154 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 def dashboard(request: HttpRequest) -> HttpResponse:
     from booking.models import BookingRequest
 
-    bookings = (
-        BookingRequest.objects.filter(user=request.user)
-        .select_related("service", "specialist", "appointment")
+    # Заявки без подтверждённой записи (на подтверждении/отклонённые) — отдельным
+    # списком; подтверждённые сеансы показываются в календаре и день-панели.
+    requests = (
+        BookingRequest.objects.filter(user=request.user, appointment__isnull=True)
+        .exclude(status=BookingRequest.Status.CONFIRMED)
+        .select_related("service", "specialist", "sessions")
         .order_by("-created_at")
     )
-    return render(request, "accounts/dashboard.html", {"bookings": bookings})
+    has_sessions = _client_appointment_qs(request.user).exists()
+    return render(request, "accounts/dashboard.html", {
+        "requests": requests,
+        "has_sessions": has_sessions,
+        "today": timezone.localdate().isoformat(),
+    })
+
+
+def _client_appointment_qs(user):
+    """Все записи клиента (через его заявки и серии)."""
+    from booking.models import BookingRequest
+    from cabinet.models import Appointment
+
+    apt_ids = set()
+    qs = (
+        BookingRequest.objects.filter(user=user, appointment__isnull=False)
+        .select_related("appointment__series")
+    )
+    for b in qs:
+        apt = b.appointment
+        if apt.series_id:
+            apt_ids.update(apt.series.appointments.values_list("id", flat=True))
+        else:
+            apt_ids.add(apt.id)
+    return Appointment.objects.filter(id__in=apt_ids)
+
+
+def _telegram_bot_url() -> str | None:
+    from tgbot.models import BotSettings
+    s = BotSettings.load()
+    if s and s.is_enabled and s.bot_username:
+        return f"https://t.me/{s.bot_username}"
+    return None
+
+
+def _day_panel(request: HttpRequest, day) -> HttpResponse:
+    from cabinet.models import Specialist
+
+    sessions = list(
+        _client_appointment_qs(request.user)
+        .filter(date=day)
+        .select_related("service", "specialist")
+        .order_by("time_start")
+    )
+    today = timezone.localdate()
+    for a in sessions:
+        # Отменять/переносить можно только будущие запланированные сеансы.
+        a.can_edit = a.date > today and a.status == "scheduled"
+        a.has_pending_reschedule = a.reschedule_requests.filter(status="pending").exists()
+    return render(request, "accounts/partials/day_panel.html", {
+        "day": day,
+        "sessions": sessions,
+        "telegram_bot_url": _telegram_bot_url(),
+        "multiple_specialists": Specialist.objects.filter(is_active=True).count() > 1,
+    })
+
+
+@client_required
+def events(request: HttpRequest) -> JsonResponse:
+    """События календаря: на каждый день — плашка с количеством сеансов."""
+    from collections import Counter
+
+    counts = Counter()
+    for a in _client_appointment_qs(request.user).exclude(status="cancelled"):
+        counts[a.date] += 1
+
+    events_data = []
+    for day, count in counts.items():
+        events_data.append({
+            "start": day.isoformat(),
+            "title": f"{count} зап." if count != 1 else "1 зап.",
+            "allDay": True,
+            "backgroundColor": "#3b82f6",
+            "borderColor": "#2563eb",
+            "textColor": "#fff",
+            "classNames": ["fc-apt-count"],
+        })
+    return JsonResponse(events_data, safe=False)
+
+
+def _parse_date(date_str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
+
+
+@client_required
+def day_sessions(request: HttpRequest, date_str: str) -> HttpResponse:
+    day = _parse_date(date_str)
+    if day is None:
+        return HttpResponse("Неверная дата", status=400)
+    return _day_panel(request, day)
+
+
+@client_required
+@require_POST
+def session_cancel(request: HttpRequest, pk: int) -> HttpResponse:
+    from booking.services import cancel_appointment
+
+    appt = get_object_or_404(_client_appointment_qs(request.user), pk=pk)
+    if appt.date > timezone.localdate() and appt.status == "scheduled":
+        cancel_appointment(appt)
+        try:
+            from tgbot.notifications import notify_master_cancel
+            notify_master_cancel(appt)
+        except Exception:  # noqa: BLE001
+            pass
+    return _day_panel(request, appt.date)
+
+
+@client_required
+def session_reschedule(request: HttpRequest, pk: int) -> HttpResponse:
+    from booking.services import request_reschedule
+
+    appt = get_object_or_404(_client_appointment_qs(request.user), pk=pk)
+    editable = appt.date > timezone.localdate() and appt.status == "scheduled"
+    if not editable:
+        return _day_panel(request, appt.date)
+
+    error = None
+    if request.method == "POST":
+        new_date = _parse_date(request.POST.get("new_date", ""))
+        try:
+            new_time = datetime.strptime(request.POST.get("new_time", ""), "%H:%M").time()
+        except (ValueError, TypeError):
+            new_time = None
+        if new_date and new_time and new_date > timezone.localdate():
+            req = request_reschedule(appt, new_date, new_time)
+            try:
+                from tgbot.notifications import notify_master_reschedule
+                notify_master_reschedule(req)
+            except Exception:  # noqa: BLE001
+                pass
+            return _day_panel(request, appt.date)
+        error = "Укажите корректные новые дату (в будущем) и время."
+
+    return render(request, "accounts/partials/reschedule_form.html", {
+        "appt": appt, "error": error,
+    })
 
 
 @client_required

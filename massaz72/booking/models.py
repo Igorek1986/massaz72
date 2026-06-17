@@ -125,3 +125,31 @@ class BookingRequest(models.Model):
 
     def __str__(self) -> str:
         return f"{self.client_name} — {self.preferred_date} {self.preferred_time} ({self.get_status_display()})"
+
+
+class RescheduleRequest(models.Model):
+    """Запрос клиента на перенос сеанса. Подтверждает мастер (в боте/кабинете)."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает подтверждения"
+        APPROVED = "approved", "Подтверждён"
+        DECLINED = "declined", "Отклонён"
+
+    appointment = models.ForeignKey(
+        "cabinet.Appointment", on_delete=models.CASCADE,
+        related_name="reschedule_requests", verbose_name="Запись",
+    )
+    new_date = models.DateField("Новая дата")
+    new_time = models.TimeField("Новое время")
+    status = models.CharField(
+        "Статус", max_length=10, choices=Status.choices, default=Status.PENDING,
+    )
+    created_at = models.DateTimeField("Создан", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Запрос на перенос"
+        verbose_name_plural = "Запросы на перенос"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Перенос записи {self.appointment_id} → {self.new_date} {self.new_time}"
