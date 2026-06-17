@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     "django.contrib.sitemaps",
     "sass_processor",
     "axes",
+    "django_q",
     # my app
     "main.apps.MainConfig",
     "services.apps.ServicesConfig",
@@ -182,6 +183,22 @@ TIME_ZONE = "Asia/Yekaterinburg"
 USE_I18N = True
 
 USE_TZ = True
+
+
+# django-q2 — планировщик/очередь задач. Брокер — сама БД (Postgres, ORM),
+# Redis не нужен. Ежедневные задачи (напоминания, удаление неактивных аккаунтов)
+# создаются командой `ensure_schedules` и выполняются воркером `qcluster`.
+Q_CLUSTER = {
+    "name": "massaz72",
+    "workers": 1,
+    "recycle": 500,
+    "timeout": 300,
+    "retry": 900,
+    "queue_limit": 50,
+    "orm": "default",       # брокер — БД, без Redis/брокера
+    "catch_up": True,       # пропущенный из-за простоя запуск выполнится при старте
+    "label": "Очередь задач",
+}
 
 
 # Static files (CSS, JavaScript, Images)

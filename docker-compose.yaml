@@ -30,6 +30,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      # «Здоров» = entrypoint уже применил миграции и поднял gunicorn.
+      # На него опирается qcluster, чтобы не мигрировать БД параллельно с app.
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
     logging:
       driver: "json-file"
       options:
@@ -62,6 +70,36 @@ services:
         condition: service_healthy
       app:
         condition: service_started
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "200k"
+
+  # Планировщик/очередь задач django-q2 (брокер — Postgres, без Redis).
+  # Выполняет ежедневные задачи в 09:00 по settings.TIME_ZONE:
+  #   send_reminders (напоминания) и purge_inactive (удаление неактивных).
+  # Миграции применяет app (ждём его healthcheck), здесь только расписания
+  # (идемпотентно) и сам воркер.
+  qcluster:
+    build:
+      dockerfile: ./Dockerfile
+    image: massaz72_django-app
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        python manage.py ensure_schedules
+        exec python manage.py qcluster
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./massaz72/logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:

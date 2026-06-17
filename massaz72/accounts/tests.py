@@ -428,3 +428,28 @@ class PurgeInactiveTest(TestCase):
         m = self._run(dry_run=True)
         m.assert_not_called()
         self.assertTrue(User.objects.filter(pk=c.user_id).exists())
+
+
+class SchedulerTest(TestCase):
+    def test_ensure_schedules_idempotent(self):
+        from django.core.management import call_command
+        from django_q.models import Schedule
+        call_command("ensure_schedules")
+        call_command("ensure_schedules")  # повторный запуск не плодит дубли
+        names = set(Schedule.objects.values_list("name", flat=True))
+        self.assertEqual(names, {"send_reminders_daily", "purge_inactive_daily"})
+        s = Schedule.objects.get(name="send_reminders_daily")
+        self.assertEqual(s.func, "accounts.tasks.send_reminders")
+        self.assertEqual(s.schedule_type, Schedule.DAILY)
+        self.assertEqual(s.next_run.astimezone(timezone.get_current_timezone()).hour, 9)
+
+    def test_task_wrappers_call_commands(self):
+        from unittest.mock import patch
+        from accounts import tasks
+        with patch("accounts.tasks.call_command") as m:
+            tasks.send_reminders()
+            tasks.purge_inactive()
+        self.assertEqual(
+            [c.args[0] for c in m.call_args_list],
+            ["send_reminders", "purge_inactive"],
+        )
