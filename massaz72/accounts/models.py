@@ -50,6 +50,13 @@ class Client(models.Model):
         "Последнее напоминание", null=True, blank=True,
     )
 
+    # Авто-удаление неактивных аккаунтов: дата отправки предупреждения
+    # (начало grace-периода перед удалением). Сбрасывается, если клиент
+    # снова активен.
+    deletion_warned_at = models.DateField(
+        "Предупреждение об удалении", null=True, blank=True,
+    )
+
     created_at = models.DateTimeField("Дата регистрации", auto_now_add=True)
 
     class Meta:

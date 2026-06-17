@@ -533,3 +533,28 @@ def send_reminder(telegram_id) -> bool:
     except Exception as exc:  # noqa: BLE001
         logger.warning("reminder: не отправлено %s: %s", telegram_id, exc)
         return False
+
+
+def send_deletion_warning(telegram_id, days: int) -> bool:
+    """Предупреждение клиенту, что неактивный аккаунт будет удалён."""
+    from django.urls import reverse
+
+    from .bot import get_bot
+
+    bot = get_bot()
+    if bot is None:
+        return False
+    url = _abs_url(reverse("accounts:login"))
+    text = (
+        "⚠️ <b>Ваш аккаунт давно неактивен</b>\n"
+        f"Если не войти в течение {days} дней, аккаунт будет удалён "
+        "вместе с данными профиля."
+    )
+    if url:
+        text += f"\n\nВойти: {url}"
+    try:
+        bot.send_message(telegram_id, text, disable_web_page_preview=True)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("deletion_warning: не отправлено %s: %s", telegram_id, exc)
+        return False

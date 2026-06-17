@@ -334,3 +334,97 @@ class CabinetTest(TestCase):
             reverse("accounts:password_reset_confirm", args=[uid, "bad-token"])
         )
         self.assertContains(resp, "недействительна")
+
+
+class PurgeInactiveTest(TestCase):
+    def setUp(self):
+        self.massage = make_massage("МойМассаж")
+
+    def _client(self, *, days_inactive, warned_days_ago=None, telegram=None,
+                staff=False, username="u"):
+        from datetime import date, timedelta
+        u = User.objects.create_user(username, password=PWD, is_staff=staff)
+        u.last_login = timezone.now() - timedelta(days=days_inactive)
+        u.save(update_fields=["last_login"])
+        warned = None if warned_days_ago is None else date.today() - timedelta(days=warned_days_ago)
+        return ClientProfile.objects.create(
+            user=u, telegram_id=telegram, deletion_warned_at=warned,
+        )
+
+    def _run(self, **kw):
+        from unittest.mock import patch
+        from django.core.management import call_command
+        with patch("tgbot.notifications.send_deletion_warning", return_value=True) as m:
+            call_command("purge_inactive", **kw)
+        return m
+
+    def test_active_user_untouched(self):
+        c = self._client(days_inactive=10, telegram=111)
+        self._run()
+        self.assertTrue(User.objects.filter(pk=c.user_id).exists())
+        c.refresh_from_db()
+        self.assertIsNone(c.deletion_warned_at)
+
+    def test_warns_in_warning_zone(self):
+        from datetime import date
+        c = self._client(days_inactive=340, telegram=111)
+        m = self._run()
+        m.assert_called_once_with(111, 30)
+        c.refresh_from_db()
+        self.assertEqual(c.deletion_warned_at, date.today())
+        self.assertTrue(User.objects.filter(pk=c.user_id).exists())
+
+    def test_warns_without_telegram_no_send_but_marks(self):
+        from datetime import date
+        c = self._client(days_inactive=340, telegram=None)
+        m = self._run()
+        m.assert_not_called()
+        c.refresh_from_db()
+        self.assertEqual(c.deletion_warned_at, date.today())
+
+    def test_deletes_after_grace(self):
+        c = self._client(days_inactive=400, warned_days_ago=35, telegram=111)
+        uid = c.user_id
+        self._run()
+        self.assertFalse(User.objects.filter(pk=uid).exists())
+        self.assertFalse(ClientProfile.objects.filter(pk=c.pk).exists())
+
+    def test_not_deleted_before_grace_passes(self):
+        c = self._client(days_inactive=400, warned_days_ago=10, telegram=111)
+        self._run()
+        self.assertTrue(User.objects.filter(pk=c.user_id).exists())
+
+    def test_reactivated_resets_warning(self):
+        c = self._client(days_inactive=5, warned_days_ago=100, telegram=111)
+        self._run()
+        c.refresh_from_db()
+        self.assertIsNone(c.deletion_warned_at)
+
+    def test_staff_never_deleted(self):
+        c = self._client(days_inactive=400, warned_days_ago=35, telegram=111, staff=True)
+        self._run()
+        self.assertTrue(User.objects.filter(pk=c.user_id).exists())
+
+    def test_future_appointment_keeps_account(self):
+        from datetime import time
+        from booking.models import BookingSessionOption
+        from booking.services import confirm_booking
+        from cabinet.models import Specialist
+        c = self._client(days_inactive=400, warned_days_ago=35, telegram=111)
+        spec = Specialist.objects.create(name="Мастер")
+        booking = BookingRequest.objects.create(
+            client_name="Иван", user=c.user, phone="111", service=self.massage,
+            preferred_date=future_date(), preferred_time=time(10, 0),
+            sessions=BookingSessionOption.objects.create(count=1, label="1 сеанс"),
+        )
+        confirm_booking(booking, specialist=spec)
+        self._run()
+        self.assertTrue(User.objects.filter(pk=c.user_id).exists())
+        c.refresh_from_db()
+        self.assertIsNone(c.deletion_warned_at)
+
+    def test_dry_run_no_changes(self):
+        c = self._client(days_inactive=400, warned_days_ago=35, telegram=111)
+        m = self._run(dry_run=True)
+        m.assert_not_called()
+        self.assertTrue(User.objects.filter(pk=c.user_id).exists())
