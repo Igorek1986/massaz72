@@ -475,3 +475,23 @@ def handle_reschedule_action(bot, call) -> None:
     except Exception:  # noqa: BLE001
         pass
     bot.answer_callback_query(call.id, label)
+
+
+def send_password_reset(telegram_id, url) -> bool:
+    """Шлёт клиенту в Telegram ссылку для установки нового пароля."""
+    from .bot import get_bot
+
+    bot = get_bot()
+    if bot is None:
+        return False
+    try:
+        bot.send_message(
+            telegram_id,
+            "🔑 <b>Сброс пароля</b>\n\nЧтобы задать новый пароль, перейдите по ссылке:\n"
+            f"{url}\n\nЕсли вы не запрашивали сброс — просто игнорируйте это сообщение.",
+            disable_web_page_preview=True,
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("password reset: не отправлено %s: %s", telegram_id, exc)
+        return False

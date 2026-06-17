@@ -1,12 +1,19 @@
 from datetime import datetime
 from functools import wraps
 
-from django.contrib.auth import login, logout, update_session_auth_hash
-from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
+from django.contrib.auth import (
+    get_user_model, login, logout, update_session_auth_hash,
+)
+from django.contrib.auth.forms import (
+    AuthenticationForm, PasswordChangeForm, SetPasswordForm,
+)
+from django.contrib.auth.tokens import default_token_generator
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
 
 from main.models import SiteSettings
@@ -273,6 +280,59 @@ def profile(request: HttpRequest) -> HttpResponse:
         "client": client,
         **_telegram_link_context(client),
     })
+
+
+def password_reset_request(request: HttpRequest) -> HttpResponse:
+    """Запрос сброса пароля: ссылка отправляется в Telegram (если привязан)."""
+    if not _cabinet_enabled():
+        return redirect("main:index")
+
+    status = None  # sent | no_telegram | not_found
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        user = get_user_model().objects.filter(username=username).first()
+        if user is None or not hasattr(user, "client_profile"):
+            status = "not_found"
+        elif not user.client_profile.telegram_id:
+            status = "no_telegram"
+        else:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            url = request.build_absolute_uri(
+                reverse("accounts:password_reset_confirm", args=[uid, token])
+            )
+            try:
+                from tgbot.notifications import send_password_reset
+                send_password_reset(user.client_profile.telegram_id, url)
+            except Exception:  # noqa: BLE001
+                pass
+            status = "sent"
+    return render(request, "accounts/password_reset.html", {"status": status})
+
+
+def password_reset_confirm(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
+    """Установка нового пароля по ссылке из Telegram."""
+    if not _cabinet_enabled():
+        return redirect("main:index")
+
+    user = None
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = get_user_model().objects.get(pk=uid)
+    except Exception:  # noqa: BLE001
+        user = None
+
+    if user is None or not default_token_generator.check_token(user, token):
+        return render(request, "accounts/password_reset_confirm.html", {"invalid": True})
+
+    if request.method == "POST":
+        form = SetPasswordForm(user, request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect(f"{reverse('accounts:login')}?reset=1")
+    else:
+        form = SetPasswordForm(user)
+    return render(request, "accounts/password_reset_confirm.html", {"form": form})
 
 
 def _telegram_link_context(client) -> dict:

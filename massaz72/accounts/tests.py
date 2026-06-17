@@ -234,7 +234,7 @@ class CabinetTest(TestCase):
         self.profile.save()
         self.client.force_login(self.user)
         body = self.client.get(reverse("accounts:profile")).content.decode()
-        self.assertIn("Подключён", body)
+        self.assertIn("Telegram подключён", body)
         self.assertIn("@petr", body)
 
     def test_change_password(self):
@@ -246,3 +246,47 @@ class CabinetTest(TestCase):
         })
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password(new))
+
+    def test_reset_request_sent_when_telegram(self):
+        from unittest.mock import patch
+        self.profile.telegram_id = 777
+        self.profile.save()
+        with patch("tgbot.notifications.send_password_reset") as m:
+            resp = self.client.post(reverse("accounts:password_reset"),
+                                    {"username": "ivan"})
+        self.assertContains(resp, "отправлена в ваш Telegram")
+        m.assert_called_once()
+
+    def test_reset_request_no_telegram(self):
+        resp = self.client.post(reverse("accounts:password_reset"),
+                                {"username": "ivan"})
+        self.assertContains(resp, "не привязан Telegram")
+
+    def test_reset_request_unknown(self):
+        resp = self.client.post(reverse("accounts:password_reset"),
+                                {"username": "nobody"})
+        self.assertContains(resp, "не найден")
+
+    def test_reset_confirm_sets_password(self):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+        new = "N3wReset!2026"
+        resp = self.client.post(
+            reverse("accounts:password_reset_confirm", args=[uid, token]),
+            {"new_password1": new, "new_password2": new},
+        )
+        self.assertRedirects(resp, reverse("accounts:login") + "?reset=1")
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(new))
+
+    def test_reset_confirm_invalid_token(self):
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        resp = self.client.get(
+            reverse("accounts:password_reset_confirm", args=[uid, "bad-token"])
+        )
+        self.assertContains(resp, "недействительна")
