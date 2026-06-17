@@ -38,7 +38,12 @@ class RegisterForm(UserCreationForm):
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = Client
-        fields = ["phone"]
+        fields = ["phone", "reminder_enabled", "reminder_interval_months"]
         widgets = {
             "phone": forms.TextInput(attrs={**_INPUT, "type": "tel"}),
+            "reminder_interval_months": forms.Select(attrs=_INPUT),
+        }
+        labels = {
+            "reminder_enabled": "Присылать напоминания о записи",
+            "reminder_interval_months": "Как часто напоминать",
         }

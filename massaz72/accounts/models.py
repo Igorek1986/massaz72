@@ -40,6 +40,16 @@ class Client(models.Model):
         default=gen_link_token, editable=False,
     )
 
+    # Напоминания о периодическом массаже (клиент включает сам).
+    INTERVAL_CHOICES = [(6, "Раз в 6 месяцев"), (12, "Раз в год")]
+    reminder_enabled = models.BooleanField("Напоминания о записи", default=False)
+    reminder_interval_months = models.PositiveSmallIntegerField(
+        "Интервал напоминаний", choices=INTERVAL_CHOICES, default=6,
+    )
+    last_reminder_at = models.DateField(
+        "Последнее напоминание", null=True, blank=True,
+    )
+
     created_at = models.DateTimeField("Дата регистрации", auto_now_add=True)
 
     class Meta:

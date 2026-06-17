@@ -208,6 +208,7 @@ class CabinetTest(TestCase):
         self.client.force_login(self.user)
         self.client.post(reverse("accounts:profile"), {
             "save_profile": "1", "phone": "+70000000001",
+            "reminder_interval_months": "6",
         })
         self.profile.refresh_from_db()
         self.assertEqual(self.profile.phone, "+70000000001")
@@ -281,6 +282,49 @@ class CabinetTest(TestCase):
         self.assertRedirects(resp, reverse("accounts:login") + "?reset=1")
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password(new))
+
+    def test_add_months(self):
+        from datetime import date
+        from accounts.management.commands.send_reminders import add_months
+        self.assertEqual(add_months(date(2026, 1, 31), 1), date(2026, 2, 28))
+        self.assertEqual(add_months(date(2026, 6, 15), 6), date(2026, 12, 15))
+        self.assertEqual(add_months(date(2026, 8, 15), 12), date(2027, 8, 15))
+
+    def test_send_reminders_due(self):
+        from datetime import date, timedelta
+        from unittest.mock import patch
+        from django.core.management import call_command
+        self.profile.telegram_id = 777
+        self.profile.reminder_enabled = True
+        self.profile.reminder_interval_months = 6
+        self.profile.last_reminder_at = date.today() - timedelta(days=210)
+        self.profile.save()
+        with patch("tgbot.notifications.send_reminder", return_value=True) as m:
+            call_command("send_reminders")
+        m.assert_called_once_with(777)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.last_reminder_at, date.today())
+
+    def test_send_reminders_not_due(self):
+        from datetime import date, timedelta
+        from unittest.mock import patch
+        from django.core.management import call_command
+        self.profile.telegram_id = 777
+        self.profile.reminder_enabled = True
+        self.profile.last_reminder_at = date.today() - timedelta(days=10)
+        self.profile.save()
+        with patch("tgbot.notifications.send_reminder", return_value=True) as m:
+            call_command("send_reminders")
+        m.assert_not_called()
+
+    def test_send_reminders_skips_no_telegram(self):
+        from unittest.mock import patch
+        from django.core.management import call_command
+        self.profile.reminder_enabled = True
+        self.profile.save()  # без telegram_id
+        with patch("tgbot.notifications.send_reminder", return_value=True) as m:
+            call_command("send_reminders")
+        m.assert_not_called()
 
     def test_reset_confirm_invalid_token(self):
         from django.utils.encoding import force_bytes

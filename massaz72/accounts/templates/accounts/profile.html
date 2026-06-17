@@ -1,4 +1,5 @@
 {% extends 'main/base.html' %}
+{% load static %}
 
 {% block title %}Профиль{% endblock %}
 
@@ -12,13 +13,25 @@
 
       <form class="account-form" method="post">
         {% csrf_token %}
-        {% for field in profile_form %}
         <div class="account-form__row">
-          <label class="account-form__label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}<span class="account-form__error">{{ field.errors.0 }}</span>{% endif %}
+          <label class="account-form__label" for="{{ profile_form.phone.id_for_label }}">Телефон</label>
+          {{ profile_form.phone }}
+          {% if profile_form.phone.errors %}<span class="account-form__error">{{ profile_form.phone.errors.0 }}</span>{% endif %}
         </div>
-        {% endfor %}
+
+        <h2 class="account__subtitle">Напоминания о записи</h2>
+        <label class="consent-row__label" style="margin-bottom:12px;">
+          {{ profile_form.reminder_enabled }}
+          <span>Присылать напоминания о записи в Telegram</span>
+        </label>
+        <div class="account-form__row">
+          <label class="account-form__label" for="{{ profile_form.reminder_interval_months.id_for_label }}">Как часто напоминать</label>
+          {{ profile_form.reminder_interval_months }}
+        </div>
+        {% if not client.bot_linked %}
+        <p class="account__muted">Чтобы получать напоминания, подключите Telegram (ниже).</p>
+        {% endif %}
+
         <button type="submit" name="save_profile" class="account-form__submit">Сохранить</button>
       </form>
 
@@ -55,4 +68,5 @@
     </div>
   </div>
 </section>
+<script src="{% static 'accounts/js/notice.js' %}"></script>
 {% endblock %}

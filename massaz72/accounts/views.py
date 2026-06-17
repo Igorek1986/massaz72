@@ -274,6 +274,9 @@ def profile(request: HttpRequest) -> HttpResponse:
                 update_session_auth_hash(request, password_form.user)
                 return redirect(f"{reverse('accounts:profile')}?password=1")
 
+    # У PasswordChangeForm поле «Старый пароль» по умолчанию с autofocus —
+    # из-за него после сохранения профиля браузер прыгает в смену пароля.
+    password_form.fields["old_password"].widget.attrs.pop("autofocus", None)
     return render(request, "accounts/profile.html", {
         "profile_form": profile_form,
         "password_form": password_form,

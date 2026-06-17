@@ -495,3 +495,41 @@ def send_password_reset(telegram_id, url) -> bool:
     except Exception as exc:  # noqa: BLE001
         logger.warning("password reset: не отправлено %s: %s", telegram_id, exc)
         return False
+
+
+def _abs_url(path: str) -> str:
+    """Абсолютный URL сайта по пути (домен из Site/ALLOWED_HOSTS)."""
+    from django.conf import settings
+    from django.contrib.sites.models import Site
+
+    domain = ""
+    try:
+        domain = Site.objects.get_current().domain
+    except Exception:  # noqa: BLE001
+        pass
+    if not domain or domain == "example.com":
+        hosts = [h for h in getattr(settings, "ALLOWED_HOSTS", []) if h not in ("*", "")]
+        if hosts:
+            domain = hosts[0]
+    return f"https://{domain}{path}" if domain and domain != "example.com" else path
+
+
+def send_reminder(telegram_id) -> bool:
+    """Напоминание клиенту записаться на массаж."""
+    from django.urls import reverse
+
+    from .bot import get_bot
+
+    bot = get_bot()
+    if bot is None:
+        return False
+    url = _abs_url(reverse("booking:page"))
+    text = "🌿 <b>Давно не виделись!</b>\nНе пора ли записаться на массаж?"
+    if url:
+        text += f"\n\nЗаписаться: {url}"
+    try:
+        bot.send_message(telegram_id, text, disable_web_page_preview=True)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("reminder: не отправлено %s: %s", telegram_id, exc)
+        return False
