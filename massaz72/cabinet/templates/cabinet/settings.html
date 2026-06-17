@@ -22,5 +22,18 @@
     {% include "cabinet/partials/blocked_slot_section.html" %}
   </div>
 
+  <div class="settings-card">
+    <div class="settings-card__header">
+      <h2 class="settings-card__title">Личный кабинет клиентов</h2>
+    </div>
+    <div class="settings-card__body">
+      <p class="settings-card__hint">
+        Регистрация, вход и личный кабинет для клиентов (записи, напоминания,
+        привязка к боту). При выключении эти разделы на сайте недоступны.
+      </p>
+      {% include "cabinet/partials/client_cabinet_toggle.html" %}
+    </div>
+  </div>
+
 </div>
 {% endblock %}

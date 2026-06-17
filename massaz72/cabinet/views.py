@@ -269,10 +269,12 @@ def index(request):
 def settings(request):
     specialist = request.specialist
     schedule = WorkSchedule.for_specialist(specialist)
+    settings_obj = SiteSettings.objects.first()
     return render(request, "cabinet/settings.html", {
         "schedule_form": WorkScheduleForm(instance=schedule),
         "exceptions": ScheduleException.objects.filter(specialist=specialist),
         "blocked_slots": BlockedSlot.objects.filter(specialist=specialist).order_by("date", "time_start"),
+        "client_cabinet_enabled": bool(settings_obj and settings_obj.client_cabinet_enabled),
     })
 
 
@@ -1567,4 +1569,18 @@ def booking_toggle(request: HttpRequest) -> HttpResponse:
     return render(
         request, "cabinet/partials/booking_toggle.html",
         {"online_booking_enabled": settings_obj.online_booking_enabled},
+    )
+
+
+@specialist_required
+@require_POST
+def client_cabinet_toggle(request: HttpRequest) -> HttpResponse:
+    settings_obj = SiteSettings.objects.first()
+    if settings_obj is None:
+        return HttpResponse("Сначала создайте «Настройки сайта»", status=400)
+    settings_obj.client_cabinet_enabled = not settings_obj.client_cabinet_enabled
+    settings_obj.save(update_fields=["client_cabinet_enabled"])
+    return render(
+        request, "cabinet/partials/client_cabinet_toggle.html",
+        {"client_cabinet_enabled": settings_obj.client_cabinet_enabled},
     )

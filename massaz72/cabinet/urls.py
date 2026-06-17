@@ -54,6 +54,7 @@ urlpatterns = [
     path("settings/blocked-slots/<int:pk>/edit/", views.blocked_slot_edit, name="blocked_slot_edit"),
     path("settings/blocked-slots/<int:pk>/confirm-delete/", views.blocked_slot_confirm_delete, name="blocked_slot_confirm_delete"),
     path("settings/blocked-slots/<int:pk>/delete/", views.blocked_slot_delete, name="blocked_slot_delete"),
+    path("settings/client-cabinet/toggle/", views.client_cabinet_toggle, name="client_cabinet_toggle"),
 
     # Booking requests (заявки на запись)
     path("requests/", views.booking_requests, name="booking_requests"),

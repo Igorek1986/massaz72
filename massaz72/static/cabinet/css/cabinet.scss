@@ -985,6 +985,33 @@ body.cabinet-body {
     display: flex;
     justify-content: flex-end;
   }
+
+  &__body {
+    padding: 16px 20px;
+  }
+
+  &__hint {
+    color: var(--cab-muted);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+}
+
+// Строка-переключатель функции внутри карточки настроек (без своей рамки —
+// рамку и отступы даёт .settings-card / .settings-card__body).
+.feature-toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+
+  &__label { color: var(--cab-text); }
+
+  &__state {
+    &--on { color: #15803d; }
+    &--off { color: var(--cab-muted); }
+  }
 }
 
 .settings-saved {

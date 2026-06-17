@@ -1062,3 +1062,42 @@ class HeadSpecialistTest(TestCase):
         self.assertIn("ПОДклиент", body)
         self.assertNotIn("ОВНклиент", body)
         self.assertNotIn("apt-card--other", body)
+
+
+class ClientCabinetToggleTest(TestCase):
+    def setUp(self):
+        from main.models import SiteSettings
+        self.spec = _make_specialist("toggle_spec")
+        self.settings = SiteSettings.objects.create(client_cabinet_enabled=False)
+        self.client.force_login(self.spec.user)
+
+    def test_settings_page_shows_toggle(self):
+        body = self.client.get(reverse("cabinet:settings")).content.decode()
+        self.assertIn("Личный кабинет клиентов", body)
+        self.assertIn("client-cabinet-toggle-wrap", body)
+        self.assertIn("Включить", body)  # сейчас выключен
+
+    def test_toggle_flips_setting(self):
+        from main.models import SiteSettings
+        resp = self.client.post(reverse("cabinet:client_cabinet_toggle"))
+        self.assertEqual(resp.status_code, 200)
+        self.settings.refresh_from_db()
+        self.assertTrue(self.settings.client_cabinet_enabled)
+        self.assertIn("Выключить", resp.content.decode())
+        # обратно
+        self.client.post(reverse("cabinet:client_cabinet_toggle"))
+        self.settings.refresh_from_db()
+        self.assertFalse(self.settings.client_cabinet_enabled)
+
+    def test_toggle_requires_specialist(self):
+        self.client.logout()
+        other = User.objects.create_user("nobody", password="pass")
+        self.client.force_login(other)
+        resp = self.client.post(reverse("cabinet:client_cabinet_toggle"))
+        self.assertIn(resp.status_code, (302, 403))
+        self.settings.refresh_from_db()
+        self.assertFalse(self.settings.client_cabinet_enabled)
+
+    def test_toggle_get_not_allowed(self):
+        resp = self.client.get(reverse("cabinet:client_cabinet_toggle"))
+        self.assertEqual(resp.status_code, 405)

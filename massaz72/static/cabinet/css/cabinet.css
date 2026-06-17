@@ -784,6 +784,25 @@ body.cabinet-body {
     padding: 12px 20px 16px;
     display: flex;
     justify-content: flex-end; }
+  .settings-card__body {
+    padding: 16px 20px; }
+  .settings-card__hint {
+    color: var(--cab-muted);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 14px; }
+
+.feature-toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap; }
+  .feature-toggle__label {
+    color: var(--cab-text); }
+  .feature-toggle__state--on {
+    color: #15803d; }
+  .feature-toggle__state--off {
+    color: var(--cab-muted); }
 
 .settings-saved {
   font-size: 12px;

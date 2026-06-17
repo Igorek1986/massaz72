@@ -1,0 +1,15 @@
+<div id="client-cabinet-toggle-wrap" class="feature-toggle">
+  <span class="feature-toggle__label">
+    Состояние:
+    <strong class="feature-toggle__state feature-toggle__state--{% if client_cabinet_enabled %}on{% else %}off{% endif %}">
+      {% if client_cabinet_enabled %}включён{% else %}выключен{% endif %}
+    </strong>
+  </span>
+  <button type="button"
+          class="btn btn--sm {% if client_cabinet_enabled %}btn--ghost{% else %}btn--primary{% endif %}"
+          hx-post="{% url 'cabinet:client_cabinet_toggle' %}"
+          hx-target="#client-cabinet-toggle-wrap"
+          hx-swap="outerHTML">
+    {% if client_cabinet_enabled %}Выключить{% else %}Включить{% endif %}
+  </button>
+</div>
