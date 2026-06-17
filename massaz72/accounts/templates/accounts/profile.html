@@ -22,6 +22,19 @@
         <button type="submit" name="save_profile" class="account-form__submit">Сохранить</button>
       </form>
 
+      {% if tg_link %}
+      <h2 class="account__subtitle">Telegram</h2>
+      {% if client.bot_linked %}
+      <p class="tg-connect__linked">✅ Подключён{% if client.telegram_username %}: @{{ client.telegram_username }}{% endif %}. Сюда приходят напоминания и уведомления.</p>
+      {% else %}
+      <p class="account__muted">Подключите Telegram — будем присылать напоминания о записи и поможем восстановить доступ. Отсканируйте QR или откройте ссылку:</p>
+      <div class="tg-connect">
+        {% if tg_qr %}<div class="tg-connect__qr">{{ tg_qr|safe }}</div>{% endif %}
+        <a class="apt-action apt-action--tg" href="{{ tg_link }}" target="_blank" rel="noopener">Подключить Telegram</a>
+      </div>
+      {% endif %}
+      {% endif %}
+
       <h2 class="account__subtitle">Смена пароля</h2>
       <form class="account-form" method="post">
         {% csrf_token %}

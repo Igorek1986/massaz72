@@ -264,3 +264,31 @@ class RescheduleActionTest(TestCase):
         handle_reschedule_action(MagicMock(), make_call(f"rs_confirm_{self.req.pk}", uid=999))
         self.req.refresh_from_db()
         self.assertEqual(self.req.status, "pending")
+
+
+class AccountBindTest(TestCase):
+    def setUp(self):
+        from accounts.models import Client as ClientProfile
+        user = User.objects.create_user("c", password="pw")
+        self.profile = ClientProfile.objects.create(user=user)
+
+    def _msg(self, uid=777, username="petr"):
+        return SimpleNamespace(
+            chat=SimpleNamespace(id=uid),
+            from_user=SimpleNamespace(id=uid, username=username),
+        )
+
+    def test_bind_account(self):
+        from tgbot.bot import _bind_account_token
+        bot = MagicMock()
+        ok = _bind_account_token(bot, self._msg(), self.profile.link_token)
+        self.assertTrue(ok)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.telegram_id, 777)
+        self.assertEqual(self.profile.telegram_username, "petr")
+        self.assertEqual(self.profile.messenger, "telegram")
+        bot.send_message.assert_called()
+
+    def test_bind_unknown(self):
+        from tgbot.bot import _bind_account_token
+        self.assertFalse(_bind_account_token(MagicMock(), self._msg(), "no-such"))

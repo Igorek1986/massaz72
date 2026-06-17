@@ -1,10 +1,21 @@
+import secrets
+
 from django.conf import settings
 from django.db import models
 
 
+def gen_link_token() -> str:
+    return secrets.token_urlsafe(16)
+
+
 class Client(models.Model):
     """Профиль клиента. Аккаунт первичен, вход — стандартный Django User.
-    Телефон необязателен; привязка к боту/мессенджеру — на будущее (Этап 3)."""
+    Телефон необязателен. Привязка к боту даёт возможность писать клиенту
+    (напоминания, сброс пароля, уведомления)."""
+
+    class Messenger(models.TextChoices):
+        TELEGRAM = "telegram", "Telegram"
+        MAX = "max", "Max"
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -13,6 +24,22 @@ class Client(models.Model):
         verbose_name="Пользователь",
     )
     phone = models.CharField("Телефон", max_length=20, blank=True, default="")
+
+    # Привязка к боту (Telegram сейчас, Max — задел).
+    messenger = models.CharField(
+        "Мессенджер", max_length=10, choices=Messenger.choices, blank=True, default="",
+    )
+    telegram_id = models.BigIntegerField("Telegram ID", null=True, blank=True)
+    telegram_username = models.CharField(
+        "Telegram username", max_length=150, blank=True, default="",
+    )
+    # Не unique на уровне БД (token_urlsafe(16) практически уникален),
+    # чтобы не усложнять миграцию; поиск — filter(link_token=...).first().
+    link_token = models.CharField(
+        "Токен привязки к боту", max_length=43, db_index=True,
+        default=gen_link_token, editable=False,
+    )
+
     created_at = models.DateTimeField("Дата регистрации", auto_now_add=True)
 
     class Meta:
@@ -21,3 +48,7 @@ class Client(models.Model):
 
     def __str__(self) -> str:
         return self.user.get_username()
+
+    @property
+    def bot_linked(self) -> bool:
+        return self.telegram_id is not None

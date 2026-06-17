@@ -145,6 +145,26 @@ def _bind_booking_token(bot, message, token: str) -> bool:
     return True
 
 
+def _bind_account_token(bot, message, token: str) -> bool:
+    """Привязывает Telegram к аккаунту клиента по токену deep-link (acc_*)."""
+    from accounts.models import Client
+
+    client = Client.objects.filter(link_token=token).first()
+    if client is None:
+        return False
+    client.messenger = "telegram"
+    client.telegram_id = message.from_user.id
+    client.telegram_username = message.from_user.username or ""
+    client.save(update_fields=["messenger", "telegram_id", "telegram_username"])
+    bot.send_message(
+        message.chat.id,
+        "✅ Telegram подключён к вашему аккаунту. Сюда будут приходить напоминания "
+        "и уведомления.",
+        reply_markup=get_keyboard(message.from_user.id),
+    )
+    return True
+
+
 def _upsert_user(from_user) -> TelegramUser:
     user, _ = TelegramUser.objects.update_or_create(
         telegram_id=from_user.id,
@@ -743,10 +763,14 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         settings = BotSettings.load()
         _upsert_user(message.from_user)
 
-        # Deep-link «/start <token>» — привязка клиента к заявке.
+        # Deep-link «/start <token>»: acc_<token> — привязка аккаунта,
+        # иначе — привязка заявки.
         parts = (message.text or "").split(maxsplit=1)
         payload = parts[1].strip() if len(parts) > 1 else ""
-        if payload and _bind_booking_token(bot, message, payload):
+        if payload.startswith("acc_"):
+            if _bind_account_token(bot, message, payload[4:]):
+                return
+        elif payload and _bind_booking_token(bot, message, payload):
             return
 
         bot.send_message(

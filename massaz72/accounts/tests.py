@@ -212,6 +212,31 @@ class CabinetTest(TestCase):
         self.profile.refresh_from_db()
         self.assertEqual(self.profile.phone, "+70000000001")
 
+    def _configure_bot(self):
+        from tgbot.models import BotSettings
+        bs = BotSettings.load()
+        bs.token = "1:x"
+        bs.is_enabled = True
+        bs.bot_username = "massaz72_bot"
+        bs.save()
+
+    def test_profile_shows_telegram_connect(self):
+        self._configure_bot()
+        self.client.force_login(self.user)
+        body = self.client.get(reverse("accounts:profile")).content.decode()
+        self.assertIn(f"start=acc_{self.profile.link_token}", body)
+        self.assertIn("Подключить Telegram", body)
+
+    def test_profile_shows_linked(self):
+        self._configure_bot()
+        self.profile.telegram_id = 777
+        self.profile.telegram_username = "petr"
+        self.profile.save()
+        self.client.force_login(self.user)
+        body = self.client.get(reverse("accounts:profile")).content.decode()
+        self.assertIn("Подключён", body)
+        self.assertIn("@petr", body)
+
     def test_change_password(self):
         self.client.force_login(self.user)
         new = "N3wSecret!2026"

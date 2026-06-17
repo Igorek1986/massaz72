@@ -270,4 +270,18 @@ def profile(request: HttpRequest) -> HttpResponse:
     return render(request, "accounts/profile.html", {
         "profile_form": profile_form,
         "password_form": password_form,
+        "client": client,
+        **_telegram_link_context(client),
     })
+
+
+def _telegram_link_context(client) -> dict:
+    """deep-link и QR для привязки аккаунта к боту."""
+    from tgbot.models import BotSettings
+
+    s = BotSettings.load()
+    if not (s and s.is_enabled and s.bot_username):
+        return {"tg_link": None, "tg_qr": None}
+    link = f"https://t.me/{s.bot_username}?start=acc_{client.link_token}"
+    from booking.views import _qr_svg
+    return {"tg_link": link, "tg_qr": _qr_svg(link)}
