@@ -1253,7 +1253,11 @@ class SpecialistScheduleInlineTest(TestCase):
             "schedule-0-sunday_start": "09:00", "schedule-0-sunday_end": "19:00",
             "schedule-0-break_between_minutes": "15",
             "schedule-0-break_between_travel_minutes": "60",
-            # certificates inline (пустой)
+            # остальные inline (пустые) — нужны их management-формы
+            "exceptions-TOTAL_FORMS": "0", "exceptions-INITIAL_FORMS": "0",
+            "exceptions-MIN_NUM_FORMS": "0", "exceptions-MAX_NUM_FORMS": "1000",
+            "blocked_slots-TOTAL_FORMS": "0", "blocked_slots-INITIAL_FORMS": "0",
+            "blocked_slots-MIN_NUM_FORMS": "0", "blocked_slots-MAX_NUM_FORMS": "1000",
             "certificates-TOTAL_FORMS": "0", "certificates-INITIAL_FORMS": "0",
             "certificates-MIN_NUM_FORMS": "0", "certificates-MAX_NUM_FORMS": "1000",
         }

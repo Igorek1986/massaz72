@@ -52,9 +52,28 @@ class WorkScheduleInline(admin.StackedInline):
     fieldsets = _SCHEDULE_DAY_FIELDSETS
 
 
+class ScheduleExceptionInline(admin.TabularInline):
+    model = ScheduleException
+    extra = 0
+    fields = ("exception_type", "date_from", "date_to", "note")
+    ordering = ("date_from",)
+    verbose_name_plural = "Исключения (отпуск / выходной)"
+
+
+class BlockedSlotInline(admin.TabularInline):
+    model = BlockedSlot
+    extra = 0
+    fields = ("date", "time_start", "time_end", "note")
+    ordering = ("date", "time_start")
+    verbose_name_plural = "Заблокированное время"
+
+
 @admin.register(Specialist)
 class SpecialistAdmin(admin.ModelAdmin):
-    inlines = [WorkScheduleInline, CertificateInline]
+    inlines = [
+        WorkScheduleInline, ScheduleExceptionInline,
+        BlockedSlotInline, CertificateInline,
+    ]
     list_display = ("name", "experience", "is_active", "order", "user")
     list_editable = ("is_active", "order")
     list_filter = ("specialty", "is_active")
@@ -73,20 +92,6 @@ class SpecialistAdmin(admin.ModelAdmin):
             "user", "head", "can_manage_prices", "can_manage_reviews",
         )}),
     )
-
-
-@admin.register(ScheduleException)
-class ScheduleExceptionAdmin(admin.ModelAdmin):
-    list_display = ("specialist", "exception_type", "date_from", "date_to", "note")
-    list_filter = ("exception_type", "specialist")
-    ordering = ("date_from",)
-
-
-@admin.register(BlockedSlot)
-class BlockedSlotAdmin(admin.ModelAdmin):
-    list_display = ("specialist", "date", "time_start", "time_end", "note")
-    list_filter = ("specialist",)
-    ordering = ("date", "time_start")
 
 
 class AppointmentInline(admin.TabularInline):
