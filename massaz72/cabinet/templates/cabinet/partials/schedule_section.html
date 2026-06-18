@@ -8,15 +8,22 @@
       hx-target="#schedule-section"
       hx-swap="innerHTML">
   {% csrf_token %}
-  <div class="work-days">
-    {% for field in schedule_form %}
-    {% if field.field.widget.input_type == 'checkbox' %}
-    <label class="day-toggle" title="{{ field.label }}">
-      {{ field }}
-      <span class="day-toggle__label">{{ field.name|weekday_short }}</span>
-    </label>
-    {% endif %}
+  <div class="work-hours">
+    {% for day in schedule_form.schedule_days %}
+    <div class="work-hours__row">
+      <label class="day-toggle" title="{{ day.toggle.label }}">
+        {{ day.toggle }}
+        <span class="day-toggle__label">{{ day.label }}</span>
+      </label>
+      <div class="day-hours">
+        {{ day.start }}
+        <span class="day-hours__dash">–</span>
+        {{ day.end }}
+      </div>
+      {% if day.end.errors %}<span class="form-error">{{ day.end.errors.0 }}</span>{% endif %}
+    </div>
     {% endfor %}
+    <p class="form-hint">Если время не указано — берутся часы по умолчанию (9:00–20:00).</p>
   </div>
   <div class="schedule-break">
     <label class="form-label">{{ schedule_form.break_between_minutes.label }}</label>

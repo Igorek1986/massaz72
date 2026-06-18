@@ -1031,6 +1031,34 @@ body.cabinet-body {
   padding: 16px 20px 0;
 }
 
+.work-hours {
+  padding: 16px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+}
+
+.day-hours {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &__input {
+    width: 110px;
+  }
+
+  &__dash {
+    color: var(--cab-muted);
+  }
+}
+
 .schedule-break {
   padding: 16px 20px 0;
 

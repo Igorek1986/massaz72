@@ -1,3 +1,4 @@
+from datetime import time
 from decimal import Decimal
 
 from django.conf import settings
@@ -131,12 +132,26 @@ class WorkSchedule(models.Model):
         verbose_name="Специалист",
     )
     monday = models.BooleanField("Понедельник", default=True)
+    monday_start = models.TimeField("Пн, с", null=True, blank=True)
+    monday_end = models.TimeField("Пн, до", null=True, blank=True)
     tuesday = models.BooleanField("Вторник", default=True)
+    tuesday_start = models.TimeField("Вт, с", null=True, blank=True)
+    tuesday_end = models.TimeField("Вт, до", null=True, blank=True)
     wednesday = models.BooleanField("Среда", default=True)
+    wednesday_start = models.TimeField("Ср, с", null=True, blank=True)
+    wednesday_end = models.TimeField("Ср, до", null=True, blank=True)
     thursday = models.BooleanField("Четверг", default=True)
+    thursday_start = models.TimeField("Чт, с", null=True, blank=True)
+    thursday_end = models.TimeField("Чт, до", null=True, blank=True)
     friday = models.BooleanField("Пятница", default=True)
+    friday_start = models.TimeField("Пт, с", null=True, blank=True)
+    friday_end = models.TimeField("Пт, до", null=True, blank=True)
     saturday = models.BooleanField("Суббота", default=False)
+    saturday_start = models.TimeField("Сб, с", null=True, blank=True)
+    saturday_end = models.TimeField("Сб, до", null=True, blank=True)
     sunday = models.BooleanField("Воскресенье", default=False)
+    sunday_start = models.TimeField("Вс, с", null=True, blank=True)
+    sunday_end = models.TimeField("Вс, до", null=True, blank=True)
     break_between_minutes = models.PositiveIntegerField(
         "Перерыв между массажами (мин)", default=15
     )
@@ -156,12 +171,25 @@ class WorkSchedule(models.Model):
         obj, _ = cls.objects.get_or_create(specialist=specialist)
         return obj
 
+    # Часы по умолчанию, если день рабочий, но конкретное время не задано.
+    DEFAULT_START = time(9, 0)
+    DEFAULT_END = time(20, 0)
+    DAY_NAMES = [
+        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    ]
+
     def working_weekdays(self) -> list[int]:
-        mapping = [
-            (0, self.monday), (1, self.tuesday), (2, self.wednesday),
-            (3, self.thursday), (4, self.friday), (5, self.saturday), (6, self.sunday),
-        ]
-        return [day for day, active in mapping if active]
+        return [wd for wd, name in enumerate(self.DAY_NAMES) if getattr(self, name)]
+
+    def hours_for_weekday(self, weekday: int) -> tuple[time, time] | None:
+        """Рабочие часы (начало, конец) для дня недели (0=Пн) или None, если
+        день нерабочий. Если день рабочий, но время не задано — дефолтные часы."""
+        name = self.DAY_NAMES[weekday]
+        if not getattr(self, name):
+            return None
+        start = getattr(self, f"{name}_start") or self.DEFAULT_START
+        end = getattr(self, f"{name}_end") or self.DEFAULT_END
+        return start, end
 
 
 class ScheduleException(models.Model):

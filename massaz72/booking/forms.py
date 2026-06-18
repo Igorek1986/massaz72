@@ -1,7 +1,9 @@
+from datetime import datetime, timedelta
+
 from django import forms
 from django.utils import timezone
 
-from cabinet.models import Specialist
+from cabinet.models import Specialist, WorkSchedule
 from reviews.spam import make_timestamp_token
 from services.models import Massage
 
@@ -110,3 +112,39 @@ class BookingForm(forms.ModelForm):
         if d and d < timezone.localdate():
             raise forms.ValidationError("Дата не может быть в прошлом.")
         return d
+
+    def clean(self):
+        cleaned = super().clean()
+        d = cleaned.get("preferred_date")
+        t = cleaned.get("preferred_time")
+        service = cleaned.get("service")
+        if not (d and t):
+            return cleaned
+
+        # Мастер из формы (если выбор есть) или единственный активный.
+        spec = cleaned.get("specialist") or Specialist.objects.filter(
+            is_active=True
+        ).first()
+        if not spec:
+            return cleaned
+
+        schedule = WorkSchedule.for_specialist(spec)
+        hours = schedule.hours_for_weekday(d.weekday())
+        if hours is None:
+            self.add_error(
+                "preferred_date",
+                "В этот день мастер не работает — выберите рабочий день.",
+            )
+            return cleaned
+
+        start_h, end_h = hours
+        end_t = t
+        if service:
+            minutes = service.duration_max or service.duration_min or 60
+            end_t = (datetime.combine(d, t) + timedelta(minutes=minutes)).time()
+        if t < start_h or end_t > end_h:
+            self.add_error(
+                "preferred_time",
+                f"Выберите время в рабочие часы: {start_h:%H:%M}–{end_h:%H:%M}.",
+            )
+        return cleaned

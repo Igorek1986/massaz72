@@ -131,6 +131,24 @@ class AppointmentForm(forms.ModelForm):
                 raise forms.ValidationError(
                     _conflict_message(apt_date, conflicts, effective_break)
                 )
+
+            # Рабочие часы: массаж должен укладываться в часы рабочего дня.
+            # В нерабочий день (часов нет) запись в кабинете разрешаем — это
+            # осознанное исключение мастера.
+            if schedule and service:
+                hours = schedule.hours_for_weekday(apt_date.weekday())
+                if hours:
+                    start_h, end_h = hours
+                    end_dt = _apt_end_time(apt_date, time_start, service)
+                    if (
+                        time_start < start_h
+                        or end_dt.date() > apt_date
+                        or end_dt.time() > end_h
+                    ):
+                        raise forms.ValidationError(
+                            "Запись вне рабочих часов этого дня "
+                            f"({start_h:%H:%M}–{end_h:%H:%M})."
+                        )
         return cleaned_data
 
     class Meta:
@@ -161,14 +179,28 @@ class AppointmentForm(forms.ModelForm):
         }
 
 
+def _hours_widgets():
+    widgets = {}
+    for name in WorkSchedule.DAY_NAMES:
+        for suffix in ("_start", "_end"):
+            widgets[name + suffix] = forms.TimeInput(
+                attrs={"type": "time", "class": "form-input day-hours__input"},
+                format="%H:%M",
+            )
+    return widgets
+
+
 class WorkScheduleForm(forms.ModelForm):
     class Meta:
         model = WorkSchedule
-        fields = [
-            "monday", "tuesday", "wednesday", "thursday",
-            "friday", "saturday", "sunday",
-            "break_between_minutes", "break_between_travel_minutes",
-        ]
+        fields = (
+            [
+                name + suffix
+                for name in WorkSchedule.DAY_NAMES
+                for suffix in ("", "_start", "_end")
+            ]
+            + ["break_between_minutes", "break_between_travel_minutes"]
+        )
         widgets = {
             "break_between_minutes": forms.NumberInput(
                 attrs={"class": "form-input", "min": "0", "max": "120", "style": "width:80px"}
@@ -176,7 +208,34 @@ class WorkScheduleForm(forms.ModelForm):
             "break_between_travel_minutes": forms.NumberInput(
                 attrs={"class": "form-input", "min": "0", "max": "240", "style": "width:80px"}
             ),
+            **_hours_widgets(),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        for name in WorkSchedule.DAY_NAMES:
+            if not cleaned.get(name):
+                continue  # день нерабочий — часы не важны
+            start = cleaned.get(f"{name}_start")
+            end = cleaned.get(f"{name}_end")
+            if start and end and end <= start:
+                self.add_error(
+                    f"{name}_end", "Конец рабочего дня должен быть позже начала.",
+                )
+        return cleaned
+
+    def schedule_days(self):
+        """Связанные поля для шаблона: [(toggle, start, end, короткий label)]."""
+        labels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+        return [
+            {
+                "toggle": self[name],
+                "start": self[f"{name}_start"],
+                "end": self[f"{name}_end"],
+                "label": labels[i],
+            }
+            for i, name in enumerate(WorkSchedule.DAY_NAMES)
+        ]
 
 
 class ScheduleExceptionForm(forms.ModelForm):

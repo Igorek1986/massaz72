@@ -1101,3 +1101,117 @@ class ClientCabinetToggleTest(TestCase):
     def test_toggle_get_not_allowed(self):
         resp = self.client.get(reverse("cabinet:client_cabinet_toggle"))
         self.assertEqual(resp.status_code, 405)
+
+
+class WorkHoursTest(TestCase):
+    def setUp(self):
+        from django.utils import timezone
+        from booking.models import BookingSessionOption
+        self.spec = _make_specialist("hours_spec")
+        self.massage = _make_massage(duration=60)
+        self.session = BookingSessionOption.objects.create(
+            count=1, label="1 сеанс", is_active=True,
+        )
+
+        def _next_weekday(weekday):
+            d = timezone.localdate() + timedelta(days=1)
+            while d.weekday() != weekday:
+                d += timedelta(days=1)
+            return d
+
+        self.wednesday = _next_weekday(2)  # ближайший будущий рабочий день (Ср)
+        self.saturday = _next_weekday(5)   # ближайшая будущая суббота (выходной)
+
+    # --- модель ---
+    def test_hours_default_when_unset(self):
+        from .models import WorkSchedule
+        sch = WorkSchedule.for_specialist(self.spec)
+        self.assertEqual(sch.hours_for_weekday(0), (time(9, 0), time(20, 0)))
+
+    def test_hours_custom(self):
+        from .models import WorkSchedule
+        sch = WorkSchedule.for_specialist(self.spec)
+        sch.monday_start, sch.monday_end = time(8, 0), time(15, 0)
+        self.assertEqual(sch.hours_for_weekday(0), (time(8, 0), time(15, 0)))
+
+    def test_hours_none_on_day_off(self):
+        from .models import WorkSchedule
+        sch = WorkSchedule.for_specialist(self.spec)
+        self.assertIsNone(sch.hours_for_weekday(5))  # суббота выключена
+
+    # --- форма расписания ---
+    def test_schedule_form_rejects_end_before_start(self):
+        from .forms import WorkScheduleForm
+        from .models import WorkSchedule
+        sch = WorkSchedule.for_specialist(self.spec)
+        data = {
+            "monday": "on", "monday_start": "10:00", "monday_end": "09:00",
+            "break_between_minutes": "15", "break_between_travel_minutes": "60",
+        }
+        form = WorkScheduleForm(data, instance=sch)
+        self.assertFalse(form.is_valid())
+        self.assertIn("monday_end", form.errors)
+
+    def test_schedule_form_valid_hours(self):
+        from .forms import WorkScheduleForm
+        from .models import WorkSchedule
+        sch = WorkSchedule.for_specialist(self.spec)
+        data = {
+            "monday": "on", "monday_start": "10:00", "monday_end": "18:00",
+            "break_between_minutes": "15", "break_between_travel_minutes": "60",
+        }
+        form = WorkScheduleForm(data, instance=sch)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    # --- форма записи в кабинете ---
+    def _apt_data(self, time_start):
+        return {
+            "client_name": "Тест", "client_phone": "", "address": "",
+            "service": self.massage.pk, "date": self.wednesday.isoformat(),
+            "time_start": time_start, "cost": "1000", "sessions": "1",
+            "transport_cost": "", "discount_percent": "", "discount_amount": "",
+            "notes": "", "is_travel": False,
+        }
+
+    def test_appointment_within_hours_ok(self):
+        from .forms import AppointmentForm
+        form = AppointmentForm(self._apt_data("10:00"), specialist=self.spec)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_appointment_after_hours_rejected(self):
+        from .forms import AppointmentForm
+        form = AppointmentForm(self._apt_data("19:30"), specialist=self.spec)
+        self.assertFalse(form.is_valid())
+        self.assertIn("рабочих часов", str(form.errors))
+
+    def test_appointment_before_hours_rejected(self):
+        from .forms import AppointmentForm
+        form = AppointmentForm(self._apt_data("08:00"), specialist=self.spec)
+        self.assertFalse(form.is_valid())
+        self.assertIn("рабочих часов", str(form.errors))
+
+    # --- онлайн-заявка ---
+    def _booking_data(self, d, t):
+        return {
+            "client_name": "Тест", "service": self.massage.pk,
+            "sessions": self.session.pk,
+            "preferred_date": d.isoformat(), "preferred_time": t,
+            "consent": "on", "phone": "", "comment": "", "address": "",
+        }
+
+    def test_booking_within_hours_ok(self):
+        from booking.forms import BookingForm
+        form = BookingForm(self._booking_data(self.wednesday, "10:00"))
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_booking_after_hours_rejected(self):
+        from booking.forms import BookingForm
+        form = BookingForm(self._booking_data(self.wednesday, "21:00"))
+        self.assertFalse(form.is_valid())
+        self.assertIn("preferred_time", form.errors)
+
+    def test_booking_on_day_off_rejected(self):
+        from booking.forms import BookingForm
+        form = BookingForm(self._booking_data(self.saturday, "10:00"))
+        self.assertFalse(form.is_valid())
+        self.assertIn("preferred_date", form.errors)
