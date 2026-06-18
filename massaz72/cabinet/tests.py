@@ -1126,7 +1126,7 @@ class WorkHoursTest(TestCase):
     def test_hours_default_when_unset(self):
         from .models import WorkSchedule
         sch = WorkSchedule.for_specialist(self.spec)
-        self.assertEqual(sch.hours_for_weekday(0), (time(9, 0), time(20, 0)))
+        self.assertEqual(sch.hours_for_weekday(0), (time(9, 0), time(19, 0)))
 
     def test_hours_custom(self):
         from .models import WorkSchedule

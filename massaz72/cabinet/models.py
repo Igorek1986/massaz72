@@ -173,7 +173,7 @@ class WorkSchedule(models.Model):
 
     # Часы по умолчанию, если день рабочий, но конкретное время не задано.
     DEFAULT_START = time(9, 0)
-    DEFAULT_END = time(20, 0)
+    DEFAULT_END = time(19, 0)
     DAY_NAMES = [
         "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
     ]
