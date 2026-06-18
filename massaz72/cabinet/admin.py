@@ -75,15 +75,6 @@ class SpecialistAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(WorkSchedule)
-class WorkScheduleAdmin(admin.ModelAdmin):
-    list_display = ("specialist", "break_between_minutes", "break_between_travel_minutes")
-    fieldsets = (
-        (None, {"fields": ("specialist",)}),
-        *_SCHEDULE_DAY_FIELDSETS,
-    )
-
-
 @admin.register(ScheduleException)
 class ScheduleExceptionAdmin(admin.ModelAdmin):
     list_display = ("specialist", "exception_type", "date_from", "date_to", "note")
