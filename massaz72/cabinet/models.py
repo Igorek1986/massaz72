@@ -124,6 +124,10 @@ class Specialist(models.Model):
             return f"{years} лет"
 
 
+WORK_START_DEFAULT = time(9, 0)
+WORK_END_DEFAULT = time(19, 0)
+
+
 class WorkSchedule(models.Model):
     specialist = models.OneToOneField(
         Specialist,
@@ -131,31 +135,28 @@ class WorkSchedule(models.Model):
         related_name="schedule",
         verbose_name="Специалист",
     )
+    # Часы рабочего дня предзаполнены 9:00–19:00 при создании расписания.
     monday = models.BooleanField("Понедельник", default=True)
-    monday_start = models.TimeField("Пн, с", null=True, blank=True)
-    monday_end = models.TimeField("Пн, до", null=True, blank=True)
+    monday_start = models.TimeField("Пн, с", default=WORK_START_DEFAULT)
+    monday_end = models.TimeField("Пн, до", default=WORK_END_DEFAULT)
     tuesday = models.BooleanField("Вторник", default=True)
-    tuesday_start = models.TimeField("Вт, с", null=True, blank=True)
-    tuesday_end = models.TimeField("Вт, до", null=True, blank=True)
+    tuesday_start = models.TimeField("Вт, с", default=WORK_START_DEFAULT)
+    tuesday_end = models.TimeField("Вт, до", default=WORK_END_DEFAULT)
     wednesday = models.BooleanField("Среда", default=True)
-    wednesday_start = models.TimeField("Ср, с", null=True, blank=True)
-    wednesday_end = models.TimeField("Ср, до", null=True, blank=True)
+    wednesday_start = models.TimeField("Ср, с", default=WORK_START_DEFAULT)
+    wednesday_end = models.TimeField("Ср, до", default=WORK_END_DEFAULT)
     thursday = models.BooleanField("Четверг", default=True)
-    thursday_start = models.TimeField("Чт, с", null=True, blank=True)
-    thursday_end = models.TimeField("Чт, до", null=True, blank=True)
+    thursday_start = models.TimeField("Чт, с", default=WORK_START_DEFAULT)
+    thursday_end = models.TimeField("Чт, до", default=WORK_END_DEFAULT)
     friday = models.BooleanField("Пятница", default=True)
-    friday_start = models.TimeField("Пт, с", null=True, blank=True)
-    friday_end = models.TimeField("Пт, до", null=True, blank=True)
+    friday_start = models.TimeField("Пт, с", default=WORK_START_DEFAULT)
+    friday_end = models.TimeField("Пт, до", default=WORK_END_DEFAULT)
     saturday = models.BooleanField("Суббота", default=False)
-    saturday_start = models.TimeField("Сб, с", null=True, blank=True)
-    saturday_end = models.TimeField("Сб, до", null=True, blank=True)
+    saturday_start = models.TimeField("Сб, с", default=WORK_START_DEFAULT)
+    saturday_end = models.TimeField("Сб, до", default=WORK_END_DEFAULT)
     sunday = models.BooleanField("Воскресенье", default=False)
-    sunday_start = models.TimeField("Вс, с", null=True, blank=True)
-    sunday_end = models.TimeField("Вс, до", null=True, blank=True)
-    # Часы по умолчанию — берутся для рабочего дня, у которого не заданы
-    # собственные часы. Мастер может изменить их в настройках.
-    default_start = models.TimeField("Начало по умолчанию", default=time(9, 0))
-    default_end = models.TimeField("Конец по умолчанию", default=time(19, 0))
+    sunday_start = models.TimeField("Вс, с", default=WORK_START_DEFAULT)
+    sunday_end = models.TimeField("Вс, до", default=WORK_END_DEFAULT)
     break_between_minutes = models.PositiveIntegerField(
         "Перерыв между массажами (мин)", default=15
     )
@@ -184,13 +185,12 @@ class WorkSchedule(models.Model):
 
     def hours_for_weekday(self, weekday: int) -> tuple[time, time] | None:
         """Рабочие часы (начало, конец) для дня недели (0=Пн) или None, если
-        день нерабочий. Если у дня не заданы свои часы — берутся часы по
-        умолчанию (default_start/default_end)."""
+        день нерабочий. Часы дня заданы всегда (по умолчанию 9:00–19:00)."""
         name = self.DAY_NAMES[weekday]
         if not getattr(self, name):
             return None
-        start = getattr(self, f"{name}_start") or self.default_start
-        end = getattr(self, f"{name}_end") or self.default_end
+        start = getattr(self, f"{name}_start") or WORK_START_DEFAULT
+        end = getattr(self, f"{name}_end") or WORK_END_DEFAULT
         return start, end
 
 

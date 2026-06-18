@@ -823,22 +823,11 @@ body.cabinet-body {
   display: flex;
   flex-direction: column;
   gap: 10px; }
-  .work-hours__row, .work-hours__default {
+  .work-hours__row {
     display: flex;
     align-items: center;
     gap: 14px;
     flex-wrap: wrap; }
-  .work-hours__default {
-    margin-top: 4px;
-    padding-top: 12px;
-    border-top: 1px solid var(--cab-border); }
-
-.day-toggle__label--static {
-  width: auto;
-  padding: 0 12px;
-  cursor: default;
-  font-size: 11px;
-  color: var(--cab-text); }
 
 .day-hours {
   display: flex;

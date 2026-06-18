@@ -23,16 +23,6 @@
       {% if day.end.errors %}<span class="form-error">{{ day.end.errors.0 }}</span>{% endif %}
     </div>
     {% endfor %}
-    <div class="work-hours__default">
-      <span class="day-toggle__label day-toggle__label--static" title="Часы по умолчанию">По&nbsp;умолч.</span>
-      <div class="day-hours">
-        {{ schedule_form.default_start }}
-        <span class="day-hours__dash">–</span>
-        {{ schedule_form.default_end }}
-      </div>
-      {% if schedule_form.default_end.errors %}<span class="form-error">{{ schedule_form.default_end.errors.0 }}</span>{% endif %}
-    </div>
-    <p class="form-hint">У дня без своих часов берутся часы по умолчанию.</p>
   </div>
   <div class="schedule-break">
     <label class="form-label">{{ schedule_form.break_between_minutes.label }}</label>

@@ -199,18 +199,9 @@ class WorkScheduleForm(forms.ModelForm):
                 for name in WorkSchedule.DAY_NAMES
                 for suffix in ("", "_start", "_end")
             ]
-            + [
-                "default_start", "default_end",
-                "break_between_minutes", "break_between_travel_minutes",
-            ]
+            + ["break_between_minutes", "break_between_travel_minutes"]
         )
         widgets = {
-            "default_start": forms.TimeInput(
-                attrs={"type": "time", "class": "form-input day-hours__input"}, format="%H:%M"
-            ),
-            "default_end": forms.TimeInput(
-                attrs={"type": "time", "class": "form-input day-hours__input"}, format="%H:%M"
-            ),
             "break_between_minutes": forms.NumberInput(
                 attrs={"class": "form-input", "min": "0", "max": "120", "style": "width:80px"}
             ),
@@ -222,10 +213,6 @@ class WorkScheduleForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        d_start = cleaned.get("default_start")
-        d_end = cleaned.get("default_end")
-        if d_start and d_end and d_end <= d_start:
-            self.add_error("default_end", "Конец должен быть позже начала.")
         for name in WorkSchedule.DAY_NAMES:
             if not cleaned.get(name):
                 continue  # день нерабочий — часы не важны

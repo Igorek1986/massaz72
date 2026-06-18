@@ -1123,17 +1123,13 @@ class WorkHoursTest(TestCase):
         self.saturday = _next_weekday(5)   # ближайшая будущая суббота (выходной)
 
     # --- модель ---
-    def test_hours_default_when_unset(self):
+    def test_hours_prefilled_by_default(self):
         from .models import WorkSchedule
         sch = WorkSchedule.for_specialist(self.spec)
+        # Часы дня предзаполнены 9:00–19:00 при создании расписания.
+        self.assertEqual(sch.monday_start, time(9, 0))
+        self.assertEqual(sch.monday_end, time(19, 0))
         self.assertEqual(sch.hours_for_weekday(0), (time(9, 0), time(19, 0)))
-
-    def test_hours_use_configurable_default(self):
-        from .models import WorkSchedule
-        sch = WorkSchedule.for_specialist(self.spec)
-        sch.default_start, sch.default_end = time(10, 0), time(16, 0)
-        # У дня нет своих часов → берутся новые часы по умолчанию.
-        self.assertEqual(sch.hours_for_weekday(0), (time(10, 0), time(16, 0)))
 
     def test_hours_custom(self):
         from .models import WorkSchedule
@@ -1147,15 +1143,21 @@ class WorkHoursTest(TestCase):
         self.assertIsNone(sch.hours_for_weekday(5))  # суббота выключена
 
     # --- форма расписания ---
+    def _schedule_post(self, **overrides):
+        from .models import WorkSchedule
+        data = {"break_between_minutes": "15", "break_between_travel_minutes": "60"}
+        for day in WorkSchedule.DAY_NAMES:
+            data[day] = "on"
+            data[f"{day}_start"] = "09:00"
+            data[f"{day}_end"] = "19:00"
+        data.update(overrides)
+        return data
+
     def test_schedule_form_rejects_end_before_start(self):
         from .forms import WorkScheduleForm
         from .models import WorkSchedule
         sch = WorkSchedule.for_specialist(self.spec)
-        data = {
-            "monday": "on", "monday_start": "10:00", "monday_end": "09:00",
-            "default_start": "09:00", "default_end": "19:00",
-            "break_between_minutes": "15", "break_between_travel_minutes": "60",
-        }
+        data = self._schedule_post(monday_start="10:00", monday_end="09:00")
         form = WorkScheduleForm(data, instance=sch)
         self.assertFalse(form.is_valid())
         self.assertIn("monday_end", form.errors)
@@ -1164,11 +1166,7 @@ class WorkHoursTest(TestCase):
         from .forms import WorkScheduleForm
         from .models import WorkSchedule
         sch = WorkSchedule.for_specialist(self.spec)
-        data = {
-            "monday": "on", "monday_start": "10:00", "monday_end": "18:00",
-            "default_start": "09:00", "default_end": "19:00",
-            "break_between_minutes": "15", "break_between_travel_minutes": "60",
-        }
+        data = self._schedule_post(monday_start="10:00", monday_end="18:00")
         form = WorkScheduleForm(data, instance=sch)
         self.assertTrue(form.is_valid(), form.errors)
 
