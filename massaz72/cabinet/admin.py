@@ -45,14 +45,26 @@ class SpecialistAdmin(admin.ModelAdmin):
 
 @admin.register(WorkSchedule)
 class WorkScheduleAdmin(admin.ModelAdmin):
-    list_display = ("specialist", "break_between_minutes")
+    list_display = ("specialist", "default_start", "default_end", "break_between_minutes")
     fieldsets = (
         (None, {"fields": ("specialist",)}),
-        ("Рабочие дни", {"fields": (
-            "monday", "tuesday", "wednesday", "thursday",
-            "friday", "saturday", "sunday",
+        ("Рабочие дни и часы", {
+            "description": "Отметьте рабочий день и при необходимости задайте его "
+                           "часы. Если часы дня не заданы — берутся часы по умолчанию.",
+            "fields": (
+                ("monday", "monday_start", "monday_end"),
+                ("tuesday", "tuesday_start", "tuesday_end"),
+                ("wednesday", "wednesday_start", "wednesday_end"),
+                ("thursday", "thursday_start", "thursday_end"),
+                ("friday", "friday_start", "friday_end"),
+                ("saturday", "saturday_start", "saturday_end"),
+                ("sunday", "sunday_start", "sunday_end"),
+            ),
+        }),
+        ("Часы по умолчанию", {"fields": (("default_start", "default_end"),)}),
+        ("Перерывы", {"fields": (
+            "break_between_minutes", "break_between_travel_minutes",
         )}),
-        ("Настройки", {"fields": ("break_between_minutes",)}),
     )
 
 
