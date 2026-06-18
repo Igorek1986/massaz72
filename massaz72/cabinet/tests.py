@@ -1128,6 +1128,13 @@ class WorkHoursTest(TestCase):
         sch = WorkSchedule.for_specialist(self.spec)
         self.assertEqual(sch.hours_for_weekday(0), (time(9, 0), time(19, 0)))
 
+    def test_hours_use_configurable_default(self):
+        from .models import WorkSchedule
+        sch = WorkSchedule.for_specialist(self.spec)
+        sch.default_start, sch.default_end = time(10, 0), time(16, 0)
+        # У дня нет своих часов → берутся новые часы по умолчанию.
+        self.assertEqual(sch.hours_for_weekday(0), (time(10, 0), time(16, 0)))
+
     def test_hours_custom(self):
         from .models import WorkSchedule
         sch = WorkSchedule.for_specialist(self.spec)
@@ -1146,6 +1153,7 @@ class WorkHoursTest(TestCase):
         sch = WorkSchedule.for_specialist(self.spec)
         data = {
             "monday": "on", "monday_start": "10:00", "monday_end": "09:00",
+            "default_start": "09:00", "default_end": "19:00",
             "break_between_minutes": "15", "break_between_travel_minutes": "60",
         }
         form = WorkScheduleForm(data, instance=sch)
@@ -1158,6 +1166,7 @@ class WorkHoursTest(TestCase):
         sch = WorkSchedule.for_specialist(self.spec)
         data = {
             "monday": "on", "monday_start": "10:00", "monday_end": "18:00",
+            "default_start": "09:00", "default_end": "19:00",
             "break_between_minutes": "15", "break_between_travel_minutes": "60",
         }
         form = WorkScheduleForm(data, instance=sch)

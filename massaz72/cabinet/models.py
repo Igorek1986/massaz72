@@ -152,6 +152,10 @@ class WorkSchedule(models.Model):
     sunday = models.BooleanField("Воскресенье", default=False)
     sunday_start = models.TimeField("Вс, с", null=True, blank=True)
     sunday_end = models.TimeField("Вс, до", null=True, blank=True)
+    # Часы по умолчанию — берутся для рабочего дня, у которого не заданы
+    # собственные часы. Мастер может изменить их в настройках.
+    default_start = models.TimeField("Начало по умолчанию", default=time(9, 0))
+    default_end = models.TimeField("Конец по умолчанию", default=time(19, 0))
     break_between_minutes = models.PositiveIntegerField(
         "Перерыв между массажами (мин)", default=15
     )
@@ -171,9 +175,6 @@ class WorkSchedule(models.Model):
         obj, _ = cls.objects.get_or_create(specialist=specialist)
         return obj
 
-    # Часы по умолчанию, если день рабочий, но конкретное время не задано.
-    DEFAULT_START = time(9, 0)
-    DEFAULT_END = time(19, 0)
     DAY_NAMES = [
         "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
     ]
@@ -183,12 +184,13 @@ class WorkSchedule(models.Model):
 
     def hours_for_weekday(self, weekday: int) -> tuple[time, time] | None:
         """Рабочие часы (начало, конец) для дня недели (0=Пн) или None, если
-        день нерабочий. Если день рабочий, но время не задано — дефолтные часы."""
+        день нерабочий. Если у дня не заданы свои часы — берутся часы по
+        умолчанию (default_start/default_end)."""
         name = self.DAY_NAMES[weekday]
         if not getattr(self, name):
             return None
-        start = getattr(self, f"{name}_start") or self.DEFAULT_START
-        end = getattr(self, f"{name}_end") or self.DEFAULT_END
+        start = getattr(self, f"{name}_start") or self.default_start
+        end = getattr(self, f"{name}_end") or self.default_end
         return start, end
 
 
