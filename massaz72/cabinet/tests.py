@@ -1222,3 +1222,44 @@ class WorkHoursTest(TestCase):
         form = BookingForm(self._booking_data(self.saturday, "10:00"))
         self.assertFalse(form.is_valid())
         self.assertIn("preferred_date", form.errors)
+
+
+class SpecialistScheduleInlineTest(TestCase):
+    def test_specialist_add_page_has_schedule_inline(self):
+        admin = User.objects.create_superuser("root_inline", "r@e.com", "pass")
+        self.client.force_login(admin)
+        resp = self.client.get(reverse("admin:cabinet_specialist_add"))
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn("Рабочее расписание", body)
+        self.assertIn("monday_start", body)
+
+    def test_create_specialist_with_schedule_inline(self):
+        from .models import WorkSchedule
+        admin = User.objects.create_superuser("root_create", "r2@e.com", "pass")
+        self.client.force_login(admin)
+        data = {
+            "name": "Новый Мастер", "order": "0",
+            # обязательные части inline-форм (management form)
+            "schedule-TOTAL_FORMS": "1", "schedule-INITIAL_FORMS": "0",
+            "schedule-MIN_NUM_FORMS": "0", "schedule-MAX_NUM_FORMS": "1",
+            "schedule-0-monday": "on",
+            "schedule-0-monday_start": "10:00", "schedule-0-monday_end": "18:00",
+            "schedule-0-tuesday_start": "09:00", "schedule-0-tuesday_end": "19:00",
+            "schedule-0-wednesday_start": "09:00", "schedule-0-wednesday_end": "19:00",
+            "schedule-0-thursday_start": "09:00", "schedule-0-thursday_end": "19:00",
+            "schedule-0-friday_start": "09:00", "schedule-0-friday_end": "19:00",
+            "schedule-0-saturday_start": "09:00", "schedule-0-saturday_end": "19:00",
+            "schedule-0-sunday_start": "09:00", "schedule-0-sunday_end": "19:00",
+            "schedule-0-break_between_minutes": "15",
+            "schedule-0-break_between_travel_minutes": "60",
+            # certificates inline (пустой)
+            "certificates-TOTAL_FORMS": "0", "certificates-INITIAL_FORMS": "0",
+            "certificates-MIN_NUM_FORMS": "0", "certificates-MAX_NUM_FORMS": "1000",
+        }
+        resp = self.client.post(reverse("admin:cabinet_specialist_add"), data)
+        self.assertEqual(resp.status_code, 302)  # успешное сохранение → редирект
+        spec = Specialist.objects.get(name="Новый Мастер")
+        sch = WorkSchedule.objects.get(specialist=spec)
+        self.assertEqual(sch.monday_start, time(10, 0))
+        self.assertEqual(sch.monday_end, time(18, 0))

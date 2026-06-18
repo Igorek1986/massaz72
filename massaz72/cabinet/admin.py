@@ -20,9 +20,41 @@ class CertificateInline(admin.TabularInline):
     extra = 1
 
 
+# Раскладка дней с часами — общая для inline и отдельной админки расписания.
+_SCHEDULE_DAY_FIELDSETS = (
+    ("Рабочие дни и часы", {
+        "description": "Отметьте рабочий день и при необходимости измените его "
+                       "часы (по умолчанию 9:00–19:00).",
+        "fields": (
+            ("monday", "monday_start", "monday_end"),
+            ("tuesday", "tuesday_start", "tuesday_end"),
+            ("wednesday", "wednesday_start", "wednesday_end"),
+            ("thursday", "thursday_start", "thursday_end"),
+            ("friday", "friday_start", "friday_end"),
+            ("saturday", "saturday_start", "saturday_end"),
+            ("sunday", "sunday_start", "sunday_end"),
+        ),
+    }),
+    ("Перерывы", {"fields": (
+        "break_between_minutes", "break_between_travel_minutes",
+    )}),
+)
+
+
+class WorkScheduleInline(admin.StackedInline):
+    """Расписание прямо на странице специалиста — можно создать сразу при
+    добавлении специалиста."""
+    model = WorkSchedule
+    extra = 1
+    max_num = 1
+    can_delete = False
+    verbose_name_plural = "Рабочее расписание"
+    fieldsets = _SCHEDULE_DAY_FIELDSETS
+
+
 @admin.register(Specialist)
 class SpecialistAdmin(admin.ModelAdmin):
-    inlines = [CertificateInline]
+    inlines = [WorkScheduleInline, CertificateInline]
     list_display = ("name", "experience", "is_active", "order", "user")
     list_editable = ("is_active", "order")
     list_filter = ("specialty", "is_active")
@@ -48,22 +80,7 @@ class WorkScheduleAdmin(admin.ModelAdmin):
     list_display = ("specialist", "break_between_minutes", "break_between_travel_minutes")
     fieldsets = (
         (None, {"fields": ("specialist",)}),
-        ("Рабочие дни и часы", {
-            "description": "Отметьте рабочий день и при необходимости измените его "
-                           "часы (по умолчанию 9:00–19:00).",
-            "fields": (
-                ("monday", "monday_start", "monday_end"),
-                ("tuesday", "tuesday_start", "tuesday_end"),
-                ("wednesday", "wednesday_start", "wednesday_end"),
-                ("thursday", "thursday_start", "thursday_end"),
-                ("friday", "friday_start", "friday_end"),
-                ("saturday", "saturday_start", "saturday_end"),
-                ("sunday", "sunday_start", "sunday_end"),
-            ),
-        }),
-        ("Перерывы", {"fields": (
-            "break_between_minutes", "break_between_travel_minutes",
-        )}),
+        *_SCHEDULE_DAY_FIELDSETS,
     )
 
 
