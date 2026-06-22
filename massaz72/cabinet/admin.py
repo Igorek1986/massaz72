@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from booking.models import BookingSessionOption
 from main.models import Certificate
 
 from .models import (
@@ -35,9 +36,11 @@ _SCHEDULE_DAY_FIELDSETS = (
             ("sunday", "sunday_start", "sunday_end"),
         ),
     }),
-    ("Перерывы", {"fields": (
+    ("Перерывы и запас", {"fields": (
         "break_between_minutes", "break_between_travel_minutes",
+        "lead_time_minutes", "booking_reminder_minutes",
     )}),
+    ("Уведомления мастеру", {"fields": (("notify_start", "notify_end"),)}),
 )
 
 
@@ -68,11 +71,19 @@ class BlockedSlotInline(admin.TabularInline):
     verbose_name_plural = "Заблокированное время"
 
 
+class SessionOptionInline(admin.TabularInline):
+    model = BookingSessionOption
+    extra = 0
+    fields = ("count", "label", "is_active", "order")
+    ordering = ("order", "count")
+    verbose_name_plural = "Варианты количества сеансов (для записи курсом)"
+
+
 @admin.register(Specialist)
 class SpecialistAdmin(admin.ModelAdmin):
     inlines = [
         WorkScheduleInline, ScheduleExceptionInline,
-        BlockedSlotInline, CertificateInline,
+        BlockedSlotInline, SessionOptionInline, CertificateInline,
     ]
     list_display = ("name", "experience", "is_active", "order", "user")
     list_editable = ("is_active", "order")

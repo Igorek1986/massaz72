@@ -791,6 +791,10 @@ body.cabinet-body {
     font-size: 13px;
     line-height: 1.5;
     margin-bottom: 14px; }
+    .settings-card__hint--inset {
+      padding: 12px 20px 14px;
+      margin-bottom: 0;
+      border-bottom: 1px solid var(--cab-border); }
 
 .feature-toggle {
   display: flex;

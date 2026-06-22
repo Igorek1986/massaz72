@@ -20,9 +20,11 @@ from massaz72.utils import _slugify_ru
 
 from .forms import (
     AppointmentForm, BlockedSlotForm, DiscountForm, MassageForm,
-    ScheduleExceptionForm, WorkScheduleForm,
+    ScheduleExceptionForm, SessionOptionForm, WorkScheduleForm,
     find_time_conflicts, _conflict_message,
 )
+from booking.models import BookingSessionOption
+
 from .models import (
     Appointment, AppointmentSeries, BlockedSlot,
     Discount, ScheduleException, Specialist, WorkSchedule,
@@ -274,8 +276,33 @@ def settings(request):
         "schedule_form": WorkScheduleForm(instance=schedule),
         "exceptions": ScheduleException.objects.filter(specialist=specialist),
         "blocked_slots": BlockedSlot.objects.filter(specialist=specialist).order_by("date", "time_start"),
+        "session_options": specialist.session_options.all(),
         "client_cabinet_enabled": bool(settings_obj and settings_obj.client_cabinet_enabled),
+        **_tg_link_ctx(specialist),
     })
+
+
+@specialist_required
+@require_POST
+def tg_unlink(request):
+    spec = request.specialist
+    spec.telegram_id = None
+    spec.save(update_fields=["telegram_id"])
+    return render(request, "cabinet/partials/tg_link_section.html", _tg_link_ctx(spec))
+
+
+def _tg_link_ctx(specialist: Specialist) -> dict:
+    """Контекст привязки Telegram мастера (deep-link + QR + статус)."""
+    from tgbot.models import BotSettings
+    bs = BotSettings.load()
+    username = bs.bot_username if bs and bs.is_enabled and bs.bot_username else ""
+    ctx = {"tg_linked": specialist.telegram_id is not None, "tg_bot_url": None, "tg_qr_svg": None}
+    if username and not ctx["tg_linked"]:
+        from booking.views import _qr_svg
+        url = f"https://t.me/{username}?start=spec_{specialist.tg_link_token}"
+        ctx["tg_bot_url"] = url
+        ctx["tg_qr_svg"] = _qr_svg(url)
+    return ctx
 
 
 # ---------------------------------------------------------------------------
@@ -855,6 +882,67 @@ def _blocked_slot_section_response(request):
     response["HX-Retarget"] = "#blocked-slots-section"
     response["HX-Reswap"] = "innerHTML"
     return response
+
+
+def _session_option_section_ctx(specialist: Specialist) -> dict:
+    return {"session_options": specialist.session_options.all()}
+
+
+def _session_option_section_response(request):
+    section_html = render_to_string(
+        "cabinet/partials/session_option_section.html",
+        _session_option_section_ctx(request.specialist), request=request,
+    )
+    oob_close = '<div id="cabinet-modal" hx-swap-oob="innerHTML"></div>'
+    response = HttpResponse(section_html + oob_close)
+    response["HX-Retarget"] = "#session-options-section"
+    response["HX-Reswap"] = "innerHTML"
+    return response
+
+
+@specialist_required
+def session_option_add(request):
+    specialist = request.specialist
+    if request.method == "POST":
+        form = SessionOptionForm(request.POST)
+        if form.is_valid():
+            opt = form.save(commit=False)
+            opt.specialist = specialist
+            opt.save()
+            return _session_option_section_response(request)
+        response = render(request, "cabinet/partials/session_option_form.html", {"form": form})
+        response["HX-Retarget"] = "#session-option-form-container"
+        return response
+    return render(request, "cabinet/partials/session_option_form.html", {"form": SessionOptionForm()})
+
+
+@specialist_required
+def session_option_edit(request, pk: int):
+    opt = get_object_or_404(BookingSessionOption, pk=pk, specialist=request.specialist)
+    if request.method == "POST":
+        form = SessionOptionForm(request.POST, instance=opt)
+        if form.is_valid():
+            form.save()
+            return _session_option_section_response(request)
+        response = render(request, "cabinet/partials/session_option_form.html", {"form": form, "option": opt})
+        response["HX-Retarget"] = "#session-option-form-container"
+        return response
+    return render(request, "cabinet/partials/session_option_form.html", {
+        "form": SessionOptionForm(instance=opt), "option": opt,
+    })
+
+
+@specialist_required
+def session_option_confirm_delete(request, pk: int):
+    opt = get_object_or_404(BookingSessionOption, pk=pk, specialist=request.specialist)
+    return render(request, "cabinet/partials/session_option_confirm_delete.html", {"option": opt})
+
+
+@specialist_required
+@require_POST
+def session_option_delete(request, pk: int):
+    get_object_or_404(BookingSessionOption, pk=pk, specialist=request.specialist).delete()
+    return _session_option_section_response(request)
 
 
 # ---------------------------------------------------------------------------
@@ -1458,7 +1546,9 @@ def _booking_queryset(status: str):
     qs = BookingRequest.objects.select_related("service", "specialist")
     if status in ("pending", "confirmed", "declined"):
         return qs.filter(status=status)
-    return qs
+    # «Все» — кроме заявок без контакта (мастеру не показываем, пока клиент
+    # не подтвердит в боте / не появится телефон).
+    return qs.exclude(status=BookingRequest.Status.AWAITING_CONTACT)
 
 
 def _booking_filter(request: HttpRequest) -> str:

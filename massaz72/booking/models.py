@@ -8,9 +8,13 @@ def gen_link_token() -> str:
 
 
 class BookingSessionOption(models.Model):
-    """Вариант количества сеансов (настраивается в админке). Используется
-    и онлайн-формой записи, и Telegram-ботом."""
+    """Вариант количества сеансов конкретного специалиста (настраивается в
+    админке и в кабинете мастера). Используется онлайн-формой и Telegram-ботом."""
 
+    specialist = models.ForeignKey(
+        "cabinet.Specialist", on_delete=models.CASCADE,
+        related_name="session_options", verbose_name="Специалист",
+    )
     count = models.PositiveIntegerField("Количество сеансов")
     label = models.CharField(
         "Метка", max_length=50, blank=True, default="",
@@ -22,7 +26,7 @@ class BookingSessionOption(models.Model):
     class Meta:
         verbose_name = "Вариант кол-ва сеансов"
         verbose_name_plural = "Варианты кол-ва сеансов"
-        ordering = ["order", "count"]
+        ordering = ["specialist", "order", "count"]
 
     def __str__(self) -> str:
         return self.label if self.label else f"{self.count} сеансов"
@@ -42,6 +46,9 @@ class BookingRequest(models.Model):
     создаётся обычная запись cabinet.Appointment."""
 
     class Status(models.TextChoices):
+        # Нет надёжного контакта (телефона/подтверждения в боте) — мастеру не
+        # показываем и не уведомляем, пока клиент не подтвердит в боте.
+        AWAITING_CONTACT = "awaiting_contact", "Ожидает контакта"
         PENDING = "pending", "На подтверждении"
         CONFIRMED = "confirmed", "Подтверждена"
         DECLINED = "declined", "Отклонена"
@@ -80,7 +87,7 @@ class BookingRequest(models.Model):
         "Источник", max_length=10, choices=Source.choices, default=Source.GUEST
     )
     status = models.CharField(
-        "Статус", max_length=10, choices=Status.choices, default=Status.PENDING
+        "Статус", max_length=20, choices=Status.choices, default=Status.PENDING
     )
     ip_address = models.GenericIPAddressField("IP-адрес", null=True, blank=True)
 
@@ -112,6 +119,9 @@ class BookingRequest(models.Model):
         "cabinet.Appointment", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="booking_request",
         verbose_name="Созданная запись",
+    )
+    reminded_at = models.DateTimeField(
+        "Напоминание мастеру отправлено", null=True, blank=True,
     )
     created_at = models.DateTimeField("Создана", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлена", auto_now=True)

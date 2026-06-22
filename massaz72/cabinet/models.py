@@ -1,9 +1,14 @@
+import secrets
 from datetime import time
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+
+
+def gen_tg_link_token() -> str:
+    return secrets.token_urlsafe(16)
 
 
 class Specialty(models.Model):
@@ -81,6 +86,15 @@ class Specialist(models.Model):
         "Управление отзывами",
         default=False,
         help_text="Доступ к разделу «Отзывы» в кабинете (независимо от прочих ролей).",
+    )
+    # Привязка к Telegram-боту для адресных уведомлений мастеру (заявки,
+    # напоминания). Привязывается deep-link'ом из кабинета.
+    telegram_id = models.BigIntegerField(
+        "Telegram ID для уведомлений", null=True, blank=True,
+    )
+    tg_link_token = models.CharField(
+        "Токен привязки Telegram", max_length=43,
+        default=gen_tg_link_token, editable=False,
     )
 
     class Meta:
@@ -163,6 +177,21 @@ class WorkSchedule(models.Model):
     break_between_travel_minutes = models.PositiveIntegerField(
         "Перерыв между выездными массажами (мин)", default=60
     )
+    lead_time_minutes = models.PositiveIntegerField(
+        "Минимальный запас перед записью (мин)", default=60,
+        help_text=(
+            "Онлайн нельзя записаться раньше, чем через столько минут от "
+            "текущего времени. Напр. 60 — ближайшая запись минимум через час."
+        ),
+    )
+    booking_reminder_minutes = models.PositiveIntegerField(
+        "Напоминание о необработанной заявке (мин)", default=60,
+        help_text="Повторно напомнить мастеру о неподтверждённой заявке через "
+                  "столько минут. 0 — без напоминаний.",
+    )
+    # Личное окно уведомлений мастера (переопределяет глобальное SiteSettings).
+    notify_start = models.TimeField("Уведомления мастеру: с", null=True, blank=True)
+    notify_end = models.TimeField("Уведомления мастеру: до", null=True, blank=True)
 
     class Meta:
         verbose_name = "Рабочее расписание"

@@ -39,6 +39,20 @@ def _booking_enabled() -> bool:
     return bool(s and s.online_booking_enabled)
 
 
+def _service_durations() -> dict:
+    """Текст длительности по id услуги — для подсказки в форме (JS)."""
+    from services.models import Massage
+
+    out = {}
+    for m in Massage.objects.filter(is_archived=False).only("pk", "duration_min", "duration_max"):
+        lo, hi = m.duration_min, m.duration_max
+        if lo and hi and lo != hi:
+            out[str(m.pk)] = f"{lo}–{hi} мин"
+        else:
+            out[str(m.pk)] = f"{hi or lo or 60} мин"
+    return out
+
+
 def _qr_svg(data: str) -> str:
     """QR-код как inline-SVG (без внешних сервисов, без Pillow)."""
     import io
@@ -99,27 +113,38 @@ def booking_page(request: HttpRequest) -> HttpResponse:
         if _is_rate_limited(ip):
             return render(request, "booking/booking.html", {
                 "form": BookingForm(request.POST), "throttled": True,
+                "service_durations": _service_durations(),
             })
 
         form = BookingForm(request.POST)
         if form.is_valid():
             booking: BookingRequest = form.save(commit=False)
             booking.ip_address = ip
-            booking.status = BookingRequest.Status.PENDING
             # Залогиненный клиент — привязываем заявку к аккаунту.
             if request.user.is_authenticated and hasattr(request.user, "client_profile"):
                 booking.user = request.user
                 booking.source = BookingRequest.Source.ACCOUNT
+                # Нет телефона в форме — берём из профиля аккаунта.
+                if not booking.phone:
+                    booking.phone = (request.user.client_profile.phone or "").strip()
             else:
                 booking.source = BookingRequest.Source.GUEST
+            # Гейт по контакту: с телефоном — сразу «на подтверждении» и
+            # уведомляем мастера. Без телефона — «ожидает контакта», мастеру не
+            # показываем и не шлём, пока клиент не подтвердит в боте
+            # (см. tgbot: подтверждение переключит статус и уведомит мастера).
+            if booking.phone:
+                booking.status = BookingRequest.Status.PENDING
+            else:
+                booking.status = BookingRequest.Status.AWAITING_CONTACT
             booking.save()
-            # Уведомляем мастера сразу, только если с клиентом можно связаться
-            # (указан телефон). Иначе — отложим до подключения клиента к боту:
-            # уведомление уйдёт в _bind_booking_token, когда появится контакт.
             if booking.phone:
                 _notify_admins(booking)
-            return _render_done(request, booking)
-        return render(request, "booking/booking.html", {"form": form})
+            # PRG: уводим на закладываемую страницу подтверждения по токену.
+            return redirect("booking:confirm", token=booking.link_token)
+        return render(request, "booking/booking.html", {
+            "form": form, "service_durations": _service_durations(),
+        })
 
     # Предвыбор услуги (?service=<id>) и даты (?date=YYYY-MM-DD) — из кабинета.
     initial = {}
@@ -138,23 +163,247 @@ def booking_page(request: HttpRequest) -> HttpResponse:
     # Для залогиненного клиента подставляем телефон из профиля.
     if request.user.is_authenticated and hasattr(request.user, "client_profile"):
         initial.setdefault("phone", request.user.client_profile.phone)
-    return render(request, "booking/booking.html", {"form": BookingForm(initial=initial)})
+    return render(request, "booking/booking.html", {
+        "form": BookingForm(initial=initial),
+        "service_durations": _service_durations(),
+    })
 
 
 def _render_done(request: HttpRequest, booking: BookingRequest | None = None) -> HttpResponse:
     context = {"done": True, **_bots_context(booking)}
     if booking is not None:
         context["booking_token"] = booking.link_token
+        # Без телефона бронь держится ограниченное время до подтверждения в боте.
+        if booking.status == BookingRequest.Status.AWAITING_CONTACT:
+            s = SiteSettings.objects.first()
+            context["hold_minutes"] = s.booking_hold_minutes if s else 15
     return render(request, "booking/booking.html", context)
 
 
+def booking_slots(request: HttpRequest) -> JsonResponse:
+    """Свободные времена начала для выбранного мастера/услуги/даты/курса.
+
+    GET-параметры: specialist, service, date (YYYY-MM-DD), sessions
+    (id BookingSessionOption). Возвращает day_availability (с автопереносом
+    на ближайший доступный день, если запрошенный недоступен)."""
+    from datetime import datetime as _dt
+
+    from cabinet.models import Specialist
+
+    from .availability import day_availability
+    from .models import BookingSessionOption
+
+    if not _booking_enabled():
+        return JsonResponse({"slots": [], "shifted": False})
+
+    raw_date = request.GET.get("date", "")
+    try:
+        day = _dt.strptime(raw_date, "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({"error": "bad_date", "slots": []}, status=400)
+    if day < timezone.localdate():
+        day = timezone.localdate()
+
+    spec_id = request.GET.get("specialist", "")
+    specialist = None
+    if spec_id.isdigit():
+        specialist = Specialist.objects.filter(pk=int(spec_id), is_active=True).first()
+    if specialist is None:
+        specialist = Specialist.objects.filter(is_active=True).first()
+
+    service = None
+    service_id = request.GET.get("service", "")
+    if service_id.isdigit():
+        from services.models import Massage
+        service = Massage.objects.filter(pk=int(service_id), is_archived=False).first()
+
+    sessions = 1
+    sessions_id = request.GET.get("sessions", "")
+    if sessions_id.isdigit():
+        opt = BookingSessionOption.objects.filter(pk=int(sessions_id), is_active=True).first()
+        if opt:
+            sessions = opt.count
+
+    is_travel = request.GET.get("travel") in ("1", "true", "on")
+    return JsonResponse(
+        day_availability(specialist, day, service, sessions, is_travel=is_travel)
+    )
+
+
+def booking_month(request: HttpRequest) -> JsonResponse:
+    """Доступные для выбора даты в месяце (рабочие, не выходные/отпуск, не в прошлом).
+
+    GET-параметры: specialist, year, month. Используется календарём на странице
+    записи, чтобы нерабочие дни были некликабельны."""
+    import calendar as _calendar
+    from datetime import date as _date
+
+    from cabinet.models import Specialist
+
+    from .availability import enabled_days
+
+    if not _booking_enabled():
+        return JsonResponse({"enabled": []})
+
+    try:
+        year = int(request.GET.get("year", ""))
+        month = int(request.GET.get("month", ""))
+        if not (1 <= month <= 12 and 2000 <= year <= 2100):
+            raise ValueError
+    except ValueError:
+        return JsonResponse({"error": "bad_month", "enabled": []}, status=400)
+
+    spec_id = request.GET.get("specialist", "")
+    specialist = None
+    if spec_id.isdigit():
+        specialist = Specialist.objects.filter(pk=int(spec_id), is_active=True).first()
+    if specialist is None:
+        specialist = Specialist.objects.filter(is_active=True).first()
+
+    first = _date(year, month, 1)
+    last = _date(year, month, _calendar.monthrange(year, month)[1])
+    days = enabled_days(specialist, first, last)
+    return JsonResponse({
+        "year": year,
+        "month": month,
+        "today": timezone.localdate().isoformat(),
+        "enabled": [d.isoformat() for d in days],
+    })
+
+
+def booking_sessions(request: HttpRequest) -> JsonResponse:
+    """Варианты количества сеансов выбранного мастера (для формы записи)."""
+    from cabinet.models import Specialist
+
+    from .models import BookingSessionOption
+
+    if not _booking_enabled():
+        return JsonResponse({"options": []})
+
+    spec_id = request.GET.get("specialist", "")
+    specialist = None
+    if spec_id.isdigit():
+        specialist = Specialist.objects.filter(pk=int(spec_id), is_active=True).first()
+    if specialist is None:
+        specialist = Specialist.objects.filter(is_active=True).first()
+
+    options = []
+    if specialist is not None:
+        options = [
+            {"id": o.pk, "label": o.button_label}
+            for o in BookingSessionOption.objects.filter(
+                specialist=specialist, is_active=True
+            )
+        ]
+    return JsonResponse({"options": options})
+
+
+def _booking_hold_minutes() -> int:
+    s = SiteSettings.objects.first()
+    return s.booking_hold_minutes if s else 15
+
+
+def _booking_deadline(booking: BookingRequest):
+    return booking.created_at + timedelta(minutes=_booking_hold_minutes())
+
+
+def _booking_expired(booking: BookingRequest) -> bool:
+    """Заявка без контакта, у которой истёк таймаут удержания (слот уже свободен)."""
+    return (
+        booking.status == BookingRequest.Status.AWAITING_CONTACT
+        and timezone.now() >= _booking_deadline(booking)
+    )
+
+
+def _confirm_context(booking: BookingRequest | None) -> dict:
+    """Состояние страницы подтверждения по токену."""
+    if booking is None or _booking_expired(booking):
+        return {"state": "expired"}
+    S = BookingRequest.Status
+    if booking.status == S.CONFIRMED:
+        state = "master_confirmed"
+    elif booking.status in (S.DECLINED, S.CANCELLED):
+        state = "closed"
+    elif booking.status == S.PENDING:
+        state = "pending"  # есть контакт (телефон или подтверждение в боте)
+    else:
+        state = "awaiting"  # ждём подтверждения/контакта
+    ctx = {
+        "state": state,
+        "booking": booking,
+        "booking_token": booking.link_token,
+        **_bots_context(booking),
+    }
+    if state == "awaiting":
+        ctx["hold_minutes"] = _booking_hold_minutes()
+        ctx["deadline_iso"] = _booking_deadline(booking).isoformat()
+    return ctx
+
+
+def booking_confirm(request: HttpRequest, token: str) -> HttpResponse:
+    """Страница подтверждения заявки по токену (доступна без регистрации,
+    закладываемая, восстанавливается на том же устройстве через localStorage)."""
+    booking = (
+        BookingRequest.objects.select_related("service", "specialist", "sessions")
+        .filter(link_token=token).first()
+    )
+
+    if request.method == "POST":
+        if booking is None:
+            return redirect("booking:confirm", token=token)
+
+        # Отмена клиентом: освобождает слот, чтобы перезаписаться (напр. сдвинуть
+        # время). Доступна, пока мастер не подтвердил.
+        if request.POST.get("action") == "cancel":
+            S = BookingRequest.Status
+            if booking.status in (S.AWAITING_CONTACT, S.PENDING):
+                booking.status = S.CANCELLED
+                booking.save(update_fields=["status", "updated_at"])
+                try:
+                    from tgbot.notifications import notify_booking_cancelled
+                    notify_booking_cancelled(booking)
+                except Exception:  # noqa: BLE001
+                    logger.exception("Не уведомить об отмене заявки %s", booking.pk)
+            return redirect("booking:confirm", token=token)
+
+        # Подтверждение телефоном прямо на странице (третий способ).
+        if booking.status != BookingRequest.Status.AWAITING_CONTACT \
+                or _booking_expired(booking):
+            return redirect("booking:confirm", token=token)
+        from .phone import normalize_ru_phone
+        try:
+            phone = normalize_ru_phone(request.POST.get("phone"))
+        except ValueError:
+            phone = ""
+        if not phone:
+            ctx = _confirm_context(booking)
+            ctx["phone_error"] = "Укажите корректный номер телефона."
+            return render(request, "booking/confirm.html", ctx)
+        booking.phone = phone
+        booking.status = BookingRequest.Status.PENDING
+        booking.save(update_fields=["phone", "status", "updated_at"])
+        _notify_admins(booking)
+        return redirect("booking:confirm", token=token)
+
+    return render(request, "booking/confirm.html", _confirm_context(booking))
+
+
 def booking_status(request: HttpRequest, token: str) -> JsonResponse:
-    """Статус заявки по токену (для опроса со страницы «спасибо»)."""
+    """Статус заявки по токену (для опроса и обратного отсчёта)."""
     booking = BookingRequest.objects.filter(link_token=token).first()
     if booking is None:
         return JsonResponse({"found": False})
+    expired = _booking_expired(booking)
+    seconds_left = None
+    if booking.status == BookingRequest.Status.AWAITING_CONTACT and not expired:
+        seconds_left = max(
+            0, int((_booking_deadline(booking) - timezone.now()).total_seconds())
+        )
     return JsonResponse({
-        "found": True,
+        "found": not expired,  # истёкшую для UI считаем отсутствующей
+        "status": booking.status,
         "linked": bool(booking.messenger_user_id),
         "confirmed": booking.client_confirmed,
+        "master_confirmed": booking.status == BookingRequest.Status.CONFIRMED,
+        "seconds_left": seconds_left,
     })

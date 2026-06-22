@@ -328,3 +328,27 @@ class BookingNotification(models.Model):
 
     def __str__(self) -> str:
         return f"booking {self.booking_id} → {self.admin_telegram_id}/{self.message_id}"
+
+
+class PendingNotification(models.Model):
+    """Отложенное автоуведомление (выпало на «тихие часы»). Отправляется
+    flush-задачей, когда окно уведомлений открывается."""
+
+    KIND_NEW_BOOKING = "new_booking"
+    KIND_BOOKING_REMINDER = "booking_reminder"
+    KIND_REVIEW = "review"
+    KIND_CLIENT_TEXT = "client_text"
+
+    kind = models.CharField("Тип", max_length=32)
+    payload = models.JSONField("Данные", default=dict)
+    available_at = models.DateTimeField("Отправить не раньше")
+    sent = models.BooleanField("Отправлено", default=False)
+    created_at = models.DateTimeField("Создано", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Отложенное уведомление"
+        verbose_name_plural = "Отложенные уведомления"
+        ordering = ["available_at"]
+
+    def __str__(self) -> str:
+        return f"{self.kind} @ {self.available_at:%d.%m %H:%M}{' ✓' if self.sent else ''}"

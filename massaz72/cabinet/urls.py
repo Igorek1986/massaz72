@@ -54,6 +54,11 @@ urlpatterns = [
     path("settings/blocked-slots/<int:pk>/edit/", views.blocked_slot_edit, name="blocked_slot_edit"),
     path("settings/blocked-slots/<int:pk>/confirm-delete/", views.blocked_slot_confirm_delete, name="blocked_slot_confirm_delete"),
     path("settings/blocked-slots/<int:pk>/delete/", views.blocked_slot_delete, name="blocked_slot_delete"),
+    path("settings/sessions/add/", views.session_option_add, name="session_option_add"),
+    path("settings/sessions/<int:pk>/edit/", views.session_option_edit, name="session_option_edit"),
+    path("settings/sessions/<int:pk>/confirm-delete/", views.session_option_confirm_delete, name="session_option_confirm_delete"),
+    path("settings/sessions/<int:pk>/delete/", views.session_option_delete, name="session_option_delete"),
+    path("settings/tg/unlink/", views.tg_unlink, name="tg_unlink"),
     path("settings/client-cabinet/toggle/", views.client_cabinet_toggle, name="client_cabinet_toggle"),
 
     # Booking requests (заявки на запись)

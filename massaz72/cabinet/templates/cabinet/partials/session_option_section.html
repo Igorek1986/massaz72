@@ -1,0 +1,36 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Варианты количества сеансов</h2>
+  <button class="btn btn--ghost btn--sm"
+          hx-get="{% url 'cabinet:session_option_add' %}"
+          hx-target="#session-option-form-container"
+          hx-swap="innerHTML">+ Добавить</button>
+</div>
+
+<p class="settings-card__hint settings-card__hint--inset">
+  Показываются клиенту при онлайн-записи курсом (и в боте).
+</p>
+
+{% if session_options %}
+<ul class="settings-list">
+  {% for opt in session_options %}
+  <li class="settings-list__item">
+    <span class="settings-list__dates">{{ opt.button_label }}</span>
+    {% if not opt.is_active %}<span class="settings-list__note">скрыт</span>{% endif %}
+    <div class="settings-list__actions">
+      <button class="apt-btn apt-btn--edit" title="Редактировать"
+              hx-get="{% url 'cabinet:session_option_edit' opt.pk %}"
+              hx-target="#session-option-form-container"
+              hx-swap="innerHTML">✎</button>
+      <button class="apt-btn apt-btn--del" title="Удалить"
+              hx-get="{% url 'cabinet:session_option_confirm_delete' opt.pk %}"
+              hx-target="#cabinet-modal"
+              hx-swap="innerHTML">✕</button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="settings-empty">Нет вариантов — добавьте, чтобы принимать запись курсом.</p>
+{% endif %}
+
+<div id="session-option-form-container"></div>

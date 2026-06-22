@@ -11,8 +11,9 @@ class RescheduleRequestAdmin(admin.ModelAdmin):
 
 @admin.register(BookingSessionOption)
 class BookingSessionOptionAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "count", "is_active", "order")
+    list_display = ("__str__", "specialist", "count", "is_active", "order")
     list_editable = ("is_active", "order")
+    list_filter = ("specialist", "is_active")
 
 
 @admin.register(BookingRequest)

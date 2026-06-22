@@ -34,6 +34,9 @@
         </div>
         <div class="account-booking__when">Желаемое: {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}</div>
         {% if b.sessions %}<div class="account-booking__spec">Сеансов: {{ b.sessions.button_label }}</div>{% endif %}
+        {% if b.status == 'awaiting_contact' %}
+        <a class="account-booking__confirm" href="{% url 'booking:confirm' b.link_token %}">Подтвердить запись →</a>
+        {% endif %}
         {% if b.status == 'pending' %}
         <form method="post" action="{% url 'accounts:cancel_booking' b.pk %}">
           {% csrf_token %}

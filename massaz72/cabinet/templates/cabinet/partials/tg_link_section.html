@@ -1,0 +1,23 @@
+<div class="settings-card__header">
+  <h2 class="settings-card__title">Уведомления в Telegram</h2>
+</div>
+<div class="settings-card__body">
+  {% if tg_linked %}
+  <p class="settings-card__hint">✅ Telegram привязан — заявки и напоминания приходят сюда.</p>
+  <form hx-post="{% url 'cabinet:tg_unlink' %}" hx-target="#tg-link-section" hx-swap="innerHTML">
+    {% csrf_token %}
+    <button type="submit" class="btn btn--ghost btn--sm">Отвязать</button>
+  </form>
+  {% elif tg_bot_url %}
+  <p class="settings-card__hint">
+    Привяжите Telegram, чтобы получать заявки на запись и напоминания прямо в боте.
+    Отсканируйте QR или откройте ссылку:
+  </p>
+  {% if tg_qr_svg %}<div class="bot-choice__qr">{{ tg_qr_svg|safe }}</div>{% endif %}
+  <a class="btn btn--primary btn--sm" href="{{ tg_bot_url }}" target="_blank" rel="noopener">
+    Открыть бот и привязать
+  </a>
+  {% else %}
+  <p class="settings-card__hint">Бот не настроен — привязка недоступна.</p>
+  {% endif %}
+</div>

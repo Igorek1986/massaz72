@@ -1103,6 +1103,43 @@ class ClientCabinetToggleTest(TestCase):
         self.assertEqual(resp.status_code, 405)
 
 
+class SessionOptionCabinetTest(TestCase):
+    def setUp(self):
+        from booking.models import BookingSessionOption
+        self.Option = BookingSessionOption
+        self.spec = _make_specialist("sess_spec")
+        self.other = _make_specialist("sess_other")
+        self.client.force_login(self.spec.user)
+
+    def test_add(self):
+        resp = self.client.post(reverse("cabinet:session_option_add"), {
+            "count": "5", "label": "Курс 5", "order": "0", "is_active": "on",
+        })
+        self.assertEqual(resp.status_code, 200)
+        opt = self.Option.objects.get()
+        self.assertEqual(opt.specialist, self.spec)  # привязан к залогиненному
+        self.assertEqual(opt.count, 5)
+
+    def test_edit(self):
+        opt = self.Option.objects.create(specialist=self.spec, count=3, label="три")
+        self.client.post(reverse("cabinet:session_option_edit", args=[opt.pk]), {
+            "count": "7", "label": "семь", "order": "0", "is_active": "on",
+        })
+        opt.refresh_from_db()
+        self.assertEqual(opt.count, 7)
+
+    def test_delete(self):
+        opt = self.Option.objects.create(specialist=self.spec, count=3)
+        self.client.post(reverse("cabinet:session_option_delete", args=[opt.pk]))
+        self.assertFalse(self.Option.objects.filter(pk=opt.pk).exists())
+
+    def test_cannot_touch_other_specialist_option(self):
+        opt = self.Option.objects.create(specialist=self.other, count=3)
+        resp = self.client.post(reverse("cabinet:session_option_delete", args=[opt.pk]))
+        self.assertEqual(resp.status_code, 404)
+        self.assertTrue(self.Option.objects.filter(pk=opt.pk).exists())
+
+
 class WorkHoursTest(TestCase):
     def setUp(self):
         from django.utils import timezone
@@ -1110,7 +1147,7 @@ class WorkHoursTest(TestCase):
         self.spec = _make_specialist("hours_spec")
         self.massage = _make_massage(duration=60)
         self.session = BookingSessionOption.objects.create(
-            count=1, label="1 сеанс", is_active=True,
+            specialist=self.spec, count=1, label="1 сеанс", is_active=True,
         )
 
         def _next_weekday(weekday):
@@ -1145,7 +1182,10 @@ class WorkHoursTest(TestCase):
     # --- форма расписания ---
     def _schedule_post(self, **overrides):
         from .models import WorkSchedule
-        data = {"break_between_minutes": "15", "break_between_travel_minutes": "60"}
+        data = {
+            "break_between_minutes": "15", "break_between_travel_minutes": "60",
+            "lead_time_minutes": "60", "booking_reminder_minutes": "60",
+        }
         for day in WorkSchedule.DAY_NAMES:
             data[day] = "on"
             data[f"{day}_start"] = "09:00"
@@ -1253,11 +1293,15 @@ class SpecialistScheduleInlineTest(TestCase):
             "schedule-0-sunday_start": "09:00", "schedule-0-sunday_end": "19:00",
             "schedule-0-break_between_minutes": "15",
             "schedule-0-break_between_travel_minutes": "60",
+            "schedule-0-lead_time_minutes": "60",
+            "schedule-0-booking_reminder_minutes": "60",
             # остальные inline (пустые) — нужны их management-формы
             "exceptions-TOTAL_FORMS": "0", "exceptions-INITIAL_FORMS": "0",
             "exceptions-MIN_NUM_FORMS": "0", "exceptions-MAX_NUM_FORMS": "1000",
             "blocked_slots-TOTAL_FORMS": "0", "blocked_slots-INITIAL_FORMS": "0",
             "blocked_slots-MIN_NUM_FORMS": "0", "blocked_slots-MAX_NUM_FORMS": "1000",
+            "session_options-TOTAL_FORMS": "0", "session_options-INITIAL_FORMS": "0",
+            "session_options-MIN_NUM_FORMS": "0", "session_options-MAX_NUM_FORMS": "1000",
             "certificates-TOTAL_FORMS": "0", "certificates-INITIAL_FORMS": "0",
             "certificates-MIN_NUM_FORMS": "0", "certificates-MAX_NUM_FORMS": "1000",
         }

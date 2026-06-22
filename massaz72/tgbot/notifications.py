@@ -192,6 +192,9 @@ def build_booking_text(booking) -> str:
         lines.append(f"<b>На связи в боте:</b> {contact} — можно написать ему здесь")
     if booking.client_confirmed:
         lines.append("<b>✅ Клиент подтвердил заявку и согласие на обработку ПД</b>")
+    from booking.models import BookingRequest
+    if booking.status == BookingRequest.Status.CANCELLED:
+        lines.append("<b>❌ Клиент отменил заявку</b>")
     if booking.comment:
         lines.append(f"\n{html.escape(booking.comment)}")
     return "\n".join(lines)
@@ -244,15 +247,19 @@ def handle_client_booking_confirm(bot, call) -> None:
     if not booking.client_confirmed:
         booking.client_confirmed = True
         booking.consent_at = timezone.now()  # согласие на обработку ПД
-        booking.save(update_fields=[
-            "client_confirmed", "consent_at", "updated_at",
-        ])
-        # Уведомляем мастера именно сейчас: если ещё не уведомляли (заявка без
-        # телефона) — шлём заявку; иначе обновляем существующие сообщения.
+        update_fields = ["client_confirmed", "consent_at", "updated_at"]
+        # Подтверждение в боте = надёжный контакт: заявка «ожидавшая контакта»
+        # становится активной (на подтверждении у мастера).
+        if booking.status == BookingRequest.Status.AWAITING_CONTACT:
+            booking.status = BookingRequest.Status.PENDING
+            update_fields.append("status")
+        booking.save(update_fields=update_fields)
+        # Уведомляем мастера: если ещё не уведомляли (заявка без телефона) —
+        # шлём заявку (с учётом тихих часов); иначе обновляем сообщения.
         if BookingNotification.objects.filter(booking=booking).exists():
             refresh_booking_messages(bot, booking)
         else:
-            send_booking_to_admins(bot, booking)
+            notify_new_booking(booking)
 
     bot.answer_callback_query(call.id, "Спасибо! Запись подтверждена.")
     try:
@@ -280,7 +287,12 @@ def refresh_booking_messages(bot, booking) -> None:
 
 
 def build_booking_keyboard(booking) -> types.InlineKeyboardMarkup:
+    from booking.models import BookingRequest
+
     kb = types.InlineKeyboardMarkup()
+    # Закрытая заявка (отменена клиентом/отклонена) — без кнопок действий.
+    if booking.status in (BookingRequest.Status.CANCELLED, BookingRequest.Status.DECLINED):
+        return kb
     kb.row(
         types.InlineKeyboardButton("✅ Подтвердить", callback_data=f"br_confirm_{booking.pk}"),
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"br_decline_{booking.pk}"),
@@ -288,14 +300,28 @@ def build_booking_keyboard(booking) -> types.InlineKeyboardMarkup:
     return kb
 
 
+def booking_recipients(booking) -> list[int]:
+    """Кому слать заявку: конкретному мастеру и его главному (если привязали
+    Telegram); иначе — всем активным админам."""
+    ids = []
+    spec = booking.specialist
+    if spec is not None:
+        for s in (spec, spec.head):
+            if s is not None and s.telegram_id:
+                ids.append(s.telegram_id)
+    if ids:
+        return list(dict.fromkeys(ids))
+    return list(
+        BotAdmin.objects.filter(is_active=True).values_list("telegram_id", flat=True)
+    )
+
+
 def send_booking_to_admins(bot, booking) -> int:
-    """Шлёт заявку всем активным админам через переданный бот."""
+    """Шлёт заявку адресатам (мастер/главный или все админы)."""
     text = build_booking_text(booking)
     keyboard = build_booking_keyboard(booking)
     sent = 0
-    for admin_id in BotAdmin.objects.filter(is_active=True).values_list(
-        "telegram_id", flat=True
-    ):
+    for admin_id in booking_recipients(booking):
         try:
             msg = bot.send_message(admin_id, text, reply_markup=keyboard)
             BookingNotification.objects.create(
@@ -303,19 +329,50 @@ def send_booking_to_admins(bot, booking) -> int:
             )
             sent += 1
         except Exception as exc:  # noqa: BLE001
-            logger.warning("booking %s: не доставлено админу %s: %s",
+            logger.warning("booking %s: не доставлено %s: %s",
+                           booking.pk, admin_id, exc)
+    return sent
+
+
+def send_booking_reminder(bot, booking) -> int:
+    """Повторное напоминание мастеру о необработанной заявке."""
+    from booking.models import BookingRequest
+
+    if booking.status != BookingRequest.Status.PENDING:
+        return 0
+    text = "⏰ <b>Напоминание: необработанная заявка</b>\n\n" + build_booking_text(booking)
+    keyboard = build_booking_keyboard(booking)
+    sent = 0
+    for admin_id in booking_recipients(booking):
+        try:
+            msg = bot.send_message(admin_id, text, reply_markup=keyboard)
+            BookingNotification.objects.create(
+                booking=booking, admin_telegram_id=admin_id, message_id=msg.message_id
+            )
+            sent += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("booking %s: напоминание не доставлено %s: %s",
                            booking.pk, admin_id, exc)
     return sent
 
 
 def notify_new_booking(booking) -> int:
-    """Рассылает уведомление о новой заявке всем активным админам."""
+    """Уведомление о новой заявке — с учётом тихих часов (может отложиться)."""
+    from .notify import notify
+    notify("new_booking", {"booking_id": booking.pk})
+    return 0
+
+
+def notify_booking_cancelled(booking) -> None:
+    """Клиент отменил заявку — обновляем сообщения мастера (убираем кнопки)."""
     from .bot import get_bot
 
+    if not BookingNotification.objects.filter(booking=booking).exists():
+        return
     bot = get_bot()
     if bot is None:
-        return 0
-    return send_booking_to_admins(bot, booking)
+        return
+    refresh_booking_messages(bot, booking)
 
 
 def delete_booking_messages(bot, booking) -> None:
@@ -353,6 +410,10 @@ def handle_booking_action(bot, call) -> None:
         return
 
     if action == "confirm":
+        if booking.status == BookingRequest.Status.CANCELLED:
+            bot.answer_callback_query(call.id, "Клиент отменил заявку.")
+            delete_booking_messages(bot, booking)
+            return
         appointment = confirm_booking(booking)
         if appointment is None:
             bot.answer_callback_query(call.id, "Нет мастера в системе — подтвердите в кабинете.")

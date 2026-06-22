@@ -199,7 +199,9 @@ class WorkScheduleForm(forms.ModelForm):
                 for name in WorkSchedule.DAY_NAMES
                 for suffix in ("", "_start", "_end")
             ]
-            + ["break_between_minutes", "break_between_travel_minutes"]
+            + ["break_between_minutes", "break_between_travel_minutes",
+               "lead_time_minutes", "booking_reminder_minutes",
+               "notify_start", "notify_end"]
         )
         widgets = {
             "break_between_minutes": forms.NumberInput(
@@ -208,6 +210,14 @@ class WorkScheduleForm(forms.ModelForm):
             "break_between_travel_minutes": forms.NumberInput(
                 attrs={"class": "form-input", "min": "0", "max": "240", "style": "width:80px"}
             ),
+            "lead_time_minutes": forms.NumberInput(
+                attrs={"class": "form-input", "min": "0", "max": "1440", "style": "width:80px"}
+            ),
+            "booking_reminder_minutes": forms.NumberInput(
+                attrs={"class": "form-input", "min": "0", "max": "1440", "style": "width:80px"}
+            ),
+            "notify_start": forms.TimeInput(attrs={"class": "form-input", "type": "time"}, format="%H:%M"),
+            "notify_end": forms.TimeInput(attrs={"class": "form-input", "type": "time"}, format="%H:%M"),
             **_hours_widgets(),
         }
 
@@ -300,4 +310,22 @@ class MassageForm(forms.ModelForm):
             "location": forms.TextInput(attrs={"class": "form-input"}),
             "order": forms.NumberInput(attrs={"class": "form-input", "min": "0"}),
             "description": forms.Textarea(attrs={"class": "form-input", "rows": "3"}),
+        }
+
+
+class SessionOptionForm(forms.ModelForm):
+    """Вариант количества сеансов мастера (CRUD в кабинете)."""
+
+    class Meta:
+        from booking.models import BookingSessionOption
+        model = BookingSessionOption
+        fields = ["count", "label", "is_active", "order"]
+        widgets = {
+            "count": forms.NumberInput(
+                attrs={"class": "form-input", "min": "1", "max": "60"}
+            ),
+            "label": forms.TextInput(
+                attrs={"class": "form-input", "placeholder": "Напр. «Курс 10 сеансов» (необязательно)"}
+            ),
+            "order": forms.NumberInput(attrs={"class": "form-input", "min": "0"}),
         }

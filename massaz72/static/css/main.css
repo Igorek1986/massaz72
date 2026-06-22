@@ -1247,6 +1247,9 @@ a {
     .booking__notice--warn {
       background: #fef3c7;
       color: #92400e; }
+    .booking__notice--info {
+      background: #e0f2fe;
+      color: #075985; }
 
 .booking-form {
   max-width: 560px;
@@ -1465,6 +1468,175 @@ a {
       height: 16px; }
     .consent-row__label a {
       color: var(--color-primary); }
+
+.time-picker__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; }
+
+.time-picker__notice {
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin: 0;
+  font-size: 13px;
+  background: #fef3c7;
+  color: #92400e; }
+
+.time-picker__hint, .time-picker__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-muted); }
+
+.time-picker__hours, .time-picker__minutes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px; }
+
+.time-picker__btn {
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  background: var(--color-canvas-card);
+  color: var(--color-ink);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s; }
+  .time-picker__btn:hover:not(:disabled) {
+    border-color: var(--color-primary); }
+  .time-picker__btn.is-active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-on-primary); }
+  .time-picker__btn:disabled {
+    opacity: .4;
+    cursor: not-allowed; }
+
+.time-picker__btn--hour {
+  min-width: 52px;
+  text-align: center; }
+
+.time-picker__btn--min {
+  min-width: 56px;
+  text-align: center; }
+
+.booking-form__hint {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--color-muted); }
+
+.cal {
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  padding: 12px;
+  max-width: 320px; }
+  .cal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px; }
+  .cal__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink); }
+  .cal__nav {
+    border: 1px solid var(--color-hairline);
+    border-radius: 8px;
+    background: var(--color-canvas-card);
+    color: var(--color-ink);
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer; }
+    .cal__nav:hover:not(:disabled) {
+      border-color: var(--color-primary); }
+    .cal__nav:disabled {
+      opacity: .35;
+      cursor: not-allowed; }
+  .cal__weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px; }
+    .cal__weekdays span {
+      text-align: center;
+      font-size: 12px;
+      color: var(--color-muted); }
+  .cal__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px; }
+  .cal__cell {
+    aspect-ratio: 1 / 1;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-ink);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s; }
+    .cal__cell:hover:not(:disabled) {
+      border-color: var(--color-primary); }
+    .cal__cell.is-active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: var(--color-on-primary); }
+    .cal__cell--off {
+      color: var(--color-muted);
+      opacity: .4;
+      cursor: not-allowed; }
+    .cal__cell--empty {
+      cursor: default;
+      border: none; }
+
+.booking__notice--resume {
+  display: block;
+  background: #e0f2fe;
+  color: #075985;
+  text-decoration: none;
+  font-weight: 500; }
+  .booking__notice--resume:hover {
+    background: #bae6fd; }
+
+.confirm-timer {
+  text-align: center;
+  font-size: 16px;
+  margin: 16px 0;
+  color: var(--color-body); }
+  .confirm-timer b {
+    font-size: 22px;
+    color: var(--color-primary-active);
+    font-variant-numeric: tabular-nums; }
+
+.confirm-section__title {
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  margin: 24px 0 8px;
+  color: var(--color-ink); }
+
+.confirm-phone {
+  max-width: 360px;
+  margin: 0 auto 8px; }
+  .confirm-phone__form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; }
+
+.confirm-cancel {
+  margin-top: 16px; }
+  .confirm-cancel__btn {
+    background: none;
+    border: none;
+    color: var(--color-primary-active);
+    font-size: 14px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 8px; }
+    .confirm-cancel__btn:hover {
+      opacity: .8; }
 
 .account {
   padding: 48px 0; }

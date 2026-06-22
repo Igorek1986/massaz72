@@ -38,6 +38,27 @@
       <span class="form-hint">мин. после окончания выездного массажа</span>
     </div>
   </div>
+  <div class="schedule-break">
+    <label class="form-label">{{ schedule_form.lead_time_minutes.label }}</label>
+    <div class="schedule-break__row">
+      {{ schedule_form.lead_time_minutes }}
+      <span class="form-hint">мин. — за сколько до начала нельзя записаться онлайн</span>
+    </div>
+  </div>
+  <div class="schedule-break">
+    <label class="form-label">{{ schedule_form.booking_reminder_minutes.label }}</label>
+    <div class="schedule-break__row">
+      {{ schedule_form.booking_reminder_minutes }}
+      <span class="form-hint">мин. — повторно напомнить о необработанной заявке (0 — выкл)</span>
+    </div>
+  </div>
+  <div class="schedule-break">
+    <label class="form-label">Когда присылать уведомления мне</label>
+    <div class="schedule-break__row">
+      {{ schedule_form.notify_start }} <span>—</span> {{ schedule_form.notify_end }}
+      <span class="form-hint">пусто — общее время сайта</span>
+    </div>
+  </div>
   <div class="settings-card__footer">
     <button type="submit" class="btn btn--primary btn--sm">Сохранить</button>
   </div>

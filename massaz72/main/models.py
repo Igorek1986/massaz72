@@ -1,3 +1,5 @@
+from datetime import time
+
 from django.db import models
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
@@ -139,6 +141,23 @@ class SiteSettings(models.Model):
             "Разрешить регистрацию, вход и личный кабинет клиентов. "
             "При выключении регистрация и кабинет недоступны."
         ),
+    )
+    booking_hold_minutes = models.PositiveIntegerField(
+        "Удержание неподтверждённой брони (мин)",
+        default=15,
+        help_text=(
+            "Заявка без телефона держит время столько минут в ожидании "
+            "подтверждения клиентом в боте. Не подтвердил — бронь снимается, "
+            "время освобождается, заявка удаляется."
+        ),
+    )
+    notify_start = models.TimeField(
+        "Уведомления бота: с", default=time(8, 0),
+        help_text="Раньше этого времени бот не шлёт автоуведомления (ждёт утра).",
+    )
+    notify_end = models.TimeField(
+        "Уведомления бота: до", default=time(21, 0),
+        help_text="Позже этого времени бот не шлёт автоуведомления (отложит на утро).",
     )
 
     class Meta:

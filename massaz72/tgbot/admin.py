@@ -10,6 +10,7 @@ from .models import (
     BookingTimeSlot,
     Broadcast,
     DialogMessage,
+    PendingNotification,
     TelegramUser,
 )
 
@@ -173,3 +174,10 @@ class DialogMessageAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(PendingNotification)
+class PendingNotificationAdmin(admin.ModelAdmin):
+    list_display = ["kind", "available_at", "sent", "created_at"]
+    list_filter = ["kind", "sent"]
+    readonly_fields = [f.name for f in PendingNotification._meta.fields]

@@ -28,6 +28,13 @@
           <label class="account-form__label" for="{{ profile_form.reminder_interval_months.id_for_label }}">Как часто напоминать</label>
           {{ profile_form.reminder_interval_months }}
         </div>
+        <div class="account-form__row">
+          <label class="account-form__label">Когда боту писать вам (необязательно)</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            {{ profile_form.notify_start }} <span>—</span> {{ profile_form.notify_end }}
+          </div>
+          <span class="account__muted">Если не задано — берётся общее время уведомлений.</span>
+        </div>
         {% if not client.bot_linked %}
         <p class="account__muted">Чтобы получать напоминания, подключите Telegram (ниже).</p>
         {% endif %}

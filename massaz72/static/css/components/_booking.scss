@@ -23,6 +23,11 @@
       background: #fef3c7;
       color: #92400e;
     }
+
+    &--info {
+      background: #e0f2fe;
+      color: #075985;
+    }
   }
 }
 
@@ -314,5 +319,225 @@
     }
 
     a { color: var(--color-primary); }
+  }
+}
+
+// Пикер времени: автоперенос даты + выбор часа и минут.
+.time-picker {
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__notice {
+    border-radius: 10px;
+    padding: 9px 12px;
+    margin: 0;
+    font-size: 13px;
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  &__hint,
+  &__empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--color-muted);
+  }
+
+  &__hours,
+  &__minutes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__btn {
+    border: 1px solid var(--color-hairline);
+    border-radius: 10px;
+    background: var(--color-canvas-card);
+    color: var(--color-ink);
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+
+    &:hover:not(:disabled) {
+      border-color: var(--color-primary);
+    }
+
+    &.is-active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: var(--color-on-primary);
+    }
+
+    &:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+  }
+
+  &__btn--hour {
+    min-width: 52px;
+    text-align: center;
+  }
+
+  &__btn--min {
+    min-width: 56px;
+    text-align: center;
+  }
+}
+
+// Подсказка под полем (длительность услуги).
+.booking-form__hint {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+// Календарь выбора даты.
+.cal {
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+  padding: 12px;
+  max-width: 320px;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  &__nav {
+    border: 1px solid var(--color-hairline);
+    border-radius: 8px;
+    background: var(--color-canvas-card);
+    color: var(--color-ink);
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover:not(:disabled) { border-color: var(--color-primary); }
+    &:disabled { opacity: .35; cursor: not-allowed; }
+  }
+
+  &__weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+
+    span {
+      text-align: center;
+      font-size: 12px;
+      color: var(--color-muted);
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  &__cell {
+    aspect-ratio: 1 / 1;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-ink);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+
+    &:hover:not(:disabled) { border-color: var(--color-primary); }
+
+    &.is-active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: var(--color-on-primary);
+    }
+
+    &--off {
+      color: var(--color-muted);
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    &--empty {
+      cursor: default;
+      border: none;
+    }
+  }
+}
+
+// Баннер «продолжить подтверждение» на форме.
+.booking__notice--resume {
+  display: block;
+  background: #e0f2fe;
+  color: #075985;
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover { background: #bae6fd; }
+}
+
+// Страница подтверждения заявки.
+.confirm-timer {
+  text-align: center;
+  font-size: 16px;
+  margin: 16px 0;
+  color: var(--color-body);
+
+  b { font-size: 22px; color: var(--color-primary-active); font-variant-numeric: tabular-nums; }
+}
+
+.confirm-section__title {
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  margin: 24px 0 8px;
+  color: var(--color-ink);
+}
+
+// Телефон — запасной способ, под блоками ботов.
+.confirm-phone {
+  max-width: 360px;
+  margin: 0 auto 8px;
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+// Кнопка отмены заявки на странице подтверждения.
+.confirm-cancel {
+  margin-top: 16px;
+
+  &__btn {
+    background: none;
+    border: none;
+    color: var(--color-primary-active);
+    font-size: 14px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 8px;
+
+    &:hover { opacity: .8; }
   }
 }

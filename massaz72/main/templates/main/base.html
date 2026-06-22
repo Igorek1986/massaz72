@@ -32,6 +32,63 @@
   </title>
 </head>
 <body>
+<script>
+  // Хранилище незавершённых заявок (возврат к подтверждению на том же
+  // устройстве). Определяется до скриптов в теле страницы.
+  window.MassazBookings = (function () {
+    var KEY = 'massaz_bookings';
+    function read() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
+    function write(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) {} }
+    function prune() {
+      var now = Date.now();
+      var a = read().filter(function (x) { return !x.deadline || new Date(x.deadline).getTime() > now; });
+      write(a); return a;
+    }
+    return {
+      list: prune,
+      add: function (token, label, deadline) {
+        var a = read().filter(function (x) { return x.token !== token; });
+        a.push({ token: token, label: label || '', deadline: deadline || null });
+        write(a);
+      },
+      remove: function (token) { write(read().filter(function (x) { return x.token !== token; })); },
+    };
+  })();
+
+  // Маска телефона РФ: ввод только цифр, 8/7 → +7, красивый формат
+  // «+7 999 123 45 67», не больше 10 цифр после +7.
+  window.attachPhoneMask = function (input) {
+    if (!input) return;
+    function national(raw) {
+      var d = (raw || '').replace(/\D/g, '');
+      if (d && (d[0] === '7' || d[0] === '8')) d = d.slice(1);  // код страны
+      return d.slice(0, 10);
+    }
+    function pretty(d) {
+      var out = '+7';
+      if (d.length) out += ' ' + d.slice(0, 3);
+      if (d.length >= 4) out += ' ' + d.slice(3, 6);
+      if (d.length >= 7) out += ' ' + d.slice(6, 8);
+      if (d.length >= 9) out += ' ' + d.slice(8, 10);
+      return out;
+    }
+    function reformat() {
+      var d = national(input.value);
+      input.value = d ? pretty(d) : '';
+    }
+    input.addEventListener('input', function () {
+      var d = national(input.value);
+      input.value = pretty(d);  // показываем +7… сразу при вводе
+      // каретку — в конец
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
+    input.addEventListener('focus', function () { if (!input.value) input.value = '+7 '; });
+    input.addEventListener('blur', function () {
+      if (national(input.value).length === 0) input.value = '';  // пусто — оставляем пустым (необязательно)
+      else reformat();
+    });
+  };
+</script>
 <header class="header">
   <div class="container header__container">
     <div class="header__logo">
@@ -46,6 +103,12 @@
         <li class="nav__item"><a href="{% url 'main:index' %}#about" class="nav__link">{{ site_settings.about_title }}</a></li>
         {% if site_settings.online_booking_enabled %}
         <li class="nav__item"><a href="{% url 'booking:page' %}{% if massage %}?service={{ massage.id }}{% endif %}" class="nav__link nav__link--book">Записаться онлайн</a></li>
+        {% if not request.user.client_profile %}
+        <li class="nav__item nav__item--mybooking" id="navMyBooking" hidden>
+          <a href="#" class="nav__link" id="navMyBookingLink"
+             data-confirm-base="{% url 'booking:confirm' 'TOKEN' %}">Моя заявка</a>
+        </li>
+        {% endif %}
         {% endif %}
         {% if site_settings.client_cabinet_enabled %}
         <li class="nav__item">
@@ -270,6 +333,19 @@
     document.addEventListener('click', function (e) {
       if (!menu.contains(e.target)) menu.classList.remove('user-menu--open');
     });
+  })();
+</script>
+<script>
+  // Пункт «Моя заявка» в шапке — если на этом устройстве есть незавершённая заявка.
+  (function () {
+    var li = document.getElementById('navMyBooking');
+    if (!li) return;
+    var items = window.MassazBookings.list();
+    if (!items.length) return;
+    var link = document.getElementById('navMyBookingLink');
+    var latest = items[items.length - 1];
+    link.href = link.dataset.confirmBase.replace('TOKEN', encodeURIComponent(latest.token));
+    li.hidden = false;
   })();
 </script>
 </body>

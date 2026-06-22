@@ -1,0 +1,185 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}Подтверждение записи{% endblock %}
+
+{% block body %}
+<section class="booking">
+  <div class="container">
+    <div class="booking-done" id="confirmRoot" data-token="{{ booking_token|default:'' }}"
+         data-status-url="{% if booking_token %}{% url 'booking:status' booking_token %}{% endif %}"
+         data-booking-url="{% url 'booking:page' %}">
+
+      {% if state == 'expired' %}
+        <h1 class="booking__title">Бронь снята</h1>
+        <p class="booking-done__text">
+          Время удержания истекло, и слот освободился. Оформите запись заново —
+          это займёт минуту.
+        </p>
+        <a class="booking-form__submit" href="{% url 'booking:page' %}">Записаться снова</a>
+
+      {% elif state == 'master_confirmed' %}
+        <h1 class="booking__title">Запись подтверждена! ✅</h1>
+        <p class="booking-done__text">Мастер подтвердил вашу запись на
+          {{ booking.preferred_date|date:"d.m.Y" }} {{ booking.preferred_time|time:"H:i" }}.</p>
+        <a class="booking-done__home" href="{% url 'main:index' %}">На главную</a>
+
+      {% elif state == 'closed' %}
+        <h1 class="booking__title">Заявка отменена</h1>
+        <p class="booking-done__text">Время освобождено. Можно записаться заново на удобное время.</p>
+        <a class="booking-form__submit" href="{% url 'booking:page' %}">Записаться снова</a>
+
+      {% elif state == 'pending' %}
+        <h1 class="booking__title">Заявка принята!</h1>
+        <p class="booking-done__text">
+          Мы получили вашу заявку на {{ booking.preferred_date|date:"d.m.Y" }}
+          {{ booking.preferred_time|time:"H:i" }} и свяжемся для подтверждения.
+        </p>
+        {% if telegram_bot_url %}
+        <p class="booking-done__text">Хотите получать напоминания? Подключите бот:</p>
+        <a class="bot-choice__btn bot-choice__btn--tg" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">Открыть Telegram-бот</a>
+        <p class="booking__notice booking__notice--info">
+          🔔 Если подключили бота — не удаляйте его, чтобы массажист мог связаться
+          с вами и прислать напоминание.
+        </p>
+        {% endif %}
+        <a class="booking-done__home" href="{% url 'main:index' %}">На главную</a>
+
+        <form method="post" action="{% url 'booking:confirm' booking_token %}" class="confirm-cancel"
+              onsubmit="return confirm('Отменить заявку и освободить время? Можно будет записаться заново на другое время.');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="cancel">
+          <button type="submit" class="confirm-cancel__btn">Отменить заявку</button>
+        </form>
+
+      {% else %}{# awaiting #}
+        <h1 class="booking__title">Подтвердите запись</h1>
+        <p class="booking-done__text">
+          Заявка на <b>{{ booking.preferred_date|date:"d.m.Y" }}
+          {{ booking.preferred_time|time:"H:i" }}</b>{% if booking.service %}, {{ booking.service.name }}{% endif %}.
+          Подтвердите её одним из способов, иначе бронь снимется.
+        </p>
+
+        <div class="confirm-timer" id="confirmTimer" data-deadline="{{ deadline_iso }}">
+          Время на подтверждение: <b id="confirmCountdown">--:--</b>
+        </div>
+
+        {# Приоритет — боты: два больших блока с QR сверху. #}
+        <h2 class="confirm-section__title">💬 Подтвердите в мессенджере</h2>
+        <div class="bot-choice">
+          {% if telegram_bot_url %}
+          <div class="bot-choice__card">
+            <div class="bot-choice__name">Telegram</div>
+            {% if telegram_qr_svg %}<div class="bot-choice__qr">{{ telegram_qr_svg|safe }}</div>{% endif %}
+            <a class="bot-choice__btn bot-choice__btn--tg" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">
+              Открыть и подтвердить
+            </a>
+          </div>
+          {% endif %}
+          <div class="bot-choice__card bot-choice__card--soon">
+            <div class="bot-choice__name">Max</div>
+            <span class="bot-choice__soon">Скоро</span>
+            <span class="bot-choice__soon-hint">Подключение через Max появится позже</span>
+          </div>
+        </div>
+
+        <p class="booking__notice booking__notice--info">
+          🔔 Не удаляйте бота после подтверждения — так массажист сможет связаться
+          с вами и прислать напоминание о записи.
+        </p>
+
+        {# Телефон — запасной способ, снизу. #}
+        <div class="confirm-phone">
+          <h2 class="confirm-section__title">📞 Или оставьте телефон</h2>
+          <form class="confirm-phone__form" method="post" action="{% url 'booking:confirm' booking_token %}">
+            {% csrf_token %}
+            <input type="tel" name="phone" id="confirmPhone" class="booking-form__input"
+                   placeholder="+7 000 000 00 00" maxlength="20" required>
+            <button type="submit" class="booking-form__submit">Подтвердить</button>
+          </form>
+          {% if phone_error %}<span class="booking-form__error">{{ phone_error }}</span>{% endif %}
+        </div>
+
+        <a class="booking-done__home" href="{% url 'main:index' %}">Пропустить → на главную</a>
+
+        <form method="post" action="{% url 'booking:confirm' booking_token %}" class="confirm-cancel"
+              onsubmit="return confirm('Отменить заявку и освободить время? Можно будет записаться заново на другое время.');">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="cancel">
+          <button type="submit" class="confirm-cancel__btn">Отменить заявку</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var root = document.getElementById('confirmRoot');
+    if (!root) return;
+    if (window.attachPhoneMask) window.attachPhoneMask(document.getElementById('confirmPhone'));
+    var store = window.MassazBookings;
+    var token = root.dataset.token;
+    var state = "{{ state|escapejs }}";
+    var bookingUrl = root.dataset.bookingUrl;
+
+    // Запоминаем/чистим токен в localStorage для возврата и шапки.
+    if (store && token) {
+      if (state === 'awaiting') {
+        var tmr = document.getElementById('confirmTimer');
+        var label = (root.querySelector('.booking-done__text b') || {}).textContent || '';
+        store.add(token, label.trim(), tmr ? tmr.dataset.deadline : null);
+      } else {
+        store.remove(token);  // pending/confirmed/closed/expired — больше не висит
+      }
+    }
+
+    if (state !== 'awaiting') return;
+
+    // Обратный отсчёт.
+    var cd = document.getElementById('confirmCountdown');
+    var deadline = new Date(document.getElementById('confirmTimer').dataset.deadline).getTime();
+    var statusUrl = root.dataset.statusUrl;
+    var stopped = false;
+
+    function expire() {
+      stopped = true;
+      if (store && token) store.remove(token);
+      root.innerHTML =
+        '<h1 class="booking__title">Бронь снята</h1>' +
+        '<p class="booking-done__text">Время удержания истекло, слот освободился.</p>' +
+        '<a class="booking-form__submit" href="' + bookingUrl + '">Записаться снова</a>';
+    }
+    function tick() {
+      if (stopped) return;
+      var left = Math.floor((deadline - Date.now()) / 1000);
+      if (left <= 0) { expire(); return; }
+      var m = Math.floor(left / 60), s = left % 60;
+      cd.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+    tick();
+    var clock = setInterval(function () { if (stopped) { clearInterval(clock); } else { tick(); } }, 1000);
+
+    // Поллинг статуса: подтверждение в боте / мастером / истечение.
+    function poll() {
+      if (stopped) return;
+      fetch(statusUrl, { headers: { 'X-Requested-With': 'fetch' } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d) return;
+          if (!d.found) { expire(); return; }
+          if (d.status && d.status !== 'awaiting_contact') {
+            stopped = true;
+            if (store && token) store.remove(token);
+            location.reload();  // перерисуем страницу в нужном состоянии
+          }
+        })
+        .catch(function () {});
+    }
+    var poller = setInterval(function () { if (stopped) { clearInterval(poller); } else { poll(); } }, 4000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') poll();
+    });
+  })();
+</script>
+{% endblock %}

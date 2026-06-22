@@ -995,6 +995,14 @@ body.cabinet-body {
     font-size: 13px;
     line-height: 1.5;
     margin-bottom: 14px;
+
+    // Подсказка вне __body (сразу под шапкой) — выравниваем по контенту и
+    // отделяем от списка снизу.
+    &--inset {
+      padding: 12px 20px 14px;
+      margin-bottom: 0;
+      border-bottom: 1px solid var(--cab-border);
+    }
   }
 }
 

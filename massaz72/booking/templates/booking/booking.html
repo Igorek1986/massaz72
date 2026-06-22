@@ -9,71 +9,17 @@
     {% if done %}
       <div class="booking-done">
         <h1 class="booking__title">Заявка принята!</h1>
-        {% if telegram_bot_url %}
-        <p class="booking-done__text">
-          Подтвердите запись в боте — так мы её закрепим и сможем связаться с вами
-          прямо в мессенджере, даже без телефона. Выберите бот, отсканируйте QR
-          или откройте ссылку:
-        </p>
-        <div class="bot-choice">
-          <div class="bot-choice__card">
-            <div class="bot-choice__name">Telegram</div>
-            {% if telegram_qr_svg %}<div class="bot-choice__qr">{{ telegram_qr_svg|safe }}</div>{% endif %}
-            <a class="bot-choice__btn bot-choice__btn--tg" href="{{ telegram_bot_url }}" target="_blank" rel="noopener">
-              Открыть и подтвердить
-            </a>
-          </div>
-          <div class="bot-choice__card bot-choice__card--soon">
-            <div class="bot-choice__name">Max</div>
-            <span class="bot-choice__soon">Скоро</span>
-            <span class="bot-choice__soon-hint">Подключение через Max появится позже</span>
-          </div>
-        </div>
-        <a class="booking-done__home" href="{% url 'main:index' %}">Пропустить → на главную</a>
-
-        {% if booking_token %}
-        <script>
-          (function () {
-            var token = "{{ booking_token|escapejs }}";
-            var done = document.querySelector('.booking-done');
-            if (!token || !done) return;
-            var homeUrl = "{% url 'main:index' %}";
-            var statusUrl = "/booking/status/" + encodeURIComponent(token) + "/";
-            var tries = 0, stopped = false;
-
-            function showConfirmed() {
-              stopped = true;
-              done.innerHTML =
-                '<h1 class="booking__title">Запись подтверждена! ✅</h1>' +
-                '<p class="booking-done__text">Спасибо! Мы свяжемся с вами для согласования времени.</p>' +
-                '<a class="booking-done__home" href="' + homeUrl + '">На главную</a>';
-            }
-            function poll() {
-              if (stopped) return;
-              fetch(statusUrl, { headers: { 'X-Requested-With': 'fetch' } })
-                .then(function (r) { return r.json(); })
-                .then(function (d) { if (d && d.confirmed) showConfirmed(); })
-                .catch(function () {});
-            }
-            var timer = setInterval(function () {
-              if (stopped || ++tries > 150) { clearInterval(timer); return; }
-              poll();
-            }, 4000);
-            // Мгновенная проверка при возврате на вкладку (после Telegram).
-            document.addEventListener('visibilitychange', function () {
-              if (document.visibilityState === 'visible') poll();
-            });
-          })();
-        </script>
-        {% endif %}
-        {% else %}
         <p class="booking-done__text">Мы свяжемся с вами для подтверждения даты и времени.</p>
         <a class="booking-done__home" href="{% url 'main:index' %}">← На главную</a>
-        {% endif %}
       </div>
     {% else %}
       <h1 class="booking__title">Онлайн-запись на массаж</h1>
       <p class="booking__subtitle">Оставьте заявку — мы подтвердим запись и свяжемся с вами.</p>
+
+      <a class="booking__notice booking__notice--resume" id="bookingResume"
+         data-confirm-base="{% url 'booking:confirm' 'TOKEN' %}" href="#" hidden>
+        У вас есть неподтверждённая заявка — продолжить подтверждение →
+      </a>
 
       {% if throttled %}
       <p class="booking__notice booking__notice--warn">Вы недавно уже оставляли заявку. Попробуйте позже.</p>
@@ -84,13 +30,48 @@
         {{ form.website }}
         {{ form.ts }}
 
+        {{ service_durations|json_script:"serviceDurations" }}
         {% for field in form.visible_fields %}
         {% if field.name != 'website' and field.name != 'consent' %}
+        {% if field.name == 'comment' %}
+        <div class="booking-form__row">
+          <label class="booking-form__label">Желаемая дата <span class="booking-form__req">*</span></label>
+          <div class="cal" id="cal" data-month-url="{% url 'booking:month' %}">
+            <div class="cal__head">
+              <button type="button" class="cal__nav" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+              <span class="cal__title" id="calTitle"></span>
+              <button type="button" class="cal__nav" id="calNext" aria-label="Следующий месяц">›</button>
+            </div>
+            <div class="cal__weekdays">
+              <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+            </div>
+            <div class="cal__grid" id="calGrid"></div>
+          </div>
+          {{ form.preferred_date }}
+          {% if form.preferred_date.errors %}<span class="booking-form__error">{{ form.preferred_date.errors.0 }}</span>{% endif %}
+        </div>
+        <div class="booking-form__row time-picker" id="timePicker"
+             data-slots-url="{% url 'booking:slots' %}" data-sessions-url="{% url 'booking:sessions' %}">
+          <label class="booking-form__label">
+            Желаемое время <span class="booking-form__req">*</span>
+          </label>
+          <div class="time-picker__body">
+            <p class="time-picker__notice" id="timeNotice" hidden></p>
+            <p class="time-picker__hint" id="timeHint">Сначала выберите услугу и дату.</p>
+            <div class="time-picker__hours" id="timeHours"></div>
+            <div class="time-picker__minutes" id="timeMinutes"></div>
+            <p class="time-picker__empty" id="timeEmpty" hidden>На выбранный день свободного времени нет.</p>
+            {{ form.preferred_time }}
+            {% if form.preferred_time.errors %}<span class="booking-form__error">{{ form.preferred_time.errors.0 }}</span>{% endif %}
+          </div>
+        </div>
+        {% endif %}
         <div class="booking-form__row">
           <label class="booking-form__label" for="{{ field.id_for_label }}">
             {{ field.label }}{% if field.field.required %} <span class="booking-form__req">*</span>{% endif %}
           </label>
           {{ field }}
+          {% if field.name == 'service' %}<p class="booking-form__hint" id="serviceDuration" hidden></p>{% endif %}
           {% if field.errors %}<span class="booking-form__error">{{ field.errors.0 }}</span>{% endif %}
         </div>
         {% endif %}
@@ -111,6 +92,324 @@
              onclick="if(window.history.length>1){history.back();return false;}">Отмена</a>
         </div>
       </form>
+
+      <script>
+        (function () {
+          var picker = document.getElementById('timePicker');
+          if (!picker) return;
+          var slotsUrl = picker.dataset.slotsUrl;
+          var hidden = document.getElementById('id_preferred_time');
+          var dateInput = document.getElementById('id_preferred_date');
+          var serviceSel = document.getElementById('id_service');
+          var specialistSel = document.getElementById('id_specialist'); // может отсутствовать
+          var sessionsSel = document.getElementById('id_sessions');     // может отсутствовать
+          var hoursBox = document.getElementById('timeHours');
+          var minutesBox = document.getElementById('timeMinutes');
+          var notice = document.getElementById('timeNotice');
+          var hint = document.getElementById('timeHint');
+          var empty = document.getElementById('timeEmpty');
+
+          var WD = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+          var MON = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+          var MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+          var slots = [];          // ['09:00', ...]
+          var selectedHour = null; // 'HH'
+
+          function humanDate(iso) {
+            var p = iso.split('-');
+            var d = new Date(+p[0], +p[1] - 1, +p[2]);
+            return WD[d.getDay()] + ', ' + (+p[2]) + ' ' + MON[d.getMonth()];
+          }
+          function show(el, on) { if (el) el.hidden = !on; }
+          function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+          // ---- Календарь: выбор даты, нерабочие дни некликабельны ----------
+          var cal = document.getElementById('cal');
+          var calGrid = document.getElementById('calGrid');
+          var calTitle = document.getElementById('calTitle');
+          var calPrev = document.getElementById('calPrev');
+          var calNext = document.getElementById('calNext');
+          var monthUrl = cal.dataset.monthUrl;
+          var now0 = new Date();
+          var minY = now0.getFullYear(), minM = now0.getMonth() + 1; // нижняя граница навигации
+          var viewY, viewM;
+          var enabledSet = {};
+
+          function specialistQS() {
+            return (specialistSel && specialistSel.value)
+              ? '&specialist=' + encodeURIComponent(specialistSel.value) : '';
+          }
+          function renderGrid() {
+            calTitle.textContent = MONTHS[viewM - 1] + ' ' + viewY;
+            calPrev.disabled = (viewY < minY) || (viewY === minY && viewM <= minM);
+            calGrid.innerHTML = '';
+            var firstDow = new Date(viewY, viewM - 1, 1).getDay(); // 0=вс
+            var offset = (firstDow + 6) % 7;                       // понедельник первый
+            var daysIn = new Date(viewY, viewM, 0).getDate();
+            var i;
+            for (i = 0; i < offset; i++) {
+              var blank = document.createElement('span');
+              blank.className = 'cal__cell cal__cell--empty';
+              calGrid.appendChild(blank);
+            }
+            for (i = 1; i <= daysIn; i++) {
+              var iso = viewY + '-' + pad(viewM) + '-' + pad(i);
+              var b = document.createElement('button');
+              b.type = 'button';
+              b.className = 'cal__cell';
+              b.textContent = i;
+              if (enabledSet[iso]) {
+                b.addEventListener('click', (function (d) {
+                  return function () { selectDate(d, false); };
+                })(iso));
+              } else {
+                b.disabled = true;
+                b.classList.add('cal__cell--off');
+              }
+              if (dateInput.value === iso) b.classList.add('is-active');
+              calGrid.appendChild(b);
+            }
+          }
+          function fetchMonth() {
+            return fetch(monthUrl + '?year=' + viewY + '&month=' + viewM + specialistQS(),
+                         { headers: { 'X-Requested-With': 'fetch' } })
+              .then(function (r) { return r.json(); })
+              .then(function (d) {
+                enabledSet = {};
+                ((d && d.enabled) || []).forEach(function (s) { enabledSet[s] = 1; });
+                renderGrid();
+              })
+              .catch(function () { calGrid.innerHTML = ''; });
+          }
+          function gotoMonth(y, m) {
+            viewY = y; viewM = m;
+            return fetchMonth();
+          }
+          function selectDate(iso, silent) {
+            dateInput.value = iso;
+            renderGrid();  // подсветит выбранный день по dateInput.value
+            if (!silent) fetchSlots();
+          }
+          calPrev.addEventListener('click', function () {
+            if (calPrev.disabled) return;
+            var m = viewM - 1, y = viewY;
+            if (m < 1) { m = 12; y--; }
+            gotoMonth(y, m);
+          });
+          calNext.addEventListener('click', function () {
+            var m = viewM + 1, y = viewY;
+            if (m > 12) { m = 1; y++; }
+            gotoMonth(y, m);
+          });
+          function clearPicker() {
+            hoursBox.innerHTML = '';
+            minutesBox.innerHTML = '';
+            selectedHour = null;
+          }
+          function uniqueHours() {
+            var seen = {}, out = [];
+            slots.forEach(function (s) {
+              var h = s.slice(0, 2);
+              if (!seen[h]) { seen[h] = 1; out.push(h); }
+            });
+            return out;
+          }
+          function minutesForHour(h) {
+            return slots.filter(function (s) { return s.slice(0, 2) === h; })
+                        .map(function (s) { return s.slice(3); });
+          }
+          function renderMinutes(h) {
+            minutesBox.innerHTML = '';
+            var avail = minutesForHour(h);  // отсортированы по возрастанию
+            // Выбираем ранее выбранную минуту (если доступна) или первую доступную.
+            var chosen = null;
+            if (hidden.value && hidden.value.slice(0, 2) === h &&
+                avail.indexOf(hidden.value.slice(3)) !== -1) {
+              chosen = hidden.value.slice(3);
+            } else if (avail.length) {
+              chosen = avail[0];
+            }
+            if (chosen !== null) hidden.value = h + ':' + chosen;
+            ['00', '15', '30', '45'].forEach(function (m) {
+              var b = document.createElement('button');
+              b.type = 'button';
+              b.className = 'time-picker__btn time-picker__btn--min';
+              b.textContent = ':' + m;
+              if (avail.indexOf(m) === -1) {
+                b.disabled = true;
+              } else {
+                b.addEventListener('click', function () {
+                  hidden.value = h + ':' + m;
+                  Array.prototype.forEach.call(
+                    minutesBox.children, function (c) { c.classList.remove('is-active'); });
+                  b.classList.add('is-active');
+                });
+              }
+              if (chosen === m) b.classList.add('is-active');
+              minutesBox.appendChild(b);
+            });
+          }
+          function selectHour(h, btn) {
+            selectedHour = h;
+            Array.prototype.forEach.call(
+              hoursBox.children, function (c) { c.classList.remove('is-active'); });
+            btn.classList.add('is-active');
+            renderMinutes(h);
+          }
+          function renderHours() {
+            clearPicker();
+            var hrs = uniqueHours();
+            hrs.forEach(function (h) {
+              var b = document.createElement('button');
+              b.type = 'button';
+              b.className = 'time-picker__btn time-picker__btn--hour';
+              b.textContent = h;
+              b.addEventListener('click', function () { selectHour(h, b); });
+              hoursBox.appendChild(b);
+            });
+            // Если уже есть выбранное время (после ошибки сервера) и оно доступно —
+            // восстановим выбор.
+            if (hidden.value) {
+              var ch = hidden.value.slice(0, 2);
+              if (hrs.indexOf(ch) !== -1) {
+                var idx = hrs.indexOf(ch);
+                selectHour(ch, hoursBox.children[idx]);
+                return;
+              }
+              hidden.value = '';
+            }
+          }
+
+          var addressInput = document.getElementById('id_address');
+          function isTravel() {
+            return !!(addressInput && addressInput.value.trim());
+          }
+          function syncCalendarToDate(iso) {
+            var y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+            if (y === viewY && m === viewM) { renderGrid(); }
+            else { gotoMonth(y, m); }
+          }
+
+          function fetchSlots() {
+            var date = dateInput && dateInput.value;
+            var service = serviceSel && serviceSel.value;
+            // Количество сеансов обязательно для расчёта: при курсе слоты —
+            // пересечение свободного времени по всем дням, иначе показанное время
+            // не пройдёт проверку формы.
+            var needSessions = sessionsSel && !sessionsSel.value;
+            show(notice, false);
+            if (!date || !service || needSessions) {
+              clearPicker();
+              hint.textContent = needSessions
+                ? 'Выберите услугу, количество сеансов и дату.'
+                : 'Сначала выберите услугу и дату.';
+              show(hint, true);
+              show(empty, false);
+              return;
+            }
+            show(hint, false);
+            var qs = 'date=' + encodeURIComponent(date) + '&service=' + encodeURIComponent(service);
+            if (specialistSel && specialistSel.value) qs += '&specialist=' + encodeURIComponent(specialistSel.value);
+            if (sessionsSel && sessionsSel.value) qs += '&sessions=' + encodeURIComponent(sessionsSel.value);
+            if (isTravel()) qs += '&travel=1';
+            fetch(slotsUrl + '?' + qs, { headers: { 'X-Requested-With': 'fetch' } })
+              .then(function (r) { return r.json(); })
+              .then(function (d) {
+                slots = (d && d.slots) || [];
+                if (d && d.shifted && d.effective_date) {
+                  hidden.value = '';
+                  dateInput.value = d.effective_date;
+                  syncCalendarToDate(d.effective_date);
+                  notice.textContent = 'Выбранный день недоступен — перенесли на ближайший: ' + humanDate(d.effective_date) + '.';
+                  show(notice, true);
+                }
+                if (slots.length) {
+                  show(empty, false);
+                  renderHours();
+                } else {
+                  clearPicker();
+                  show(empty, true);
+                }
+              })
+              .catch(function () { clearPicker(); });
+          }
+
+          // ---- Длительность выбранной услуги -------------------------------
+          var durEl = document.getElementById('serviceDuration');
+          var durations = {};
+          try {
+            durations = JSON.parse(document.getElementById('serviceDurations').textContent);
+          } catch (e) { durations = {}; }
+          function updateDuration() {
+            if (!durEl) return;
+            var text = serviceSel && durations[serviceSel.value];
+            if (text) { durEl.textContent = 'Длительность: ' + text; show(durEl, true); }
+            else { durEl.textContent = ''; show(durEl, false); }
+          }
+
+          // Перестроение списка сеансов под выбранного мастера (варианты у
+          // каждого специалиста свои).
+          var sessionsUrl = picker.dataset.sessionsUrl;
+          function rebuildSessions(cb) {
+            if (!sessionsSel || !specialistSel) { if (cb) cb(); return; }
+            fetch(sessionsUrl + '?specialist=' + encodeURIComponent(specialistSel.value || ''),
+                  { headers: { 'X-Requested-With': 'fetch' } })
+              .then(function (r) { return r.json(); })
+              .then(function (d) {
+                var opts = (d && d.options) || [];
+                sessionsSel.innerHTML = '';
+                var empty = document.createElement('option');
+                empty.value = ''; empty.textContent = 'Выберите количество сеансов';
+                sessionsSel.appendChild(empty);
+                opts.forEach(function (o) {
+                  var op = document.createElement('option');
+                  op.value = o.id; op.textContent = o.label;
+                  sessionsSel.appendChild(op);
+                });
+                sessionsSel.value = '';
+                if (cb) cb();
+              })
+              .catch(function () { if (cb) cb(); });
+          }
+
+          if (serviceSel) serviceSel.addEventListener('change', function () { updateDuration(); fetchSlots(); });
+          if (sessionsSel) sessionsSel.addEventListener('change', fetchSlots);
+          if (addressInput) addressInput.addEventListener('change', fetchSlots);
+          if (specialistSel) specialistSel.addEventListener('change', function () {
+            // Смена мастера: другие варианты сеансов, расписание и слоты.
+            rebuildSessions(function () { fetchMonth().then(fetchSlots); });
+          });
+
+          // ---- Инициализация ----------------------------------------------
+          (function init() {
+            var iso = dateInput.value;
+            if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+              gotoMonth(+iso.slice(0, 4), +iso.slice(5, 7));
+            } else {
+              gotoMonth(minY, minM);
+            }
+            updateDuration();
+            if (iso && serviceSel && serviceSel.value) fetchSlots();
+          })();
+        })();
+      </script>
+
+      <script>
+        // Баннер «продолжить подтверждение» — если на этом устройстве есть
+        // незавершённая заявка (localStorage).
+        (function () {
+          var el = document.getElementById('bookingResume');
+          if (!el || !window.MassazBookings) return;
+          var items = window.MassazBookings.list();
+          if (!items.length) return;
+          var latest = items[items.length - 1];
+          el.href = el.dataset.confirmBase.replace('TOKEN', encodeURIComponent(latest.token));
+          el.hidden = false;
+        })();
+        // Маска телефона.
+        if (window.attachPhoneMask) window.attachPhoneMask(document.getElementById('id_phone'));
+      </script>
     {% endif %}
   </div>
 </section>

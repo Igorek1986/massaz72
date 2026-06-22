@@ -99,7 +99,7 @@ class CabinetTest(TestCase):
         from cabinet.models import Specialist
 
         spec = Specialist.objects.create(name="Мастер")
-        self.booking.sessions = BookingSessionOption.objects.create(count=3, label="3 сеанса")
+        self.booking.sessions = BookingSessionOption.objects.create(specialist=spec, count=3, label="3 сеанса")
         self.booking.save()
         confirm_booking(self.booking, specialist=spec)
         self.booking.refresh_from_db()
@@ -117,7 +117,7 @@ class CabinetTest(TestCase):
         from cabinet.models import Specialist
 
         spec = Specialist.objects.create(name="Мастер")
-        self.booking.sessions = BookingSessionOption.objects.create(count=3, label="3 сеанса")
+        self.booking.sessions = BookingSessionOption.objects.create(specialist=spec, count=3, label="3 сеанса")
         self.booking.save()
         confirm_booking(self.booking, specialist=spec)
         self.client.force_login(self.user)
@@ -415,7 +415,7 @@ class PurgeInactiveTest(TestCase):
         booking = BookingRequest.objects.create(
             client_name="Иван", user=c.user, phone="111", service=self.massage,
             preferred_date=future_date(), preferred_time=time(10, 0),
-            sessions=BookingSessionOption.objects.create(count=1, label="1 сеанс"),
+            sessions=BookingSessionOption.objects.create(specialist=spec, count=1, label="1 сеанс"),
         )
         confirm_booking(booking, specialist=spec)
         self._run()
@@ -437,11 +437,20 @@ class SchedulerTest(TestCase):
         call_command("ensure_schedules")
         call_command("ensure_schedules")  # повторный запуск не плодит дубли
         names = set(Schedule.objects.values_list("name", flat=True))
-        self.assertEqual(names, {"send_reminders_daily", "purge_inactive_daily"})
+        self.assertEqual(names, {
+            "send_reminders_daily", "purge_inactive_daily",
+            "purge_unconfirmed_bookings", "flush_notifications",
+            "remind_unconfirmed_bookings",
+        })
         s = Schedule.objects.get(name="send_reminders_daily")
         self.assertEqual(s.func, "accounts.tasks.send_reminders")
         self.assertEqual(s.schedule_type, Schedule.DAILY)
         self.assertEqual(s.next_run.astimezone(timezone.get_current_timezone()).hour, 9)
+        # Минутное расписание очистки заявок без контакта.
+        m = Schedule.objects.get(name="purge_unconfirmed_bookings")
+        self.assertEqual(m.func, "booking.tasks.purge_unconfirmed_bookings")
+        self.assertEqual(m.schedule_type, Schedule.MINUTES)
+        self.assertEqual(m.minutes, 5)
 
     def test_task_wrappers_call_commands(self):
         from unittest.mock import patch

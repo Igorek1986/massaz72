@@ -145,6 +145,24 @@ def _bind_booking_token(bot, message, token: str) -> bool:
     return True
 
 
+def _bind_specialist_token(bot, message, token: str) -> bool:
+    """Привязывает Telegram мастера для адресных уведомлений (spec_*)."""
+    from cabinet.models import Specialist
+
+    spec = Specialist.objects.filter(tg_link_token=token).first()
+    if spec is None:
+        return False
+    spec.telegram_id = message.from_user.id
+    spec.save(update_fields=["telegram_id"])
+    bot.send_message(
+        message.chat.id,
+        f"✅ Telegram привязан к мастеру «{html.escape(spec.name)}». Сюда будут "
+        "приходить заявки на запись и напоминания.",
+        reply_markup=get_keyboard(message.from_user.id),
+    )
+    return True
+
+
 def _bind_account_token(bot, message, token: str) -> bool:
     """Привязывает Telegram к аккаунту клиента по токену deep-link (acc_*)."""
     from accounts.models import Client
@@ -422,10 +440,13 @@ def _bk_therapist_keyboard() -> types.InlineKeyboardMarkup | None:
     return kb
 
 
-def _bk_sessions_keyboard() -> types.InlineKeyboardMarkup | None:
+def _bk_sessions_keyboard(specialist_id=None) -> types.InlineKeyboardMarkup | None:
     from booking.models import BookingSessionOption
 
-    options = list(BookingSessionOption.objects.filter(is_active=True))
+    qs = BookingSessionOption.objects.filter(is_active=True)
+    if specialist_id is not None:
+        qs = qs.filter(specialist_id=specialist_id)
+    options = list(qs)
     if not options:
         return None
     kb = types.InlineKeyboardMarkup()
@@ -436,10 +457,22 @@ def _bk_sessions_keyboard() -> types.InlineKeyboardMarkup | None:
     return kb
 
 
-def _bk_calendar_keyboard(year: int, month: int) -> types.InlineKeyboardMarkup:
-    """Инлайн-клавиатура с выбором дня месяца."""
+def _bk_calendar_keyboard(year: int, month: int, specialist_id=None) -> types.InlineKeyboardMarkup:
+    """Инлайн-клавиатура с выбором дня месяца. Нерабочие дни (выходной/отпуск)
+    некликабельны — как в календаре на сайте."""
     today = _today()
     kb = types.InlineKeyboardMarkup()
+
+    # Рабочие даты месяца (как на сайте). Если мастер неизвестен — все будущие.
+    enabled = None
+    if specialist_id is not None:
+        from booking.availability import enabled_days
+        from cabinet.models import Specialist
+        spec = Specialist.objects.filter(id=specialist_id).first()
+        if spec is not None:
+            first = date(year, month, 1)
+            last = date(year, month, _cal.monthrange(year, month)[1])
+            enabled = {d.isoformat() for d in enabled_days(spec, first, last)}
 
     # Предыдущий / следующий месяц
     prev_y, prev_m = (year, month - 1) if month > 1 else (year - 1, 12)
@@ -474,8 +507,9 @@ def _bk_calendar_keyboard(year: int, month: int) -> types.InlineKeyboardMarkup:
                 row.append(types.InlineKeyboardButton(" ", callback_data="bk_x"))
             else:
                 d = date(year, month, day)
-                if d < today:
-                    # Прошедшая дата — не активна
+                disabled = d < today or (enabled is not None and d.isoformat() not in enabled)
+                if disabled:
+                    # Прошедшая / нерабочая дата — не активна
                     row.append(types.InlineKeyboardButton("·", callback_data="bk_x"))
                 else:
                     label = f"[{day}]" if d == today else str(day)
@@ -491,17 +525,55 @@ def _bk_calendar_keyboard(year: int, month: int) -> types.InlineKeyboardMarkup:
     return kb
 
 
-def _bk_timeslot_keyboard() -> types.InlineKeyboardMarkup | None:
-    from .models import BookingTimeSlot
+def _bk_free_times(state: dict) -> list[str]:
+    """Свободное время начала ("HH:MM") для выбранных мастера/услуги/даты/курса —
+    та же логика доступности, что и на сайте (booking.availability.free_starts)."""
+    from booking.availability import free_starts
+    from cabinet.models import Specialist
+    from services.models import Massage
 
-    slots = list(BookingTimeSlot.objects.filter(is_active=True))
-    if not slots:
+    if not state.get("date_iso"):
+        return []
+    spec = Specialist.objects.filter(id=state.get("therapist_id")).first()
+    if spec is None:
+        return []
+    service = Massage.objects.filter(id=state.get("massage_id")).first()
+    try:
+        d = date.fromisoformat(state["date_iso"])
+    except ValueError:
+        return []
+    sessions = state.get("sessions") or 1
+    times = free_starts(spec, d, service, sessions)
+    return sorted(t.strftime("%H:%M") for t in times)
+
+
+def _bk_hours_keyboard(state: dict) -> types.InlineKeyboardMarkup | None:
+    times = _bk_free_times(state)
+    if not times:
         return None
-    kb = types.InlineKeyboardMarkup()
-    for slot in slots:
-        kb.add(types.InlineKeyboardButton(slot.label, callback_data=f"bk_ts_{slot.id}"))
-    kb.add(types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_date"))
-    kb.add(types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"))
+    hours = sorted({t[:2] for t in times})
+    kb = types.InlineKeyboardMarkup(row_width=4)
+    kb.add(*[types.InlineKeyboardButton(h, callback_data=f"bk_h_{h}") for h in hours])
+    kb.row(
+        types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_date"),
+        types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"),
+    )
+    return kb
+
+
+def _bk_minutes_keyboard(state: dict, hour: str) -> types.InlineKeyboardMarkup | None:
+    times = _bk_free_times(state)
+    mins = [t[3:] for t in times if t[:2] == hour]
+    if not mins:
+        return None
+    kb = types.InlineKeyboardMarkup(row_width=4)
+    kb.add(*[
+        types.InlineKeyboardButton(f":{m}", callback_data=f"bk_min_{hour}:{m}") for m in mins
+    ])
+    kb.row(
+        types.InlineKeyboardButton("◀️ Назад", callback_data="bk_back_hours"),
+        types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"),
+    )
     return kb
 
 
@@ -569,11 +641,11 @@ def _bk_proceed_after_massage(bot: telebot.TeleBot, uid: int, chat_id: int, msg_
         state["therapist_id"] = therapist.id
         state["therapist_name"] = therapist.name
     _pending_bookings[uid] = state
-    _bk_show_sessions(bot, chat_id, msg_id)
+    _bk_show_sessions(bot, chat_id, msg_id, state.get("therapist_id"))
 
 
-def _bk_show_sessions(bot: telebot.TeleBot, chat_id: int, msg_id: int) -> None:
-    kb = _bk_sessions_keyboard()
+def _bk_show_sessions(bot: telebot.TeleBot, chat_id: int, msg_id: int, specialist_id=None) -> None:
+    kb = _bk_sessions_keyboard(specialist_id)
     if kb is None:
         bot.edit_message_text(
             "⚠️ Варианты количества сеансов не настроены. Напишите нам напрямую.",
@@ -586,7 +658,8 @@ def _bk_show_sessions(bot: telebot.TeleBot, chat_id: int, msg_id: int) -> None:
     )
 
 
-def _bk_show_calendar(bot: telebot.TeleBot, chat_id: int, msg_id: int, date_iso: str | None = None) -> None:
+def _bk_show_calendar(bot: telebot.TeleBot, chat_id: int, msg_id: int,
+                      date_iso: str | None = None, specialist_id=None) -> None:
     """Показывает месячный календарь. Если date_iso задан — открывает тот месяц."""
     if date_iso:
         try:
@@ -601,20 +674,40 @@ def _bk_show_calendar(bot: telebot.TeleBot, chat_id: int, msg_id: int, date_iso:
     bot.edit_message_text(
         "📝 <b>Запись на массаж</b>\n\nВыберите <b>желаемую дату</b>:",
         chat_id, msg_id,
-        reply_markup=_bk_calendar_keyboard(year, month),
+        reply_markup=_bk_calendar_keyboard(year, month, specialist_id),
     )
 
 
-def _bk_show_timeslot(bot: telebot.TeleBot, chat_id: int, msg_id: int) -> None:
-    kb = _bk_timeslot_keyboard()
+def _bk_back_to_date_keyboard() -> types.InlineKeyboardMarkup:
+    kb = types.InlineKeyboardMarkup()
+    kb.row(
+        types.InlineKeyboardButton("◀️ Другая дата", callback_data="bk_back_date"),
+        types.InlineKeyboardButton("❌ Отмена", callback_data="bk_cancel"),
+    )
+    return kb
+
+
+def _bk_show_hours(bot: telebot.TeleBot, chat_id: int, msg_id: int, state: dict) -> None:
+    kb = _bk_hours_keyboard(state)
     if kb is None:
         bot.edit_message_text(
-            "⚠️ Временные слоты не настроены. Напишите нам напрямую.",
-            chat_id, msg_id, reply_markup=_bk_cancel_keyboard(),
+            "😔 На выбранный день свободного времени нет. Выберите другую дату.",
+            chat_id, msg_id, reply_markup=_bk_back_to_date_keyboard(),
         )
         return
     bot.edit_message_text(
-        "📝 <b>Запись на массаж</b>\n\nВыберите удобное <b>время</b>:",
+        "📝 <b>Запись на массаж</b>\n\nВыберите <b>час</b>:",
+        chat_id, msg_id, reply_markup=kb,
+    )
+
+
+def _bk_show_minutes(bot: telebot.TeleBot, chat_id: int, msg_id: int, state: dict, hour: str) -> None:
+    kb = _bk_minutes_keyboard(state, hour)
+    if kb is None:  # час уже заняли — вернёмся к выбору часа
+        _bk_show_hours(bot, chat_id, msg_id, state)
+        return
+    bot.edit_message_text(
+        f"📝 <b>Запись на массаж</b>\n\nЧас <b>{hour}:00</b> — выберите <b>минуты</b>:",
         chat_id, msg_id, reply_markup=kb,
     )
 
@@ -770,6 +863,9 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         if payload.startswith("acc_"):
             if _bind_account_token(bot, message, payload[4:]):
                 return
+        elif payload.startswith("spec_"):
+            if _bind_specialist_token(bot, message, payload[5:]):
+                return
         elif payload and _bind_booking_token(bot, message, payload):
             return
 
@@ -858,7 +954,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             bot.edit_message_text(
                 "📝 <b>Запись на массаж</b>\n\nВыберите <b>желаемую дату</b>:",
                 chat_id, msg_id,
-                reply_markup=_bk_calendar_keyboard(cal_year, cal_month),
+                reply_markup=_bk_calendar_keyboard(cal_year, cal_month, state.get("therapist_id")),
             )
             return
 
@@ -896,21 +992,20 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             for key in ("sessions", "sessions_label", "date_iso", "timeslot_id", "timeslot_label"):
                 state.pop(key, None)
             _pending_bookings[uid] = state
-            _bk_show_sessions(bot, chat_id, msg_id)
+            _bk_show_sessions(bot, chat_id, msg_id, state.get("therapist_id"))
             return
 
         if data == "bk_back_date":
-            state.pop("timeslot_id", None)
+            state.pop("bk_hour", None)
             state.pop("timeslot_label", None)
             _pending_bookings[uid] = state
-            _bk_show_calendar(bot, chat_id, msg_id, state.get("date_iso"))
+            _bk_show_calendar(bot, chat_id, msg_id, state.get("date_iso"), state.get("therapist_id"))
             return
 
-        if data == "bk_back_timeslot":
-            state.pop("timeslot_id", None)
+        if data == "bk_back_hours" or data == "bk_back_timeslot":
             state.pop("timeslot_label", None)
             _pending_bookings[uid] = state
-            _bk_show_timeslot(bot, chat_id, msg_id)
+            _bk_show_hours(bot, chat_id, msg_id, state)
             return
 
         # ── Пагинация списка массажей ────────────────────────────────────────
@@ -979,7 +1074,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             except Specialist.DoesNotExist:
                 pass
             _pending_bookings[uid] = state
-            _bk_show_sessions(bot, chat_id, msg_id)
+            _bk_show_sessions(bot, chat_id, msg_id, state.get("therapist_id"))
             return
 
         # ── Выбор количества сеансов ─────────────────────────────────────────
@@ -990,17 +1085,19 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
                 return
             from booking.models import BookingSessionOption
 
-            try:
-                opt = BookingSessionOption.objects.get(id=opt_id, is_active=True)
-                state["sessions"] = opt.count
-                state["sessions_label"] = opt.button_label
-            except BookingSessionOption.DoesNotExist:
+            qs = BookingSessionOption.objects.filter(id=opt_id, is_active=True)
+            if state.get("therapist_id"):
+                qs = qs.filter(specialist_id=state["therapist_id"])
+            opt = qs.first()
+            if opt is None:
                 return
+            state["sessions"] = opt.count
+            state["sessions_label"] = opt.button_label
             _pending_bookings[uid] = state
-            _bk_show_calendar(bot, chat_id, msg_id)
+            _bk_show_calendar(bot, chat_id, msg_id, specialist_id=state.get("therapist_id"))
             return
 
-        # ── Выбор даты из календаря ──────────────────────────────────────────
+        # ── Выбор даты из календаря → выбор часа ─────────────────────────────
         if data.startswith("bk_d_"):
             iso = data[5:]
             try:
@@ -1010,26 +1107,28 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             if d < _today():
                 return
             state["date_iso"] = iso
-            state.pop("timeslot_id", None)
+            state.pop("bk_hour", None)
             state.pop("timeslot_label", None)
             _pending_bookings[uid] = state
-            _bk_show_timeslot(bot, chat_id, msg_id)
+            _bk_show_hours(bot, chat_id, msg_id, state)
             return
 
-        # ── Выбор временного слота ───────────────────────────────────────────
-        if data.startswith("bk_ts_"):
-            try:
-                slot_id = int(data[6:])
-            except ValueError:
-                return
-            from .models import BookingTimeSlot
+        # ── Выбор часа → выбор минут ─────────────────────────────────────────
+        if data.startswith("bk_h_"):
+            hour = data[5:]
+            state["bk_hour"] = hour
+            _pending_bookings[uid] = state
+            _bk_show_minutes(bot, chat_id, msg_id, state, hour)
+            return
 
-            try:
-                slot = BookingTimeSlot.objects.get(id=slot_id, is_active=True)
-                state["timeslot_id"] = slot.id
-                state["timeslot_label"] = slot.label
-            except BookingTimeSlot.DoesNotExist:
+        # ── Выбор минут → подтверждение ──────────────────────────────────────
+        if data.startswith("bk_min_"):
+            hhmm = data[7:]
+            # Проверяем, что время ещё свободно (могли занять, пока выбирал).
+            if hhmm not in _bk_free_times(state):
+                _bk_show_hours(bot, chat_id, msg_id, state)
                 return
+            state["timeslot_label"] = hhmm
             _pending_bookings[uid] = state
             bot.edit_message_text(
                 _bk_confirm_text(state), chat_id, msg_id, reply_markup=_bk_confirm_keyboard(),
@@ -1044,7 +1143,10 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             _bk_delete_or_edit(bot, chat_id, msg_id)
             bot.send_message(
                 chat_id,
-                "✅ <b>Заявка отправлена!</b>\n\nЭто предварительная запись — ожидайте подтверждения от администратора.",
+                "✅ <b>Заявка отправлена!</b>\n\nЭто предварительная запись — ожидайте "
+                "подтверждения от администратора.\n\n🔔 Пожалуйста, не удаляйте этого "
+                "бота — так массажист сможет связаться с вами и прислать напоминание "
+                "о записи.",
                 reply_markup=get_keyboard(uid),
             )
             return

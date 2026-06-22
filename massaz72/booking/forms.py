@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-
 from django import forms
 from django.utils import timezone
 
@@ -41,12 +39,10 @@ class BookingForm(forms.ModelForm):
             "service": forms.Select(attrs={"class": "booking-form__input"}),
             "specialist": forms.Select(attrs={"class": "booking-form__input"}),
             "sessions": forms.Select(attrs={"class": "booking-form__input"}),
-            "preferred_date": forms.DateInput(attrs={
-                "type": "date", "class": "booking-form__input",
-            }, format="%Y-%m-%d"),
-            "preferred_time": forms.TimeInput(attrs={
-                "type": "time", "class": "booking-form__input",
-            }, format="%H:%M"),
+            # Дата выбирается календарём, время — пикером часы→минуты;
+            # сами значения — скрытые поля.
+            "preferred_date": forms.HiddenInput(),
+            "preferred_time": forms.HiddenInput(),
             "phone": forms.TextInput(attrs={
                 "type": "tel", "maxlength": 20, "placeholder": "Телефон (необязательно)",
                 "class": "booking-form__input",
@@ -82,6 +78,7 @@ class BookingForm(forms.ModelForm):
 
         # Выбор мастера показываем только если активных больше одного.
         specialists = Specialist.objects.filter(is_active=True)
+        single_specialist = specialists.first() if specialists.count() == 1 else None
         if specialists.count() <= 1:
             self.fields.pop("specialist")
         else:
@@ -89,8 +86,14 @@ class BookingForm(forms.ModelForm):
             self.fields["specialist"].required = True
 
         # Онлайн-запись — только курсом: количество сеансов обязательно.
-        # Показываем поле, только если варианты заданы в админке.
-        session_options = BookingSessionOption.objects.filter(is_active=True)
+        # Варианты сеансов теперь у каждого специалиста свои.
+        # Один мастер → его варианты; несколько → все активные (JS сузит список
+        # под выбранного мастера, clean() проверит соответствие).
+        all_options = BookingSessionOption.objects.filter(is_active=True)
+        if single_specialist is not None:
+            session_options = all_options.filter(specialist=single_specialist)
+        else:
+            session_options = all_options
         if not session_options.exists():
             self.fields.pop("sessions")
         else:
@@ -106,6 +109,15 @@ class BookingForm(forms.ModelForm):
         if not name:
             raise forms.ValidationError("Укажите имя.")
         return name
+
+    def clean_phone(self):
+        """Телефон необязателен; если указан — проверяем и нормализуем (РФ)."""
+        from .phone import normalize_ru_phone
+
+        try:
+            return normalize_ru_phone(self.cleaned_data.get("phone"))
+        except ValueError:
+            raise forms.ValidationError("Укажите корректный номер телефона.")
 
     def clean_preferred_date(self):
         d = self.cleaned_data.get("preferred_date")
@@ -128,23 +140,35 @@ class BookingForm(forms.ModelForm):
         if not spec:
             return cleaned
 
+        # Вариант сеансов должен принадлежать выбранному мастеру.
+        sessions_opt = cleaned.get("sessions")
+        if sessions_opt and sessions_opt.specialist_id != spec.pk:
+            self.add_error("sessions", "Выберите количество сеансов для этого мастера.")
+            return cleaned
+
+        from cabinet.views import _is_working_day
+
+        from .availability import free_starts
+
         schedule = WorkSchedule.for_specialist(spec)
-        hours = schedule.hours_for_weekday(d.weekday())
-        if hours is None:
+        if not _is_working_day(d, schedule, spec):
             self.add_error(
                 "preferred_date",
                 "В этот день мастер не работает — выберите рабочий день.",
             )
             return cleaned
 
-        start_h, end_h = hours
-        end_t = t
-        if service:
-            minutes = service.duration_max or service.duration_min or 60
-            end_t = (datetime.combine(d, t) + timedelta(minutes=minutes)).time()
-        if t < start_h or end_t > end_h:
+        # Количество сеансов курса (вариант A: одно время на все дни).
+        sessions = sessions_opt.count if sessions_opt else 1
+        # Адрес → выездной массаж (увеличенный перерыв после сеанса).
+        is_travel = bool((cleaned.get("address") or "").strip())
+
+        # Единая проверка: время должно быть свободно (занятость, обед, брони,
+        # рабочие часы, запас перед записью) во ВСЕ дни курса.
+        if t not in free_starts(spec, d, service, sessions, is_travel=is_travel):
             self.add_error(
                 "preferred_time",
-                f"Выберите время в рабочие часы: {start_h:%H:%M}–{end_h:%H:%M}.",
+                "Это время недоступно (занято, перерыв или вне рабочих часов). "
+                "Выберите свободное время из предложенных.",
             )
         return cleaned

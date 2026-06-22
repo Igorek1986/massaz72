@@ -1,0 +1,38 @@
+<div class="settings-inline-form">
+  <div class="apt-form__header">
+    <h3 class="apt-form__title">{% if option %}Редактировать{% else %}Добавить вариант{% endif %}</h3>
+    <button type="button" class="apt-form__close"
+            onclick="document.getElementById('session-option-form-container').innerHTML=''">✕</button>
+  </div>
+  <form hx-post="{% if option %}{% url 'cabinet:session_option_edit' option.pk %}{% else %}{% url 'cabinet:session_option_add' %}{% endif %}"
+        hx-target="#session-option-form-container"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="form-grid form-grid--3">
+      <div class="form-field">
+        <label class="form-label">{{ form.count.label }}<span class="form-req">*</span></label>
+        {{ form.count }}
+        {% if form.count.errors %}<span class="form-error">{{ form.count.errors.0 }}</span>{% endif %}
+      </div>
+      <div class="form-field form-field--full">
+        <label class="form-label">{{ form.label.label }}</label>
+        {{ form.label }}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.order.label }}</label>
+        {{ form.order }}
+      </div>
+      <div class="form-field">
+        <label class="form-label">{{ form.is_active }} {{ form.is_active.label }}</label>
+      </div>
+    </div>
+    {% if form.non_field_errors %}
+    <div class="form-error form-error--block">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+    <div class="apt-form__footer">
+      <button type="button" class="btn btn--ghost"
+              onclick="document.getElementById('session-option-form-container').innerHTML=''">Отмена</button>
+      <button type="submit" class="btn btn--primary">Сохранить</button>
+    </div>
+  </form>
+</div>

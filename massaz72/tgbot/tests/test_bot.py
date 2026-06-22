@@ -238,3 +238,61 @@ class BroadcastFormatTest(TestCase):
     def test_without_subject_text_still_escaped(self):
         msg = botmod._format_broadcast_text("", "1 < 2")
         self.assertEqual(msg, "1 &lt; 2")
+
+
+class BotBookingTimeTest(TestCase):
+    """Выбор времени в боте: дата → часы → минуты по реальной доступности."""
+
+    def setUp(self):
+        from datetime import timedelta
+        from decimal import Decimal
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        from cabinet.models import Specialist, WorkSchedule
+        from booking.models import BookingSessionOption
+
+        User = get_user_model()
+        u = User.objects.create_user("botmaster", password="pw")
+        self.spec = Specialist.objects.create(user=u, name="Мастер")
+        WorkSchedule.for_specialist(self.spec)  # Пн–Пт 9–19
+        self.massage = Massage.objects.create(
+            name="Спина", price=Decimal("2000"), duration_min=30, duration_max=60,
+            location="Кабинет", massage_type=Massage.ADULT, slug="spina",
+        )
+        self.opt = BookingSessionOption.objects.create(specialist=self.spec, count=1)
+        # ближайший понедельник
+        d = timezone.localdate() + timedelta(days=7)
+        while d.weekday() != 0:
+            d += timedelta(days=1)
+        self.monday = d
+        self.state = {
+            "therapist_id": self.spec.id, "massage_id": self.massage.id,
+            "sessions": 1, "date_iso": self.monday.isoformat(),
+        }
+
+    def test_free_times_nonempty_on_working_day(self):
+        times = botmod._bk_free_times(self.state)
+        self.assertIn("09:00", times)
+
+    def test_hours_keyboard_has_hours(self):
+        kb = botmod._bk_hours_keyboard(self.state)
+        datas = [b.callback_data for row in kb.keyboard for b in row]
+        self.assertIn("bk_h_09", datas)
+
+    def test_minutes_keyboard_for_hour(self):
+        kb = botmod._bk_minutes_keyboard(self.state, "09")
+        datas = [b.callback_data for row in kb.keyboard for b in row]
+        self.assertIn("bk_min_09:00", datas)
+
+    def test_no_times_on_weekend(self):
+        from datetime import timedelta
+        sunday = self.monday - timedelta(days=1)  # воскресенье
+        st = dict(self.state, date_iso=sunday.isoformat())
+        self.assertEqual(botmod._bk_free_times(st), [])
+        self.assertIsNone(botmod._bk_hours_keyboard(st))
+
+    def test_calendar_disables_nonworking(self):
+        kb = botmod._bk_calendar_keyboard(self.monday.year, self.monday.month, self.spec.id)
+        datas = [b.callback_data for row in kb.keyboard for b in row]
+        # понедельник кликабелен
+        self.assertIn(f"bk_d_{self.monday.isoformat()}", datas)
