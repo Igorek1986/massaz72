@@ -24,6 +24,8 @@ def common_context(request):
         or (t.max_messanger and t.max_messanger_active)
         for t in therapists
     )
+
+    account_name, account_initials = _account_identity(request)
     return {
         "therapists": therapists,
         "about": primary,  # backward compat
@@ -33,7 +35,39 @@ def common_context(request):
         "telegram_bot_username": telegram_bot_username,
         "has_contacts": has_contacts,
         "year": datetime.now().year,
+        "account_name": account_name,
+        "account_initials": account_initials,
     }
+
+
+def _account_identity(request):
+    """Отображаемое имя и инициалы залогиненного пользователя.
+
+    Имя: у специалиста — Specialist.name; иначе ФИО пользователя; иначе логин.
+    Инициалы — из фамилии и имени (две первые буквы слов имени), иначе из логина.
+    """
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated:
+        return "", ""
+
+    name = ""
+    spec = getattr(user, "specialist", None)
+    if spec is not None and spec.name:
+        name = spec.name
+    elif user.get_full_name():
+        name = user.get_full_name()
+    name = name.strip()
+
+    if name:
+        parts = name.split()
+        if len(parts) >= 2:
+            # «Фамилия Имя …» → две первые буквы (фамилия + имя)
+            initials = (parts[0][:1] + parts[1][:1]).upper()
+        else:
+            initials = parts[0][:1].upper()
+        return name, initials
+
+    return user.get_username(), (user.get_username()[:1] or "?").upper()
 
 
 def site_settings(request):

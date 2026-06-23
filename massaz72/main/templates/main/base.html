@@ -110,33 +110,21 @@
         </li>
         {% endif %}
         {% endif %}
-        {# Единый вход для специалиста и клиента; меню — по роли. #}
-        <li class="nav__item">
-          {% if request.user.is_authenticated %}
-          <div class="user-menu" id="userMenu">
-            <button class="user-menu__toggle" type="button" aria-label="Аккаунт" aria-haspopup="true">
-              <span class="user-menu__avatar">{{ request.user.username|first|upper }}</span>
-            </button>
-            <div class="user-menu__dropdown">
-              {% if request.user.specialist %}
-              <a href="{% url 'cabinet:index' %}" class="user-menu__item">Кабинет специалиста</a>
-              <a href="{% url 'cabinet:settings' %}" class="user-menu__item">Настройки</a>
-              {% elif request.user.client_profile %}
-              <a href="{% url 'accounts:dashboard' %}" class="user-menu__item">Личный кабинет</a>
-              <a href="{% url 'accounts:profile' %}" class="user-menu__item">Профиль</a>
-              {% endif %}
-              <form method="post" action="{% url 'accounts:logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="user-menu__item user-menu__item--logout">Выйти</button>
-              </form>
-            </div>
-          </div>
-          {% else %}
-          <a href="{% url 'accounts:login' %}" class="nav__link">Войти</a>
+        {% if not request.user.is_authenticated %}
+        <li class="nav__item"><a href="{% url 'accounts:login' %}" class="nav__link">Войти</a></li>
+        {% endif %}
+        {# Ролевые пункты — на мобильном в общем списке, на десктопе в дропдауне. #}
+        {% if request.user.is_authenticated %}
+          {% if request.user.specialist %}
+          <li class="nav__item nav__item--account-mobile"><a href="{% url 'cabinet:index' %}" class="nav__link">Кабинет специалиста</a></li>
+          <li class="nav__item nav__item--account-mobile"><a href="{% url 'cabinet:settings' %}" class="nav__link">Настройки</a></li>
+          {% elif request.user.client_profile %}
+          <li class="nav__item nav__item--account-mobile"><a href="{% url 'accounts:dashboard' %}" class="nav__link">Личный кабинет</a></li>
+          <li class="nav__item nav__item--account-mobile"><a href="{% url 'accounts:profile' %}" class="nav__link">Профиль</a></li>
           {% endif %}
-        </li>
+        {% endif %}
       </ul>
-      <button class="header__theme-toggle" aria-label="Переключить тему">
+      <button class="header__theme-toggle js-theme-toggle" aria-label="Переключить тему">
         <svg class="theme-toggle__sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="5"/>
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -145,12 +133,46 @@
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
       </button>
+      {# Аккаунт (специалист/клиент). На мобильном уходит под переключатель темы. #}
+      {% if request.user.is_authenticated %}
+      <div class="user-menu" id="userMenu">
+        <button class="user-menu__toggle" type="button" aria-label="Аккаунт" aria-haspopup="true">
+          <span class="user-menu__avatar">{{ account_initials }}</span>
+        </button>
+        <div class="user-menu__dropdown">
+          <div class="user-menu__name">{{ account_name }}</div>
+          {% if request.user.specialist %}
+          <a href="{% url 'cabinet:index' %}" class="user-menu__item user-menu__item--role">Кабинет специалиста</a>
+          <a href="{% url 'cabinet:settings' %}" class="user-menu__item user-menu__item--role">Настройки</a>
+          {% elif request.user.client_profile %}
+          <a href="{% url 'accounts:dashboard' %}" class="user-menu__item user-menu__item--role">Личный кабинет</a>
+          <a href="{% url 'accounts:profile' %}" class="user-menu__item user-menu__item--role">Профиль</a>
+          {% endif %}
+          <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="user-menu__item user-menu__item--logout">Выйти</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
     </nav>
-    <button class="header__burger">
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
+    {# Мобильная панель действий: тема рядом с бургером (вне выезжающего меню). #}
+    <div class="header__mobile-actions">
+      <button class="header__theme-toggle header__theme-toggle--bar js-theme-toggle" aria-label="Переключить тему">
+        <svg class="theme-toggle__sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="theme-toggle__moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button class="header__burger">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
   </div>
 </header>
 <div class="nav-overlay"></div>
@@ -302,7 +324,7 @@
   /* Переключение темы */
   (function () {
     const html = document.documentElement;
-    const toggle = document.querySelector('.header__theme-toggle');
+    const toggles = document.querySelectorAll('.js-theme-toggle');
     const metaTheme = document.querySelector('meta[name="theme-color"]');
 
     function getTheme() {
@@ -313,15 +335,17 @@
 
     function setTheme(theme) {
       html.dataset.theme = theme;
-      metaTheme.content = theme === 'dark' ? '#191512' : '#dac2ac';
+      if (metaTheme) metaTheme.content = theme === 'dark' ? '#191512' : '#dac2ac';
     }
 
     setTheme(getTheme());
 
-    toggle.addEventListener('click', function () {
-      const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
-      setTheme(next);
-      localStorage.setItem('theme', next);
+    toggles.forEach(function (toggle) {
+      toggle.addEventListener('click', function () {
+        const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+        localStorage.setItem('theme', next);
+      });
     });
   })();
 
