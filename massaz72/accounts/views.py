@@ -66,18 +66,29 @@ def register(request: HttpRequest) -> HttpResponse:
     return render(request, "accounts/register.html", {"form": form})
 
 
+def _post_login_redirect(user) -> str:
+    """Куда вести после входа: специалиста — в кабинет, клиента — в личный
+    кабинет, иначе — на главную."""
+    if hasattr(user, "specialist"):
+        return reverse("cabinet:index")
+    if _cabinet_enabled() and hasattr(user, "client_profile"):
+        return reverse("accounts:dashboard")
+    return reverse("main:index")
+
+
 def login_view(request: HttpRequest) -> HttpResponse:
-    if not _cabinet_enabled():
-        return redirect("main:index")
+    # Универсальный вход: и специалист, и клиент. Доступен всегда (даже если
+    # клиентский кабинет выключен — чтобы специалист мог войти).
     if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+        return redirect(_post_login_redirect(request.user))
 
     if request.method == "POST":
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
-            login(request, form.get_user())
+            user = form.get_user()
+            login(request, user)
             nxt = request.GET.get("next") or request.POST.get("next")
-            return redirect(nxt or "accounts:dashboard")
+            return redirect(nxt or _post_login_redirect(user))
     else:
         form = AuthenticationForm(request)
     return render(request, "accounts/login.html", {"form": form})

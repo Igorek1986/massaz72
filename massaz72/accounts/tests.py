@@ -462,3 +462,44 @@ class SchedulerTest(TestCase):
             [c.args[0] for c in m.call_args_list],
             ["send_reminders", "purge_inactive"],
         )
+
+
+class UniversalLoginTest(TestCase):
+    """Единый вход в шапке: специалист и клиент."""
+
+    def test_specialist_login_goes_to_cabinet(self):
+        from cabinet.models import Specialist
+        SiteSettings.objects.create(client_cabinet_enabled=True)
+        u = User.objects.create_user("master", password=PWD)
+        Specialist.objects.create(user=u, name="Мастер")
+        resp = self.client.post(reverse("accounts:login"), {
+            "username": "master", "password": PWD,
+        })
+        self.assertRedirects(resp, reverse("cabinet:index"),
+                             fetch_redirect_response=False)
+
+    def test_client_login_goes_to_dashboard(self):
+        SiteSettings.objects.create(client_cabinet_enabled=True)
+        u = User.objects.create_user("client1", password=PWD)
+        ClientProfile.objects.create(user=u, phone="111")
+        resp = self.client.post(reverse("accounts:login"), {
+            "username": "client1", "password": PWD,
+        })
+        self.assertRedirects(resp, reverse("accounts:dashboard"))
+
+    def test_login_page_available_when_cabinet_disabled(self):
+        # Специалист должен мочь войти, даже если клиентский кабинет выключен.
+        SiteSettings.objects.create(client_cabinet_enabled=False)
+        resp = self.client.get(reverse("accounts:login"))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_specialist_login_when_cabinet_disabled(self):
+        from cabinet.models import Specialist
+        SiteSettings.objects.create(client_cabinet_enabled=False)
+        u = User.objects.create_user("master2", password=PWD)
+        Specialist.objects.create(user=u, name="Мастер 2")
+        resp = self.client.post(reverse("accounts:login"), {
+            "username": "master2", "password": PWD,
+        })
+        self.assertRedirects(resp, reverse("cabinet:index"),
+                             fetch_redirect_response=False)

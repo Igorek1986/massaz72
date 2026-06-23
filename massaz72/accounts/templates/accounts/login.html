@@ -23,7 +23,9 @@
         <button type="submit" class="account-form__submit">Войти</button>
       </form>
       <p class="account__alt"><a href="{% url 'accounts:password_reset' %}">Забыли пароль?</a></p>
+      {% if site_settings.client_cabinet_enabled %}
       <p class="account__alt">Нет аккаунта? <a href="{% url 'accounts:register' %}">Зарегистрироваться</a></p>
+      {% endif %}
     </div>
   </div>
 </section>
