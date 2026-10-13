@@ -24,7 +24,7 @@ def _policy_url() -> str:
     from django.contrib.sites.models import Site
     from django.urls import reverse
 
-    path = reverse("main:personal_data")
+    path = reverse("main:privacy")
     domain = ""
     try:
         domain = Site.objects.get_current().domain

@@ -47,7 +47,7 @@
           <label class="consent-row__label">
             {{ form.consent }}
             <span>Я согласен(а) на обработку персональных данных в соответствии с
-              <a href="{% url 'main:personal_data' %}" target="_blank" rel="noopener">Политикой обработки персональных данных</a>.</span>
+              <a href="{% url 'main:privacy' %}" target="_blank" rel="noopener">Политикой обработки персональных данных</a>.</span>
           </label>
           {% if form.consent.errors %}<span class="account-form__error">{{ form.consent.errors.0 }}</span>{% endif %}
         </div>

@@ -4,6 +4,7 @@ from main.models import Certificate
 from services.models import Massage
 
 from .models import SiteSettings
+from .policy import build_policy_context
 
 
 def home_context(request, review_form=None):
@@ -57,11 +58,7 @@ def cookies(request):
 
 
 def privacy(request):
-    return render(request, "main/privacy.html")
-
-
-def personal_data(request):
-    return render(request, "main/personal_data.html")
+    return render(request, "main/privacy.html", {"policy": build_policy_context()})
 
 
 def custom_404(request, exception):

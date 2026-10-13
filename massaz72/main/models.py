@@ -118,6 +118,38 @@ class SiteSettings(models.Model):
         ),
     )
 
+    operator_name = models.CharField(
+        "Оператор ПД: ФИО / наименование",
+        max_length=200,
+        default="Пономарев Игорь Валерьевич",
+        help_text="Подставляется в Политику обработки персональных данных (/privacy/).",
+    )
+    operator_inn = models.CharField(
+        "Оператор ПД: ИНН", max_length=12, blank=True, default="",
+    )
+    operator_address = models.CharField(
+        "Оператор ПД: адрес", max_length=255, blank=True, default="",
+    )
+    operator_email = models.EmailField(
+        "Оператор ПД: email для обращений", default="info@massaz72.ru",
+    )
+    operator_phone = models.CharField(
+        "Оператор ПД: телефон", max_length=32, blank=True, default="",
+    )
+    retention_text = models.CharField(
+        "Политика ПД: срок хранения",
+        max_length=300,
+        default=(
+            "до достижения целей обработки либо до отзыва согласия субъектом, "
+            "после чего данные удаляются, если иное не предусмотрено законодательством"
+        ),
+        help_text="Фраза после «Срок обработки и хранения:» (без точки в конце).",
+    )
+    privacy_updated_at = models.DateField(
+        "Политика ПД: дата редакции", blank=True, null=True,
+        help_text="Показывается в конце Политики. Обновляйте при изменении текста или настроек.",
+    )
+
     reviews_enabled = models.BooleanField(
         "Отзывы включены",
         default=False,
