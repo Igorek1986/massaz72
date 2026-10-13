@@ -21,6 +21,7 @@ import logging
 from datetime import date, timedelta
 
 import telebot
+from django.utils import timezone
 from telebot import types
 
 from .models import AdminForward, BotAdmin, BotSettings, Broadcast, DialogMessage, TelegramUser
@@ -192,6 +193,62 @@ def _upsert_user(from_user) -> TelegramUser:
             "last_name": from_user.last_name or "",
         },
     )
+    return user
+
+
+CONSENT_ACCEPT = "cn_accept"
+
+# uid -> исходное /start-сообщение (с deep-link), ожидающее принятия согласия.
+_pending_starts: dict[int, object] = {}
+
+
+def _has_consent(uid: int) -> bool:
+    """Администраторам согласие не нужно — они не клиенты."""
+    if _is_admin(uid):
+        return True
+    return TelegramUser.objects.filter(telegram_id=uid, consent_at__isnull=False).exists()
+
+
+def _consent_text() -> str:
+    from .notifications import abs_url
+
+    return (
+        "<b>Немного формальностей:</b> продолжая пользоваться ботом, вы должны "
+        "ознакомиться и принять условия:\n\n"
+        f"• <a href=\"{abs_url('main:consent')}\">Согласие на обработку персональных данных</a>\n"
+        f"• <a href=\"{abs_url('main:privacy')}\">Политика обработки персональных данных</a>\n\n"
+        "Если всё в порядке — нажмите кнопку ниже. Спасибо!"
+    )
+
+
+def _consent_keyboard() -> types.InlineKeyboardMarkup:
+    kb = types.InlineKeyboardMarkup()
+    kb.add(types.InlineKeyboardButton("✅ Ознакомлен и принимаю", callback_data=CONSENT_ACCEPT))
+    return kb
+
+
+def _send_consent_prompt(bot, chat_id: int) -> None:
+    bot.send_message(
+        chat_id, _consent_text(), reply_markup=_consent_keyboard(),
+        disable_web_page_preview=True,
+    )
+
+
+def _ensure_consent(bot, from_user, chat_id: int) -> bool:
+    """True — согласие есть, можно продолжать. Иначе шлёт запрос и возвращает False."""
+    if _has_consent(from_user.id):
+        return True
+    _upsert_user(from_user)
+    _send_consent_prompt(bot, chat_id)
+    return False
+
+
+def _accept_consent(from_user) -> TelegramUser:
+    """Фиксирует момент согласия (первое принятие не перезаписывается)."""
+    user = _upsert_user(from_user)
+    if user.consent_at is None:
+        user.consent_at = timezone.now()
+        user.save(update_fields=["consent_at", "updated_at"])
     return user
 
 
@@ -850,8 +907,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             "📢 <b>Новая рассылка</b>\n\nВведите тему сообщения (или «-» чтобы пропустить):",
         )
 
-    @bot.message_handler(commands=["start"])
-    def on_start(message):
+    def _handle_start(message):
         _pending_bookings.pop(message.from_user.id, None)
         settings = BotSettings.load()
         _upsert_user(message.from_user)
@@ -875,6 +931,42 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             reply_markup=get_keyboard(message.from_user.id),
         )
 
+    @bot.message_handler(commands=["start"])
+    def on_start(message):
+        uid = message.from_user.id
+        if not _has_consent(uid):
+            # Первое сообщение — запрос согласия; deep-link (привязка заявки/
+            # аккаунта) выполним после принятия.
+            _upsert_user(message.from_user)
+            _pending_starts[uid] = message
+            _send_consent_prompt(bot, message.chat.id)
+            return
+        _handle_start(message)
+
+    @bot.callback_query_handler(func=lambda c: c.data == CONSENT_ACCEPT)
+    def cb_consent_accept(call):
+        uid = call.from_user.id
+        user = _accept_consent(call.from_user)
+        bot.answer_callback_query(call.id)
+        when = timezone.localtime(user.consent_at).strftime("%d.%m.%Y %H:%M")
+        try:
+            bot.edit_message_text(
+                f"✅ Согласие на обработку персональных данных принято ({when}).",
+                call.message.chat.id,
+                call.message.message_id,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        pending = _pending_starts.pop(uid, None)
+        if pending is not None:
+            _handle_start(pending)
+        else:
+            bot.send_message(
+                call.message.chat.id,
+                BotSettings.load().welcome_text or "",
+                reply_markup=get_keyboard(uid),
+            )
+
     @bot.message_handler(commands=["broadcast"], func=lambda m: _is_admin(m.from_user.id))
     def on_broadcast_start(message):
         _start_broadcast_flow(message.chat.id, message.from_user.id)
@@ -885,6 +977,8 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
 
     @bot.message_handler(func=lambda m: m.text == BTN_SERVICES)
     def on_services(message):
+        if not _ensure_consent(bot, message.from_user, message.chat.id):
+            return
         _pending_bookings.pop(message.from_user.id, None)
         bot.send_message(
             message.chat.id, build_services_text(), reply_markup=get_keyboard(message.from_user.id)
@@ -893,6 +987,8 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
     @bot.message_handler(func=lambda m: m.text == BTN_BOOK)
     def on_book(message):
         uid = message.from_user.id
+        if not _ensure_consent(bot, message.from_user, message.chat.id):
+            return
         _upsert_user(message.from_user)
         # Удаляем сообщение пользователя «📝 Записаться», чтобы экран оставался чистым
         try:
@@ -927,6 +1023,8 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         msg_id = call.message.message_id
         data = call.data
         bot.answer_callback_query(call.id)
+        if not _ensure_consent(bot, call.from_user, chat_id):
+            return
 
         # Нажатие на неактивный элемент (заголовок, пустая ячейка, прошедшая дата)
         if data == "bk_x":
@@ -1261,5 +1359,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         uid = message.from_user.id
         if _is_admin(uid):
             bot.send_message(message.chat.id, ADMIN_HINT)
+            return
+        if not _ensure_consent(bot, message.from_user, message.chat.id):
             return
         _forward_to_admins(bot, message)

@@ -110,7 +110,7 @@ class BotAdminAdmin(admin.ModelAdmin):
 
 @admin.register(TelegramUser)
 class TelegramUserAdmin(admin.ModelAdmin):
-    list_display = ["display_name", "username", "telegram_id", "updated_at"]
+    list_display = ["display_name", "username", "telegram_id", "consent_at", "updated_at"]
     search_fields = ["username", "first_name", "last_name", "telegram_id"]
     readonly_fields = [f.name for f in TelegramUser._meta.fields]
 

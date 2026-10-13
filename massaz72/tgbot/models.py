@@ -149,6 +149,10 @@ class TelegramUser(models.Model):
     username = models.CharField("Username", max_length=100, blank=True, default="")
     first_name = models.CharField("Имя", max_length=150, blank=True, default="")
     last_name = models.CharField("Фамилия", max_length=150, blank=True, default="")
+    consent_at = models.DateTimeField(
+        "Согласие на обработку ПД", null=True, blank=True,
+        help_text="Момент, когда клиент нажал «Ознакомлен и принимаю» в боте.",
+    )
     created_at = models.DateTimeField("Первое обращение", auto_now_add=True)
     updated_at = models.DateTimeField("Последняя активность", auto_now=True)
 

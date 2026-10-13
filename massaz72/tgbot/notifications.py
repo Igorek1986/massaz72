@@ -20,11 +20,16 @@ from .models import BookingNotification, BotAdmin, ReviewNotification
 
 def _policy_url() -> str:
     """Абсолютная ссылка на «Согласие на обработку ПД» для сообщений в боте."""
+    return abs_url("main:consent")
+
+
+def abs_url(route_name: str) -> str:
+    """Абсолютная ссылка на страницу сайта для сообщений в боте."""
     from django.conf import settings
     from django.contrib.sites.models import Site
     from django.urls import reverse
 
-    path = reverse("main:consent")
+    path = reverse(route_name)
     domain = ""
     try:
         domain = Site.objects.get_current().domain
