@@ -133,9 +133,6 @@ class SiteSettings(models.Model):
     operator_email = models.EmailField(
         "Оператор ПД: email для обращений", default="info@massaz72.ru",
     )
-    operator_phone = models.CharField(
-        "Оператор ПД: телефон", max_length=32, blank=True, default="",
-    )
     retention_text = models.CharField(
         "Политика ПД: срок хранения",
         max_length=300,

@@ -76,13 +76,13 @@ class PrivacyPageTest(TestCase):
         SiteSettings.objects.create(
             operator_name="ИП Иванов И.И.", operator_inn="720000000000",
             operator_address="г. Тюмень, ул. Тестовая, 1",
-            operator_email="mail@example.ru", operator_phone="+7 900 000-00-00",
+            operator_email="mail@example.ru",
             retention_text="3 года после последнего обращения",
         )
         html = _page(self)
         for text in (
             "ИП Иванов И.И.", "ИНН 720000000000", "г. Тюмень, ул. Тестовая, 1",
-            "mail@example.ru", "+7 900 000-00-00", "3 года после последнего обращения",
+            "mail@example.ru", "3 года после последнего обращения",
         ):
             self.assertIn(text, html)
         self.assertNotIn("info@massaz72.ru", html)

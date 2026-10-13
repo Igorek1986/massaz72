@@ -37,7 +37,6 @@ def build_policy_context() -> SimpleNamespace:
         operator_inn=cfg.operator_inn,
         operator_address=cfg.operator_address,
         operator_email=cfg.operator_email,
-        operator_phone=cfg.operator_phone,
         retention_text=cfg.retention_text,
         updated_at=cfg.privacy_updated_at,
         booking_enabled=cfg.online_booking_enabled,

@@ -1262,8 +1262,23 @@ body.cabinet-body {
   }
 
   &__input {
-    width: 110px;
+    // 5 цифр шрифтом 16px (iOS) + отступы; border-box — ширина включает padding
+    width: 130px;
+    min-width: 130px;
+    box-sizing: border-box;
+    padding-left: 10px;
+    padding-right: 10px;
     text-align: right;
+    font-variant-numeric: tabular-nums;
+
+    // стрелки number-поля съедают ширину и обрезают цифры
+    appearance: textfield;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
 
     // placeholder «новая цена» не помещается в узкое поле
     &::placeholder { text-align: center; }
@@ -1614,7 +1629,8 @@ body.cabinet-body {
 
   // На мобильном (iOS) шире поле — иначе обрезается последняя цифра
   .price-list__input {
-    width: 110px;
+    width: 130px;
+    min-width: 130px;
   }
 
   // Карточка услуги: название отдельной строкой сверху, остальное — ниже
