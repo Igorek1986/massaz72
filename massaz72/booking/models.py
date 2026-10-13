@@ -109,7 +109,14 @@ class BookingRequest(models.Model):
     )
     consent_at = models.DateTimeField(
         "Согласие на обработку ПД", null=True, blank=True,
-        help_text="Момент согласия клиента на обработку ПД (через бота).",
+        help_text="Момент согласия клиента на обработку ПД (форма на сайте или бот).",
+    )
+    health_consent_at = models.DateTimeField(
+        "Согласие на данные о здоровье", null=True, blank=True,
+        help_text=(
+            "Отдельное согласие на обработку сведений о состоянии здоровья, "
+            "которые клиент указал в заявке (необязательный чекбокс на форме)."
+        ),
     )
     link_token = models.CharField(
         "Токен привязки к боту", max_length=43, unique=True,

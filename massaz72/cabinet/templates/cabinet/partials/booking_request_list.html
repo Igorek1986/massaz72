@@ -33,6 +33,7 @@
       {% if b.specialist %}<div><b>Мастер:</b> {{ b.specialist.name }}</div>{% endif %}
       <div><b>Желаемые дата/время:</b> {{ b.preferred_date|date:"d.m.Y" }} {{ b.preferred_time|time:"H:i" }}</div>
       {% if b.consent_at %}<div><b>Согласие на ПД:</b> {{ b.consent_at|date:"d.m.Y H:i" }}</div>{% endif %}
+      {% if b.health_consent_at %}<div><b>Согласие на данные о здоровье:</b> {{ b.health_consent_at|date:"d.m.Y H:i" }}</div>{% endif %}
       {% if b.comment %}<div><b>Комментарий:</b> {{ b.comment }}</div>{% endif %}
     </div>
 

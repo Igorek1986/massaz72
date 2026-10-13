@@ -3,6 +3,7 @@ import logging
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from main.models import SiteSettings
@@ -63,6 +64,7 @@ def create(request: HttpRequest) -> HttpResponse:
     if form.is_valid():
         review: Review = form.save(commit=False)
         review.ip_address = ip
+        review.consent_at = timezone.now()
         review.status = Review.Status.PENDING
         review.save()
         _notify_admins(review)

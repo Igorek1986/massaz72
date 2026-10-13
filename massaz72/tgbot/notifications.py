@@ -19,12 +19,12 @@ from .models import BookingNotification, BotAdmin, ReviewNotification
 
 
 def _policy_url() -> str:
-    """Абсолютная ссылка на «Политику обработки ПД» для сообщений в боте."""
+    """Абсолютная ссылка на «Согласие на обработку ПД» для сообщений в боте."""
     from django.conf import settings
     from django.contrib.sites.models import Site
     from django.urls import reverse
 
-    path = reverse("main:privacy")
+    path = reverse("main:consent")
     domain = ""
     try:
         domain = Site.objects.get_current().domain
@@ -216,7 +216,7 @@ def client_booking_summary(booking) -> str:
     else:
         lines.append(
             f"\nНажимая «Подтвердить запись», вы соглашаетесь на обработку "
-            f"персональных данных (<a href=\"{_policy_url()}\">Политика</a>):"
+            f"персональных данных (<a href=\"{_policy_url()}\">Согласие</a>):"
         )
     return "\n".join(lines)
 

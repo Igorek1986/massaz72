@@ -120,6 +120,10 @@ def booking_page(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             booking: BookingRequest = form.save(commit=False)
             booking.ip_address = ip
+            now = timezone.now()
+            booking.consent_at = now
+            if form.cleaned_data.get("health_consent"):
+                booking.health_consent_at = now
             # Залогиненный клиент — привязываем заявку к аккаунту.
             if request.user.is_authenticated and hasattr(request.user, "client_profile"):
                 booking.user = request.user

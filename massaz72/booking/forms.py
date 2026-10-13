@@ -25,6 +25,9 @@ class BookingForm(forms.ModelForm):
         },
     )
 
+    # Отдельное необязательное согласие на сведения о здоровье (ст. 10 152-ФЗ).
+    health_consent = forms.BooleanField(required=False)
+
     class Meta:
         model = BookingRequest
         fields = [

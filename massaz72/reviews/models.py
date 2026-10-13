@@ -25,6 +25,10 @@ class Review(models.Model):
         choices=Status.choices,
         default=Status.PENDING,
     )
+    consent_at = models.DateTimeField(
+        "Согласие на обработку ПД", null=True, blank=True,
+        help_text="Момент согласия автора отзыва на обработку ПД.",
+    )
     ip_address = models.GenericIPAddressField(
         "IP-адрес", null=True, blank=True,
     )

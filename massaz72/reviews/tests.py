@@ -118,6 +118,14 @@ class ReviewCreateViewTest(TestCase):
         data.update(overrides)
         return self.client.post(self.url, data)
 
+    def test_consent_recorded(self):
+        self._post()
+        self.assertIsNotNone(Review.objects.get().consent_at)
+
+    def test_no_consent_not_saved(self):
+        self._post(consent="")
+        self.assertEqual(Review.objects.count(), 0)
+
     def test_happy_path_creates_pending(self):
         resp = self._post()
         self.assertEqual(resp.status_code, 302)

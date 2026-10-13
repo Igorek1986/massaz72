@@ -39,6 +39,24 @@ class RegistrationTest(TestCase):
         self.assertTrue(hasattr(user, "client_profile"))
         self.assertEqual(user.client_profile.phone, "+70000000000")
 
+    def test_register_records_consent(self):
+        self.client.post(reverse("accounts:register"), {
+            "username": "ivan", "password1": PWD, "password2": PWD,
+            "phone": "", "consent": "on",
+        })
+        self.assertIsNotNone(User.objects.get(username="ivan").client_profile.consent_at)
+
+    def test_register_without_consent_creates_nothing(self):
+        self.client.post(reverse("accounts:register"), {
+            "username": "ivan", "password1": PWD, "password2": PWD, "phone": "",
+        })
+        self.assertEqual(User.objects.count(), 0)
+
+    def test_register_page_links_to_consent(self):
+        resp = self.client.get(reverse("accounts:register"))
+        self.assertContains(resp, reverse("main:consent"))
+        self.assertContains(resp, reverse("main:privacy"))
+
     def test_register_links_past_bookings_by_phone(self):
         booking = BookingRequest.objects.create(
             client_name="Иван", phone="+70000000000",

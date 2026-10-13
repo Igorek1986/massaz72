@@ -369,6 +369,33 @@ class BookingViewTest(TestCase):
         self.assertEqual(BookingRequest.objects.count(), 0)
         self.assertContains(resp, "Необходимо согласие")
 
+    def test_web_submit_records_consent(self):
+        self._post()
+        b = BookingRequest.objects.get()
+        self.assertIsNotNone(b.consent_at)
+        self.assertIsNone(b.health_consent_at)  # отдельное согласие не давали
+
+    def test_health_consent_recorded_only_when_checked(self):
+        self._post(health_consent="on", comment="беременность")
+        b = BookingRequest.objects.get()
+        self.assertIsNotNone(b.health_consent_at)
+        self.assertEqual(b.health_consent_at, b.consent_at)
+
+    def test_health_consent_not_required(self):
+        self._post(comment="без согласия на здоровье")
+        self.assertEqual(BookingRequest.objects.count(), 1)
+
+    def test_no_consent_no_booking_even_with_health(self):
+        self._post(consent="", health_consent="on")
+        self.assertEqual(BookingRequest.objects.count(), 0)
+
+    def test_page_links_to_consent_and_policy(self):
+        resp = self.client.get(self.url)
+        self.assertContains(resp, reverse("main:consent"))
+        self.assertContains(resp, reverse("main:privacy"))
+        self.assertContains(resp, 'name="health_consent"')
+        self.assertContains(resp, reverse("main:consent") + "#health")
+
     def test_booking_saves_sessions(self):
         from booking.models import BookingSessionOption
         spec = make_specialist()  # один мастер → варианты сеансов его

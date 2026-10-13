@@ -137,3 +137,69 @@ class PrivacyPageTest(TestCase):
         html = _page(self)
         self.assertIn("IP-адрес", html)
         self.assertIn("Срок обработки и хранения:", html)
+
+
+def _consent(testcase):
+    return testcase.client.get(reverse("main:consent")).content.decode()
+
+
+class ConsentPageTest(TestCase):
+    def test_operator_details_same_as_policy(self):
+        SiteSettings.objects.create(
+            operator_name="ИП Иванов И.И.", operator_inn="720000000000",
+            operator_address="г. Тюмень, ул. Тестовая, 1",
+            operator_email="mail@example.ru",
+            retention_text="3 года после последнего обращения",
+        )
+        consent, policy = _consent(self), _page(self)
+        for text in (
+            "ИП Иванов И.И.", "ИНН 720000000000", "г. Тюмень, ул. Тестовая, 1",
+            "mail@example.ru", "3 года после последнего обращения",
+        ):
+            self.assertIn(text, consent)
+            self.assertIn(text, policy)
+        self.assertNotIn("info@massaz72.ru", consent)
+
+    def test_empty_optional_fields_not_rendered(self):
+        html = _consent(self)
+        self.assertNotIn("ИНН", html)
+        self.assertNotIn("адрес:", html)
+        self.assertNotIn("Дата последней редакции", html)
+        self.assertNotIn("{{", html)
+        self.assertNotIn("{%", html)
+
+    def test_updated_date_shown(self):
+        import datetime
+        SiteSettings.objects.create(privacy_updated_at=datetime.date(2026, 10, 13))
+        self.assertIn("Дата последней редакции: 13.10.2026", _consent(self))
+
+    def test_purposes_follow_enabled_features(self):
+        SiteSettings.objects.create()
+        html = _consent(self)
+        self.assertNotIn("приём и обработка заявки на запись", html)
+        self.assertNotIn("личного кабинета", html)
+        self.assertNotIn("публикация моего отзыва", html)
+        self.assertNotIn("Отдельное согласие на сведения о состоянии здоровья", html)
+        self.assertIn("обеспечение работы и безопасности сайта", html)
+
+        SiteSettings.objects.update(
+            online_booking_enabled=True, client_cabinet_enabled=True, reviews_enabled=True
+        )
+        html = _consent(self)
+        self.assertIn("приём и обработка заявки на запись", html)
+        self.assertIn("личного кабинета", html)
+        self.assertIn("публикация моего отзыва", html)
+        self.assertIn('id="health"', html)
+        self.assertIn("Отдельное согласие на сведения о состоянии здоровья", html)
+
+    def test_messengers_and_cross_border(self):
+        _specialist(max_messanger="abc")
+        html = _consent(self)
+        self.assertIn("мессенджеры (MAX)", html)
+        self.assertNotIn("за пределами Российской Федерации", html)
+        _specialist(name="Б", telegram_username="tg")
+        html = _consent(self)
+        self.assertIn("при обращении через Telegram данные могут передаваться", html)
+
+    def test_links_to_policy(self):
+        self.assertIn(reverse("main:privacy"), _consent(self))

@@ -239,7 +239,7 @@ class BookingBindTest(TestCase):
 
     def test_summary_has_policy_link(self):
         from tgbot.notifications import client_booking_summary
-        self.assertIn("Политика", client_booking_summary(self.booking))
+        self.assertIn("Согласие", client_booking_summary(self.booking))
 
     def test_client_confirm_unknown(self):
         from tgbot.notifications import handle_client_booking_confirm

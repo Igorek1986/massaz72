@@ -51,7 +51,7 @@ def register(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             user = form.save()
             phone = form.cleaned_data.get("phone", "")
-            Client.objects.create(user=user, phone=phone)
+            Client.objects.create(user=user, phone=phone, consent_at=timezone.now())
             # Привязываем прежние заявки клиента по телефону.
             if phone:
                 from booking.models import BookingRequest

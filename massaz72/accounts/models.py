@@ -24,6 +24,10 @@ class Client(models.Model):
         verbose_name="Пользователь",
     )
     phone = models.CharField("Телефон", max_length=20, blank=True, default="")
+    consent_at = models.DateTimeField(
+        "Согласие на обработку ПД", null=True, blank=True,
+        help_text="Момент согласия при регистрации.",
+    )
 
     # Привязка к боту (Telegram сейчас, Max — задел).
     messenger = models.CharField(
