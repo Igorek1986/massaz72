@@ -1,6 +1,8 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
+{% block html_attributes %} class="redesign-page"{% endblock %}
+
 {% block title %}Онлайн-запись на массаж{% endblock %}
 
 {% block body %}
@@ -32,8 +34,18 @@
 
         {{ service_durations|json_script:"serviceDurations" }}
         {% for field in form.visible_fields %}
-        {% if field.name != 'website' and field.name != 'consent' and field.name != 'health_consent' %}
-        {% if field.name == 'comment' %}
+        {% if field.name != 'website' and field.name != 'consent' %}
+        <div class="booking-form__row">
+          <label class="booking-form__label" for="{{ field.id_for_label }}">
+            {{ field.label }}{% if field.field.required %} <span class="booking-form__req">*</span>{% endif %}
+          </label>
+          {{ field }}
+          {% if field.name == 'service' %}<p class="booking-form__hint" id="serviceDuration" hidden></p>{% endif %}
+          {% if field.errors %}<span class="booking-form__error">{{ field.errors.0 }}</span>{% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+
         <div class="booking-form__row">
           <label class="booking-form__label">Желаемая дата <span class="booking-form__req">*</span></label>
           <div class="cal" id="cal" data-month-url="{% url 'booking:month' %}">
@@ -64,25 +76,6 @@
             {{ form.preferred_time }}
             {% if form.preferred_time.errors %}<span class="booking-form__error">{{ form.preferred_time.errors.0 }}</span>{% endif %}
           </div>
-        </div>
-        {% endif %}
-        <div class="booking-form__row">
-          <label class="booking-form__label" for="{{ field.id_for_label }}">
-            {{ field.label }}{% if field.field.required %} <span class="booking-form__req">*</span>{% endif %}
-          </label>
-          {{ field }}
-          {% if field.name == 'service' %}<p class="booking-form__hint" id="serviceDuration" hidden></p>{% endif %}
-          {% if field.errors %}<span class="booking-form__error">{{ field.errors.0 }}</span>{% endif %}
-        </div>
-        {% endif %}
-        {% endfor %}
-
-        <div class="consent-row">
-          <label class="consent-row__label">
-            {{ form.health_consent }}
-            <span>Даю <a href="{% url 'main:consent' %}#health" target="_blank" rel="noopener">отдельное согласие на обработку сведений о состоянии здоровья</a>,
-              которые указываю в заявке (необязательно).</span>
-          </label>
         </div>
 
         <div class="consent-row">

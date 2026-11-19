@@ -25,14 +25,11 @@ class BookingForm(forms.ModelForm):
         },
     )
 
-    # Отдельное необязательное согласие на сведения о здоровье (ст. 10 152-ФЗ).
-    health_consent = forms.BooleanField(required=False)
-
     class Meta:
         model = BookingRequest
         fields = [
             "client_name", "service", "specialist", "sessions",
-            "preferred_date", "preferred_time", "phone", "address", "comment",
+            "preferred_date", "preferred_time", "phone", "address",
         ]
         widgets = {
             "client_name": forms.TextInput(attrs={
@@ -54,10 +51,6 @@ class BookingForm(forms.ModelForm):
                 "maxlength": 500, "placeholder": "Адрес (для выезда на дом)",
                 "class": "booking-form__input",
             }),
-            "comment": forms.Textarea(attrs={
-                "maxlength": 2000, "rows": 3, "placeholder": "Комментарий (необязательно)",
-                "class": "booking-form__textarea",
-            }),
         }
         labels = {
             "client_name": "Имя",
@@ -67,7 +60,6 @@ class BookingForm(forms.ModelForm):
             "preferred_date": "Желаемая дата",
             "preferred_time": "Желаемое время",
             "phone": "Телефон",
-            "comment": "Комментарий",
         }
 
     def __init__(self, *args, **kwargs):

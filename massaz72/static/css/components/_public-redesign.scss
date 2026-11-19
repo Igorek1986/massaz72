@@ -290,3 +290,19 @@
   0%, 12%, 68%, 100% { background-position: 0 50%; }
   40% { background-position: 100% 50%; }
 }
+
+.redesign-page[data-theme="dark"] {
+  .account-form input::placeholder,
+  .booking-form__input::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  .account-form input,
+  .booking-form__input,
+  .consent-row input {
+    color-scheme: dark;
+  }
+
+  .consent-row__label a { text-decoration: underline; }
+}

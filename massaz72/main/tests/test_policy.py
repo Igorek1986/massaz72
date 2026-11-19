@@ -119,7 +119,7 @@ class PrivacyPageTest(TestCase):
         self.assertIn("Приём и обработка заявок на запись", html)
         self.assertIn("личного кабинета клиента", html)
         self.assertIn("Приём, проверка и публикация отзывов", html)
-        self.assertIn("сведения о состоянии здоровья", html)
+        self.assertNotIn("сведения о состоянии здоровья", html)
 
     def test_max_only_no_cross_border(self):
         _specialist(max_messanger="abc")
@@ -189,8 +189,8 @@ class ConsentPageTest(TestCase):
         self.assertIn("приём и обработка заявки на запись", html)
         self.assertIn("личного кабинета", html)
         self.assertIn("публикация моего отзыва", html)
-        self.assertIn('id="health"', html)
-        self.assertIn("Отдельное согласие на сведения о состоянии здоровья", html)
+        self.assertNotIn('id="health"', html)
+        self.assertNotIn("комментарий к заявке", html)
 
     def test_messengers_and_cross_border(self):
         _specialist(max_messanger="abc")
