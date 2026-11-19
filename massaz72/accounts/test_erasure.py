@@ -104,19 +104,23 @@ class AccountErasureTest(TestCase):
         request.refresh_from_db()
         self.assertIsNone(request.completed_at)
 
-    def test_future_visit_blocks_erasure_until_operator_resolves_it(self):
-        visit = self._make_visit(date=timezone.localdate(), status=Appointment.SCHEDULED)
+    def test_future_visit_is_anonymized_and_stays_on_schedule(self):
+        visit = self._make_visit(
+            date=timezone.localdate() + timedelta(days=1), status=Appointment.SCHEDULED,
+        )
+        original_slot = visit.date, visit.time_start
         self._make_booking(visit)
         request, url = self._process_url()
         self.client.force_login(self.operator)
-        self.assertContains(
-            self.client.post(url, {"confirmed": "on"}), "предстоящие визиты", status_code=409,
-        )
+        self.assertRedirects(self.client.post(url, {"confirmed": "on"}), self.list_url)
         request.refresh_from_db()
-        self.assertIsNone(request.completed_at)
+        self.assertIsNotNone(request.completed_at)
         visit.refresh_from_db()
-        self.assertEqual(visit.client_name, "Тестовый клиент")
-        self.assertTrue(get_user_model().objects.filter(pk=self.user.pk).exists())
+        self.assertEqual(visit.client_name, "Клиент удалён")
+        self.assertEqual((visit.client_phone, visit.address, visit.notes), ("", "", ""))
+        self.assertEqual((visit.date, visit.time_start), original_slot)
+        self.assertEqual(visit.status, Appointment.SCHEDULED)
+        self.assertFalse(get_user_model().objects.filter(pk=self.user.pk).exists())
 
     def test_processing_erases_identity_but_preserves_visit_history(self):
         series = AppointmentSeries.objects.create(specialist=self.specialist, total_sessions=2)

@@ -163,6 +163,13 @@ def _consent(testcase):
 
 
 class ConsentPageTest(TestCase):
+    def test_phone_purpose_shown_for_booking(self):
+        cfg = SiteSettings.objects.create(online_booking_enabled=True)
+        self.assertIn("связаться со мной по заявке, согласовать визит", _consent(self))
+        cfg.online_booking_enabled = False
+        cfg.save(update_fields=["online_booking_enabled"])
+        self.assertNotIn("связаться со мной по заявке, согласовать визит", _consent(self))
+
     def test_operator_details_same_as_policy(self):
         SiteSettings.objects.create(
             operator_name="ИП Иванов И.И.", operator_inn="720000000000",

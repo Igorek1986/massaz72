@@ -35,11 +35,6 @@ def complete_account_erasure(erasure_id):
         raise ValidationError("Можно удалить только аккаунт клиента.")
 
     visits = client_appointments(user)
-    if visits.filter(
-        parent__isnull=True, date__gte=timezone.localdate(), status=Appointment.SCHEDULED,
-    ).exists():
-        raise ValidationError("Обработайте предстоящие визиты клиента перед удалением данных.")
-
     visit_ids = list(visits.values_list("pk", flat=True))
     Appointment.objects.filter(Q(pk__in=visit_ids) | Q(parent_id__in=visit_ids)).update(
         client_name="Клиент удалён", client_phone="", address="", notes="", series=None,
