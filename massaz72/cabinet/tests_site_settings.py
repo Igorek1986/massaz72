@@ -171,3 +171,56 @@ class CabinetSpecialistRolesTest(TestCase):
         client = Client(enforce_csrf_checks=True)
         client.force_login(self.admin)
         self.assertEqual(client.post(self.roles_url, {}).status_code, 403)
+
+
+class CabinetSpecialistLifecycleTest(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.admin = user_model.objects.create_superuser("lifecycle-admin")
+        self.user = user_model.objects.create_user("lifecycle-specialist", is_staff=True)
+        self.existing = Specialist.objects.create(user=self.user, name="Текущий профиль")
+        self.add_url = reverse("cabinet:specialist_add")
+        self.status_url = reverse("cabinet:specialist_status", args=[self.existing.pk])
+        self.list_url = reverse("cabinet:specialists")
+        self.client.force_login(self.admin)
+
+    def test_superuser_adds_inactive_profile_without_account(self):
+        self.assertContains(self.client.get(self.list_url), self.add_url)
+        self.assertContains(self.client.get(self.add_url), "Добавить специалиста")
+        response = self.client.post(self.add_url, {"name": "Новый профиль", "is_active": "on"})
+        self.assertRedirects(response, self.list_url)
+        specialist = Specialist.objects.get(name="Новый профиль")
+        self.assertFalse(specialist.is_active)
+        self.assertIsNone(specialist.user_id)
+
+    def test_invalid_creation_does_not_add_profile(self):
+        self.assertEqual(self.client.post(self.add_url, {"name": ""}).status_code, 200)
+        self.assertEqual(Specialist.objects.count(), 1)
+
+    def test_status_changes_are_idempotent_and_keep_account(self):
+        for status, expected in (("inactive", False), ("inactive", False), ("active", True)):
+            self.assertRedirects(self.client.post(self.status_url, {"status": status}), self.list_url)
+            self.existing.refresh_from_db()
+            self.assertEqual(self.existing.is_active, expected)
+            self.assertEqual(self.existing.user_id, self.user.pk)
+
+    def test_invalid_status_and_get_cannot_change_profile(self):
+        self.assertEqual(self.client.post(self.status_url, {"status": "invalid"}).status_code, 400)
+        self.assertEqual(self.client.get(self.status_url).status_code, 405)
+        self.existing.refresh_from_db()
+        self.assertTrue(self.existing.is_active)
+
+    def test_staff_cannot_create_or_change_status(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(self.add_url).status_code, 403)
+        self.assertEqual(self.client.post(self.add_url, {"name": "Новый профиль"}).status_code, 403)
+        self.assertEqual(self.client.post(self.status_url, {"status": "inactive"}).status_code, 403)
+        self.assertEqual(Specialist.objects.count(), 1)
+        self.existing.refresh_from_db()
+        self.assertTrue(self.existing.is_active)
+
+    def test_changes_require_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.admin)
+        self.assertEqual(client.post(self.add_url, {"name": "Новый профиль"}).status_code, 403)
+        self.assertEqual(client.post(self.status_url, {"status": "inactive"}).status_code, 403)

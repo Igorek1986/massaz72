@@ -334,3 +334,17 @@ class SpecialistRolesForm(forms.Form):
     can_manage_prices = forms.BooleanField(label="Управление каталогом и ценами", required=False)
     can_manage_reviews = forms.BooleanField(label="Управление отзывами", required=False)
     can_manage_site = forms.BooleanField(label="Управление настройками сайта", required=False)
+
+
+class SpecialistCreateForm(forms.ModelForm):
+    class Meta:
+        model = Specialist
+        fields = ["name", "description"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-input"}),
+            "description": forms.Textarea(attrs={"class": "form-input", "rows": 4}),
+        }
+
+
+class SpecialistStatusForm(forms.Form):
+    status = forms.ChoiceField(choices=[("active", "Активный"), ("inactive", "Неактивный")])

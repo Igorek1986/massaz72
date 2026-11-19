@@ -1,0 +1,28 @@
+{% extends "cabinet/base.html" %}
+
+{% block title %}Добавить специалиста{% endblock %}
+{% block nav_specialists %}sidebar__link--active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Добавить специалиста</h1>
+  <a class="btn" href="{% url 'cabinet:specialists' %}">Все специалисты</a>
+</div>
+<section class="settings-card">
+  <form class="settings-card__body" method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p class="settings-card__hint">Профиль появится на сайте и в онлайн-записи после активации.</p>
+    <div class="form-grid">
+      {% for field in form %}
+      <div class="form-field form-field--full">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<span class="form-error">{{ error }}</span>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <button class="btn btn--primary" type="submit">Добавить специалиста</button>
+  </form>
+</section>
+{% endblock %}

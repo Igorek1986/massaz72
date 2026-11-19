@@ -4,7 +4,10 @@
 {% block nav_specialists %}sidebar__link--active{% endblock %}
 
 {% block content %}
-<div class="page-header"><h1 class="page-header__title">Специалисты</h1></div>
+<div class="page-header">
+  <h1 class="page-header__title">Специалисты</h1>
+  <a class="btn btn--primary" href="{% url 'cabinet:specialist_add' %}">Добавить специалиста</a>
+</div>
 {% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
 <div class="settings-layout">
   {% for specialist in specialists %}
@@ -13,7 +16,13 @@
       <h2 class="settings-card__title">{{ specialist.name }}</h2>
     </div>
     <div class="settings-card__body">
-      {% if not specialist.is_active %}<p class="settings-card__hint">Неактивный специалист</p>{% endif %}
+      <p class="settings-card__hint">{% if specialist.is_active %}Активный специалист{% else %}Неактивный специалист{% endif %}</p>
+      <form method="post" action="{% url 'cabinet:specialist_status' specialist.pk %}">
+        {% csrf_token %}
+        <button class="btn" type="submit" name="status" value="{% if specialist.is_active %}inactive{% else %}active{% endif %}">
+          {% if specialist.is_active %}Деактивировать{% else %}Активировать{% endif %}
+        </button>
+      </form>
       {% if not specialist.user %}
       <p class="settings-card__hint">Аккаунт для входа не привязан.</p>
       {% elif specialist.user.is_superuser %}

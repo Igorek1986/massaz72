@@ -25,7 +25,8 @@ from massaz72.utils import _slugify_ru
 
 from .forms import (
     AppointmentForm, BlockedSlotForm, DiscountForm, MassageForm,
-    ScheduleExceptionForm, SessionOptionForm, SpecialistRolesForm, WorkScheduleForm,
+    ScheduleExceptionForm, SessionOptionForm, SpecialistCreateForm, SpecialistRolesForm,
+    SpecialistStatusForm, WorkScheduleForm,
     find_time_conflicts, _conflict_message,
 )
 from booking.models import BookingSessionOption
@@ -303,6 +304,32 @@ def specialists(request):
     return render(request, "cabinet/specialists.html", {
         "specialists": Specialist.objects.select_related("user").order_by("-is_active", "order", "pk"),
     })
+
+
+@cabinet_superuser_required
+@require_http_methods(["GET", "POST"])
+def specialist_add(request):
+    form = SpecialistCreateForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        specialist = form.save(commit=False)
+        specialist.is_active = False
+        specialist.save()
+        messages.success(request, "Специалист добавлен. Активируйте профиль, когда он будет готов.")
+        return redirect("cabinet:specialists")
+    return render(request, "cabinet/specialist_add.html", {"form": form})
+
+
+@cabinet_superuser_required
+@require_POST
+def specialist_status(request, pk):
+    specialist = get_object_or_404(Specialist, pk=pk)
+    form = SpecialistStatusForm(request.POST)
+    if not form.is_valid():
+        return HttpResponse("Некорректный статус специалиста.", status=400)
+    specialist.is_active = form.cleaned_data["status"] == "active"
+    specialist.save(update_fields=["is_active"])
+    messages.success(request, "Статус специалиста обновлён.")
+    return redirect("cabinet:specialists")
 
 
 @cabinet_superuser_required
