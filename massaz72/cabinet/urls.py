@@ -13,6 +13,7 @@ urlpatterns = [
     path("specialists/add/", views.specialist_add, name="specialist_add"),
     path("specialists/<int:pk>/status/", views.specialist_status, name="specialist_status"),
     path("specialists/<int:pk>/roles/", views.specialist_roles, name="specialist_roles"),
+    path("settings/site/design/", views.site_design, name="site_design"),
     path("settings/site/", views.site_settings_edit, name="site_settings"),
     path(
         "login/",

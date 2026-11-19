@@ -60,3 +60,33 @@ class CabinetSiteSettingsForm(SiteSettingsForm):
             "notify_start": forms.TimeInput(attrs={"type": "time"}),
             "notify_end": forms.TimeInput(attrs={"type": "time"}),
         }
+
+
+class SitePaletteForm(forms.Form):
+    def __init__(self, *args, palette=None, **kwargs):
+        from .palette import HEX_COLOR, PALETTE_FIELDS, THEMES, valid_palette
+
+        super().__init__(*args, **kwargs)
+        palette = valid_palette(palette)
+        for index, theme in enumerate(THEMES, start=1):
+            for key, definition in PALETTE_FIELDS.items():
+                label, _, _, variable = definition
+                name = f"{theme}_{key}"
+                self.fields[name] = forms.RegexField(
+                    regex=HEX_COLOR,
+                    label=label,
+                    initial=palette.get(theme, {}).get(key, definition[index]),
+                    widget=forms.TextInput(attrs={
+                        "type": "color", "data-theme-color": theme,
+                        "data-css-variable": variable,
+                        "data-default-color": definition[index],
+                    }),
+                )
+
+    def palette(self):
+        from .palette import PALETTE_FIELDS, THEMES
+
+        return {
+            theme: {key: self.cleaned_data[f"{theme}_{key}"].lower() for key in PALETTE_FIELDS}
+            for theme in THEMES
+        }

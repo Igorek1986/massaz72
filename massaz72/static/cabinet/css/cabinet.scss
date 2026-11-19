@@ -1862,3 +1862,58 @@ body.cabinet-body {
   background: #dcfce7;
   color: #15803d;
 }
+
+.site-designer {
+  display: grid;
+  grid-template-columns: minmax(230px, 290px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+
+  &__form,
+  &__preview {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  &__colors:not([hidden]) {
+    display: grid;
+    gap: 8px;
+  }
+
+  &__color {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  &__color input {
+    width: 42px;
+    height: 34px;
+    flex: none;
+    cursor: pointer;
+  }
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  iframe {
+    justify-self: center;
+    width: 100%;
+    min-height: 70vh;
+    border: 1px solid var(--cab-border);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  &__frame--mobile { max-width: 390px; }
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

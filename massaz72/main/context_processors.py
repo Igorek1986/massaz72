@@ -6,6 +6,7 @@ from cabinet.models import Specialist
 from tgbot.models import BotSettings
 
 from .models import SiteSettings
+from .palette import theme_variables
 
 
 def common_context(request):
@@ -83,6 +84,7 @@ def site_settings(request):
 
     return {
         "site_settings": site_setting,
+        "site_palette": theme_variables(site_setting.design_palette) if site_setting else {},
         "price_change_date": change_date,
         "new_prices_active": bool(change_date and change_date <= today),
         "price_change_pending": bool(change_date and change_date > today),

@@ -55,7 +55,7 @@
     overflow: hidden;
     border-radius: 0 0 14px 14px;
     background: var(--redesign-hero-bg);
-    color: #fff5ec;
+    color: var(--redesign-hero-text, #fff5ec);
 
     &__copy {
       display: grid;
@@ -78,8 +78,8 @@
     }
 
     .massage__cta {
-      color: #391d2b;
-      background: linear-gradient(115deg, #fff0df 0%, #efb1c6 32%, #fff4e7 50%, #efb1c6 68%, #fff0df 100%) 0 50% / 220% 100%;
+      color: var(--redesign-booking-text, #391d2b);
+      background: linear-gradient(115deg, #fff0df 0%, var(--redesign-booking-glow, #efb1c6) 32%, #fff4e7 50%, var(--redesign-booking-glow, #efb1c6) 68%, #fff0df 100%) 0 50% / 220% 100%;
 
       &:hover {
         box-shadow: 0 0 14px rgba(242, 185, 202, .35);
@@ -91,7 +91,7 @@
         &.is-pointer-shimmer {
           animation: none;
           background: radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), #fff7ec, transparent 62%),
-            linear-gradient(115deg, #fff0df, #efb1c6);
+            linear-gradient(115deg, #fff0df, var(--redesign-booking-glow, #efb1c6));
         }
       }
     }

@@ -87,6 +87,7 @@ class SiteSettings(models.Model):
         blank=True,
         null=True,
     )
+    design_palette = models.JSONField("Палитра сайта", default=dict, blank=True, editable=False)
     social_cover = models.ImageField(
         "Обложка для соцсетей",
         upload_to=get_file_path,

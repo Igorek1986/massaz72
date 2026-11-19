@@ -108,6 +108,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "main.preview.SiteDesignPreviewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # AxesMiddleware должен идти последним.
     "axes.middleware.AxesMiddleware",

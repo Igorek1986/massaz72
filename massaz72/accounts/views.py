@@ -43,7 +43,7 @@ def client_required(view_func):
 def register(request: HttpRequest) -> HttpResponse:
     if not _cabinet_enabled():
         return redirect("main:index")
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and not getattr(request, "site_design_preview", False):
         return redirect("accounts:dashboard")
 
     if request.method == "POST":
@@ -79,7 +79,7 @@ def _post_login_redirect(user) -> str:
 def login_view(request: HttpRequest) -> HttpResponse:
     # Универсальный вход: и специалист, и клиент. Доступен всегда (даже если
     # клиентский кабинет выключен — чтобы специалист мог войти).
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and not getattr(request, "site_design_preview", False):
         return redirect(_post_login_redirect(request.user))
 
     if request.method == "POST":

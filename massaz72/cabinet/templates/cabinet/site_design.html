@@ -1,0 +1,55 @@
+{% extends "cabinet/base.html" %}
+{% load static %}
+
+{% block title %}Конструктор сайта{% endblock %}
+{% block nav_site_settings %}sidebar__link--active{% endblock %}
+{% block head_extra %}<script src="{% static 'cabinet/js/site-design.js' %}" defer></script>{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Конструктор сайта</h1>
+  <a class="btn" href="{% url 'cabinet:site_settings' %}">Настройки сайта</a>
+</div>
+{% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
+<div class="site-designer">
+  <form class="settings-card site-designer__form" method="post" id="site-design-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% if form.errors %}<p role="alert">Проверьте значения цветов перед сохранением.</p>{% endif %}
+    <label class="form-label" for="design-theme">Тема</label>
+    <select class="form-input" id="design-theme">
+      <option value="light">Светлая</option>
+      <option value="dark">Тёмная</option>
+    </select>
+
+    <div class="site-designer__colors" data-theme-fields="light">
+      {% for field in light_fields %}
+      <label class="site-designer__color">{{ field }} <span>{{ field.label }}{{ field.errors }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="site-designer__colors" data-theme-fields="dark" hidden>
+      {% for field in dark_fields %}
+      <label class="site-designer__color">{{ field }} <span>{{ field.label }}{{ field.errors }}</span></label>
+      {% endfor %}
+    </div>
+
+    <button class="btn" type="button" id="design-reset">Вернуть стандартные цвета темы</button>
+    <button class="btn btn--primary" type="submit">Опубликовать палитру</button>
+  </form>
+  <section class="settings-card site-designer__preview">
+    <div class="site-designer__toolbar">
+      <label class="form-label" for="design-page">Страница</label>
+      <select class="form-input" id="design-page">
+        {% for url, title in page_urls %}<option value="{{ url }}">{{ title }}</option>{% endfor %}
+      </select>
+      <label class="form-label" for="design-width">Экран</label>
+      <select class="form-input" id="design-width">
+        <option value="wide">Обычный</option>
+        <option value="mobile">Телефон</option>
+      </select>
+    </div>
+    <p class="settings-card__hint">Цвета применяются сразу в предпросмотре. Посетители увидят их после публикации.</p>
+    <iframe id="design-preview" title="Предпросмотр сайта" sandbox="allow-scripts allow-same-origin"></iframe>
+  </section>
+</div>
+{% endblock %}

@@ -10,15 +10,17 @@ from django.db import transaction
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from booking.models import BookingRequest
 from booking.services import confirm_booking, decline_booking
-from main.forms import CabinetSiteSettingsForm, SITE_SETTINGS_SECTIONS
+from main.forms import CabinetSiteSettingsForm, SITE_SETTINGS_SECTIONS, SitePaletteForm
 from main.models import SiteSettings
 from main.policy import published_privacy_text
+from main.preview import PREVIEW_PAGES
 from reviews.models import Review
 from services.models import Massage
 
@@ -446,6 +448,48 @@ def site_settings_edit(request):
         for title, names in SITE_SETTINGS_SECTIONS.items()
     ]
     return render(request, "cabinet/site_settings.html", {"form": form, "sections": sections})
+
+
+@login_required
+@permission_required("main.manage_site_in_cabinet", raise_exception=True)
+@require_http_methods(["GET", "POST"])
+def site_design(request):
+    if not request.user.is_superuser and not hasattr(request.user, "specialist"):
+        raise PermissionDenied
+
+    site = SiteSettings.objects.first()
+    form = SitePaletteForm(
+        request.POST if request.method == "POST" else None,
+        palette=site.design_palette if site else {},
+    )
+    if request.method == "POST" and form.is_valid():
+        if site is None:
+            SiteSettings.objects.create(design_palette=form.palette())
+        else:
+            SiteSettings.objects.filter(pk=site.pk).update(design_palette=form.palette())
+        messages.success(request, "Палитра опубликована.")
+        return redirect("cabinet:site_design")
+
+    page_urls = []
+    for route, title in PREVIEW_PAGES.items():
+        if route == "services:massage_detail":
+            page_urls.extend(
+                (reverse(route, args=[massage.slug]), massage.name)
+                for massage in Massage.objects.filter(is_archived=False).order_by("name")
+            )
+        elif route == "booking:page" and not (site and site.online_booking_enabled):
+            continue
+        elif route in ("accounts:register", "accounts:password_reset") and not (site and site.client_cabinet_enabled):
+            continue
+        else:
+            page_urls.append((reverse(route), title))
+
+    return render(request, "cabinet/site_design.html", {
+        "form": form,
+        "page_urls": page_urls,
+        "light_fields": [field for field in form if field.name.startswith("light_")],
+        "dark_fields": [field for field in form if field.name.startswith("dark_")],
+    })
 
 
 @specialist_required
