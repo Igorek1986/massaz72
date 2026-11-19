@@ -25,13 +25,30 @@
 
     <div class="site-designer__colors" data-theme-fields="light">
       {% for field in light_fields %}
-      <label class="site-designer__color">{{ field }} <span>{{ field.label }}{{ field.errors }}</span></label>
+      {% include "cabinet/partials/design_color_row.html" %}
       {% endfor %}
     </div>
     <div class="site-designer__colors" data-theme-fields="dark" hidden>
       {% for field in dark_fields %}
-      <label class="site-designer__color">{{ field }} <span>{{ field.label }}{{ field.errors }}</span></label>
+      {% include "cabinet/partials/design_color_row.html" %}
       {% endfor %}
+    </div>
+
+    <div id="design-color-picker" class="site-color-picker" hidden>
+      <div class="site-color-picker__header">
+        <strong id="design-color-label">Цвет</strong>
+        <button type="button" class="btn" data-picker-close aria-label="Закрыть палитру">×</button>
+      </div>
+      <div class="site-color-picker__plane" tabindex="0" role="group"
+           aria-label="Насыщенность и яркость. Используйте клавиши со стрелками" data-picker-plane>
+        <span aria-hidden="true"></span>
+      </div>
+      <label class="site-color-picker__hue">Оттенок
+        <input type="range" min="0" max="359" value="0" data-picker-hue>
+      </label>
+      <label class="site-color-picker__hex">HEX
+        <input class="form-input" type="text" maxlength="7" spellcheck="false" autocomplete="off" data-picker-hex>
+      </label>
     </div>
 
     <button class="btn" type="button" id="design-reset">Вернуть стандартные цвета темы</button>
