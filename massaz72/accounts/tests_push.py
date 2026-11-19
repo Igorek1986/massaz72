@@ -10,6 +10,7 @@ import requests
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group, Permission
 from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -84,6 +85,7 @@ class PushTransportTest(SimpleTestCase):
         self.assertEqual(response.headers["Cache-Control"], "no-cache")
         self.assertContains(response, "showNotification")
         self.assertContains(response, reverse("cabinet:booking_requests"))
+        self.assertContains(response, reverse("admin:booking_bookingrequest_changelist"))
         self.assertNotContains(response, "caches.open")
         self.assertEqual(self.client.post("/service-worker.js").status_code, 405)
 
@@ -172,6 +174,59 @@ class PushWorkflowTest(TestCase):
 
         with self.settings(WEB_PUSH_VAPID_PRIVATE_KEY=""):
             self.assertEqual(self.client.get(self.url).json(), {"configured": False, "key": "", "active": False})
+
+    def test_admin_without_specialist_can_open_settings_and_subscribe(self):
+        url = reverse("accounts:notifications")
+        guest = Browser()
+        self.assertRedirects(guest.get(url), f"{reverse('accounts:login')}?next={url}")
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+        admin = User.objects.create_superuser(username="push-admin")
+        self.client.force_login(admin)
+        page = self.client.get(url)
+        self.assertContains(page, "data-push-url", count=1)
+        self.assertContains(page, f'href="{url}"', count=2)
+        self.assertIn("no-store", page.headers["Cache-Control"])
+        self.assertEqual(self.client.post(url).status_code, 405)
+        self.assertTrue(bool(self.client.get(self.url).json()["key"]))
+        subscription = self.subscribe()
+        self.assertEqual(subscription.user_id, admin.pk)
+        self.assertEqual(self.post(action="test").status_code, 202)
+
+    def test_new_bookings_reach_admins_with_permissions_and_stop_after_revocation(self):
+        view = Permission.objects.get(content_type__app_label="booking", codename="view_bookingrequest")
+        change = Permission.objects.get(content_type__app_label="booking", codename="change_bookingrequest")
+        group = Group.objects.create(name="Push test booking readers")
+        group.permissions.add(view)
+        reader = User.objects.create_user(username="booking-reader", is_staff=True)
+        editor = User.objects.create_user(username="booking-editor", is_staff=True)
+        outsider = User.objects.create_user(username="booking-nonstaff")
+        reader.groups.add(group)
+        editor.user_permissions.add(change)
+        outsider.user_permissions.add(view)
+        reader_browser = Browser()
+        reader_browser.force_login(reader)
+        reader_device = self.subscribe(reader_browser, suffix="reader")
+        editor_browser = Browser()
+        editor_browser.force_login(editor)
+        editor_device = self.subscribe(editor_browser, suffix="editor")
+        self.client.force_login(outsider)
+        self.assertFalse(self.client.get(self.url).json()["key"])
+        self.assertEqual(self.client.get(reverse("accounts:notifications")).status_code, 403)
+
+        booking = self.booking(specialist=self.specialist)
+        with self.captureOnCommitCallbacks(execute=True):
+            push_delivery.queue_booking(booking, Kind.NEW_BOOKING)
+        self.assertCountEqual(
+            PushDelivery.objects.values_list("subscription_id", flat=True),
+            [reader_device.pk, editor_device.pk],
+        )
+        reader.groups.remove(group)
+        with patch("accounts.push_delivery.is_open", return_value=True), patch("accounts.web_push.send", return_value=201) as send:
+            push_delivery.flush()
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[:2], (editor_device, "new_booking_admin"))
+        self.assertFalse(PushDelivery.objects.exists())
 
     def test_promotion_on_first_launch_and_dashboard_for_both_roles(self):
         marker = "data-push-promotion hidden"

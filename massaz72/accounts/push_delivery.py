@@ -3,7 +3,9 @@
 import logging
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.db import DatabaseError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from booking.models import BookingRequest
@@ -12,7 +14,8 @@ from main.models import SiteSettings
 from tgbot.notify import global_window, is_open, master_window, next_open
 
 from . import web_push
-from .models import Client, PushDelivery, PushSubscription
+from .models import PushDelivery, PushSubscription
+from .permissions import BOOKING_ADMIN_PERMISSIONS, is_booking_admin
 
 logger = logging.getLogger(__name__)
 Kind = PushDelivery.Kind
@@ -34,20 +37,29 @@ def eligible(user):
     specialist = getattr(user, "specialist", None)
     return bool(
         (specialist and specialist.is_active)
+        or is_booking_admin(user)
         or (hasattr(user, "client_profile") and enabled_for_client())
     )
 
 
 def _recipients(booking, kind):
+    users = get_user_model().objects
     if kind == Kind.NEW_BOOKING:
         specialists = Specialist.objects.filter(is_active=True, user__is_active=True)
         if booking.specialist_id:
             specialists = specialists.filter(pk__in=[booking.specialist_id, booking.specialist.head_id])
-        return specialists.values_list("user_id", flat=True)
+        view, change = (
+            users.with_perm(permission, backend="django.contrib.auth.backends.ModelBackend")
+            for permission in BOOKING_ADMIN_PERMISSIONS
+        )
+        admins = users.filter(is_staff=True).exclude(specialist__is_active=True).filter(
+            Q(pk__in=view) | Q(pk__in=change),
+        )
+        return users.filter(Q(pk__in=specialists.values("user_id")) | Q(pk__in=admins))
 
     if booking.source == BookingRequest.Source.ACCOUNT and booking.user_id and enabled_for_client():
-        return Client.objects.filter(user_id=booking.user_id).values_list("user_id", flat=True)
-    return ()
+        return users.filter(pk=booking.user_id, client_profile__isnull=False)
+    return users.none()
 
 
 @transaction.atomic
@@ -57,7 +69,7 @@ def _enqueue_booking(booking, kind):
         return
     now = timezone.now()
     subscriptions = PushSubscription.objects.filter(
-        user_id__in=_recipients(booking, kind), user__is_active=True,
+        user_id__in=_recipients(booking, kind).values("pk"), user__is_active=True,
         user__account_erasure_request__isnull=True, session__expire_date__gt=now,
         vapid_key=config[1],
     )
@@ -120,7 +132,7 @@ def _deliver(pk, config, now):
         booking = delivery.booking
         if (
             booking is None or booking.status != EXPECTED_STATUS[delivery.kind]
-            or user.pk not in _recipients(booking, delivery.kind)
+            or not _recipients(booking, delivery.kind).filter(pk=user.pk).exists()
         ):
             delivery.delete()
             return
@@ -136,7 +148,10 @@ def _deliver(pk, config, now):
         delivery.delete()
         return
 
-    result = web_push.send(subscription, delivery.kind, config[0], config[2], ttl)
+    kind = delivery.kind
+    if kind == Kind.NEW_BOOKING and not getattr(getattr(user, "specialist", None), "is_active", False):
+        kind = "new_booking_admin"
+    result = web_push.send(subscription, kind, config[0], config[2], ttl)
     if result in (404, 410):
         subscription.delete()
     elif result in (0, 429, 500, 502, 503, 504) and delivery.attempts < 2:

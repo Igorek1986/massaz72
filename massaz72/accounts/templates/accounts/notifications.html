@@ -1,0 +1,19 @@
+{% extends "main/base.html" %}
+
+{% block title %}Уведомления{% endblock %}
+
+{% block body %}
+<section class="account">
+  <div class="container">
+    <div class="account-card">
+      <h1 class="account__title">Уведомления</h1>
+      <p class="account__muted">Подключить уведомления можно в приложении «Массаж72» на iPhone или iPad.</p>
+      <section data-push-section hidden aria-labelledby="admin-push-title">
+        <h2 class="account__subtitle" id="admin-push-title">Уведомления на iPhone</h2>
+        {% include "main/push_controls.html" with button_class="pwa-install__action" %}
+      </section>
+      <p><a href="{% url 'admin:booking_bookingrequest_changelist' %}">Перейти к заявкам</a></p>
+    </div>
+  </div>
+</section>
+{% endblock %}

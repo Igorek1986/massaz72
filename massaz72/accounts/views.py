@@ -4,6 +4,7 @@ from functools import wraps
 from django.contrib.auth import (
     get_user_model, login, logout, update_session_auth_hash,
 )
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import (
     AuthenticationForm, PasswordChangeForm, SetPasswordForm,
 )
@@ -15,7 +16,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from django.views.decorators.http import require_POST
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST, require_safe
 
 from main.models import SiteSettings
 
@@ -23,6 +25,7 @@ from .appointments import client_appointments, client_bookings
 from .erasure import is_client_account
 from .forms import ProfileForm, RegisterForm
 from .models import AccountErasureRequest, Client, PushSubscription
+from .permissions import is_booking_admin
 
 
 def _cabinet_enabled() -> bool:
@@ -95,6 +98,15 @@ def login_view(request: HttpRequest) -> HttpResponse:
 def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     return redirect("main:index")
+
+
+@login_required(login_url="accounts:login")
+@never_cache
+@require_safe
+def notifications(request: HttpRequest) -> HttpResponse:
+    if not is_booking_admin(request.user):
+        return HttpResponse(status=403)
+    return render(request, "accounts/notifications.html")
 
 
 @client_required

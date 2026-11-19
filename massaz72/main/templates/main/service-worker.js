@@ -2,6 +2,7 @@
 
 const messages = {
   new_booking: ["Новая заявка ждёт обработки.", "{% url 'cabinet:booking_requests' %}"],
+  new_booking_admin: ["Новая заявка ждёт обработки.", "{% url 'admin:booking_bookingrequest_changelist' %}"],
   booking_confirmed: ["Статус заявки изменился. Откройте личный кабинет.", "{% url 'accounts:dashboard' %}"],
   booking_declined: ["Статус заявки изменился. Откройте личный кабинет.", "{% url 'accounts:dashboard' %}"],
   test: ["Уведомления на этом устройстве работают.", "/"],

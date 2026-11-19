@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.utils import timezone
 
+from accounts.permissions import is_booking_admin
 from cabinet.models import Specialist
 from tgbot.models import BotSettings
 
@@ -38,6 +39,7 @@ def common_context(request):
         "year": datetime.now().year,
         "account_name": account_name,
         "account_initials": account_initials,
+        "is_booking_admin": is_booking_admin(getattr(request, "user", None)),
     }
 
 
