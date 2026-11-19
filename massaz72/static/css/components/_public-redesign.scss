@@ -82,6 +82,15 @@
       color: #472330;
     }
 
+    .massage__cta--online {
+      color: #391d2b;
+      background: linear-gradient(115deg, #fff0df, #f2b9ca 55%, #e39ab7);
+
+      &:hover {
+        background: linear-gradient(115deg, #fff5e9, #f8c9d6 55%, #edb2c9);
+      }
+    }
+
     &__art {
       position: relative;
       min-height: 350px;
@@ -143,7 +152,7 @@
 
     @media (prefers-reduced-motion: no-preference) {
       &__chevrons i {
-        animation: redesign-chevron-shimmer 3.2s 2 both;
+        animation: redesign-chevron-shimmer 6s infinite;
       }
 
       &__chevrons i:nth-child(2) { animation-delay: .12s; }
@@ -259,6 +268,6 @@
 
 
 @keyframes redesign-chevron-shimmer {
-  0%, 18% { background-position: 100% 0; }
-  64%, 100% { background-position: 0 0; }
+  0%, 12% { background-position: 100% 0; }
+  38%, 100% { background-position: 0 0; }
 }
