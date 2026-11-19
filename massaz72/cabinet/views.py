@@ -26,7 +26,7 @@ from massaz72.utils import _slugify_ru
 
 from .forms import (
     AppointmentForm, BlockedSlotForm, DiscountForm, MassageForm,
-    ScheduleExceptionForm, SessionOptionForm, SpecialistCreateForm, SpecialistRolesForm,
+    ScheduleExceptionForm, SessionOptionForm, SpecialistCreateForm, SpecialistProfileForm, SpecialistRolesForm,
     SpecialistStatusForm, WorkScheduleForm,
     find_time_conflicts, _conflict_message,
 )
@@ -287,6 +287,31 @@ def settings(request):
         "client_cabinet_enabled": bool(settings_obj and settings_obj.client_cabinet_enabled),
         **_tg_link_ctx(specialist),
     })
+
+
+@specialist_required
+@require_http_methods(["GET", "POST"])
+def specialist_profile(request):
+    if request.method == "POST":
+        with transaction.atomic():
+            specialist = get_object_or_404(
+                Specialist.objects.select_for_update(), user=request.user,
+            )
+            previous_photo = specialist.photo
+            form = SpecialistProfileForm(request.POST, request.FILES, instance=specialist)
+            if form.is_valid():
+                if form.changed_data:
+                    form.save(commit=False).save(update_fields=form.changed_data)
+                    if "photo" in form.changed_data and previous_photo and not Specialist.objects.filter(
+                        photo=previous_photo.name,
+                    ).exists():
+                        transaction.on_commit(lambda: previous_photo.delete(save=False))
+                messages.success(request, "Профиль сохранён.")
+                return redirect("cabinet:specialist_profile")
+    else:
+        form = SpecialistProfileForm(instance=request.specialist)
+
+    return render(request, "cabinet/specialist_profile.html", {"form": form})
 
 
 def cabinet_superuser_required(view_func):

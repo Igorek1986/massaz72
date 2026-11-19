@@ -1,0 +1,32 @@
+{% extends "cabinet/base.html" %}
+
+{% block title %}О себе{% endblock %}
+{% block nav_specialist_profile %}sidebar__link--active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">О себе</h1>
+  {% if request.specialist.is_active %}
+  <a class="btn" href="{% url 'main:index' %}#about">Посмотреть на сайте</a>
+  {% endif %}
+</div>
+{% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
+<section class="settings-card">
+  <form class="settings-card__body" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p class="settings-card__hint">Эти сведения видны посетителям сайта, когда профиль активен.</p>
+    <div class="form-grid">
+      {% for field in form %}
+      <div class="form-field{% if field.name == 'description' or field.name == 'photo' %} form-field--full{% endif %}">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small class="settings-card__hint">{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<span class="form-error">{{ error }}</span>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <button class="btn btn--primary" type="submit">Сохранить профиль</button>
+  </form>
+</section>
+{% endblock %}

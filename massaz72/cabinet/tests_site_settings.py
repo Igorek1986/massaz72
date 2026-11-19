@@ -273,3 +273,72 @@ class CabinetSpecialistLifecycleTest(TestCase):
         self.assertFalse(self.user.user_permissions.filter(pk=permission.pk).exists())
         self.client.force_login(self.user)
         self.assertEqual(self.client.get(self.list_url).status_code, 403)
+
+
+class CabinetSpecialistProfileTest(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user("profile-owner")
+        self.specialist = Specialist.objects.create(user=self.user, name="Мой профиль")
+        self.other = Specialist.objects.create(name="Другой профиль")
+        self.url = reverse("cabinet:specialist_profile")
+
+    def test_anonymous_cannot_edit_profile(self):
+        self.assertEqual(self.client.get(self.url).status_code, 302)
+        self.assertEqual(self.client.post(self.url, {"name": "Подмена"}).status_code, 302)
+
+    def test_profile_update_is_limited_to_the_logged_in_specialist(self):
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get(self.url), "Мой профиль")
+        self.assertRedirects(self.client.post(self.url, {
+            "name": "Новый профиль", "description": "Описание", "start_date": "2020-01-01",
+            "id": self.other.pk, "is_active": "", "can_manage_reviews": "on",
+        }), self.url)
+        self.specialist.refresh_from_db()
+        self.other.refresh_from_db()
+        self.assertEqual(self.specialist.name, "Новый профиль")
+        self.assertEqual(self.specialist.description, "Описание")
+        self.assertEqual(self.specialist.start_date.isoformat(), "2020-01-01")
+        self.assertTrue(self.specialist.is_active)
+        self.assertFalse(self.specialist.can_manage_reviews)
+        self.assertEqual(self.other.name, "Другой профиль")
+        self.assertContains(self.client.get(reverse("main:index")), "Новый профиль")
+
+    def test_photo_upload_and_clear(self):
+        self.client.force_login(self.user)
+        image = BytesIO()
+        Image.new("RGB", (120, 120)).save(image, "PNG")
+        with TemporaryDirectory() as media, self.settings(MEDIA_ROOT=media):
+            self.assertRedirects(self.client.post(self.url, {
+                "name": self.specialist.name,
+                "photo": SimpleUploadedFile("original.png", image.getvalue()),
+            }), self.url)
+            self.specialist.refresh_from_db()
+            photo = self.specialist.photo
+            self.assertRegex(photo.name, r"^specialists/[0-9a-f]{32}\.png$")
+            self.assertTrue(photo.storage.exists(photo.name))
+            with self.captureOnCommitCallbacks(execute=True):
+                self.assertRedirects(self.client.post(self.url, {
+                    "name": self.specialist.name, "photo-clear": "on",
+                }), self.url)
+            self.assertFalse(photo.storage.exists(photo.name))
+            self.specialist.refresh_from_db()
+            self.assertFalse(self.specialist.photo)
+
+    def test_invalid_photo_and_future_date_do_not_change_profile(self):
+        self.client.force_login(self.user)
+        image = BytesIO()
+        Image.new("RGB", (120, 120)).save(image, "GIF")
+        response = self.client.post(self.url, {
+            "name": "Несохранённое имя", "start_date": "9999-01-01",
+            "photo": SimpleUploadedFile("photo.gif", image.getvalue()),
+        })
+        self.assertContains(response, "JPEG, PNG или WebP")
+        self.assertContains(response, "не может быть в будущем")
+        self.specialist.refresh_from_db()
+        self.assertEqual(self.specialist.name, "Мой профиль")
+
+    def test_changes_require_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.user)
+        self.assertEqual(client.post(self.url, {"name": "Подмена"}).status_code, 403)

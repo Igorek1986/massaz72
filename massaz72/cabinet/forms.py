@@ -1,6 +1,11 @@
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 from django import forms
+from django.core.files.uploadedfile import UploadedFile
+from django.utils import timezone
+
+from massaz72.utils import validate_file_size
 
 from services.models import Massage
 from .models import Appointment, BlockedSlot, Discount, ScheduleException, Specialist, WorkSchedule
@@ -349,3 +354,31 @@ class SpecialistCreateForm(forms.ModelForm):
 
 class SpecialistStatusForm(forms.Form):
     status = forms.ChoiceField(choices=[("active", "Активный"), ("inactive", "Неактивный")])
+
+class SpecialistProfileForm(forms.ModelForm):
+    class Meta:
+        model = Specialist
+        fields = ["name", "photo", "description", "start_date"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-input"}),
+            "description": forms.Textarea(attrs={"class": "form-input", "rows": 6}),
+            "start_date": forms.DateInput(format="%Y-%m-%d", attrs={"class": "form-input", "type": "date"}),
+        }
+
+    def clean_photo(self):
+        photo = self.cleaned_data["photo"]
+        if isinstance(photo, UploadedFile):
+            validate_file_size(photo)
+            extension = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}.get(photo.image.format)
+            if not extension:
+                raise forms.ValidationError("Загрузите фото в формате JPEG, PNG или WebP.")
+            if max(photo.image.size) > 4096:
+                raise forms.ValidationError("Стороны фото должны быть не больше 4096 пикселей.")
+            photo.name = f"{uuid4().hex}.{extension}"
+        return photo
+
+    def clean_start_date(self):
+        start_date = self.cleaned_data["start_date"]
+        if start_date and start_date > timezone.localdate():
+            raise forms.ValidationError("Дата начала работы не может быть в будущем.")
+        return start_date
