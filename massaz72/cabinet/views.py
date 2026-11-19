@@ -778,9 +778,12 @@ def appointment_delete(request, pk: int):
 def series_cancel_following(request, pk: int):
     specialist = request.specialist
     appointment = get_object_or_404(Appointment, pk=pk, specialist=specialist, parent__isnull=True)
+    if appointment.series_id is None:
+        return HttpResponse("Запись не входит в курс.", status=400)
     saved_date = appointment.date
     Appointment.objects.filter(
-        series=appointment.series, parent__isnull=True, date__gte=appointment.date
+        series_id=appointment.series_id, specialist=specialist,
+        parent__isnull=True, date__gte=appointment.date,
     ).delete()  # CASCADE handles children
     day_html = render_to_string(
         "cabinet/partials/day_schedule.html",
@@ -797,6 +800,7 @@ def series_cancel_following(request, pk: int):
 
 @specialist_required
 @require_POST
+@transaction.atomic
 def series_cancel_action(request, pk: int):
     specialist = request.specialist
     appointment = get_object_or_404(
@@ -805,6 +809,10 @@ def series_cancel_action(request, pk: int):
     )
     saved_date = appointment.date
     action = request.POST.get("action", "cancel_one")
+    if action not in ("cancel_one", "cancel_following"):
+        return HttpResponse("Неизвестное действие.", status=400)
+    if action == "cancel_following" and appointment.series_id is None:
+        return HttpResponse("Запись не входит в курс.", status=400)
     include_main = "include_main" in request.POST
 
     # Collect additional service_ids that were checked
@@ -832,7 +840,8 @@ def series_cancel_action(request, pk: int):
         if include_main:
             affected = list(
                 Appointment.objects.filter(
-                    series=appointment.series, parent__isnull=True, date__gte=appointment.date
+                    series_id=appointment.series_id, specialist=specialist,
+                    parent__isnull=True, date__gte=appointment.date,
                 ).prefetch_related("additional_services")
             )
             for parent in affected:
@@ -840,7 +849,8 @@ def series_cancel_action(request, pk: int):
             Appointment.objects.filter(pk__in=[p.pk for p in affected]).delete()
         else:
             Appointment.objects.filter(
-                parent__series=appointment.series,
+                parent__series_id=appointment.series_id,
+                parent__specialist=specialist,
                 parent__date__gte=appointment.date,
                 service_id__in=extra_service_ids,
             ).delete()

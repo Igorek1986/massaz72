@@ -288,6 +288,8 @@ class SeriesCancelActionTest(TestCase):
 
     def test_cancel_following_include_main(self):
         apts = self._make_series_apts(3)
+        other_series = AppointmentSeries.objects.create(specialist=self.spec, total_sessions=1)
+        other = _make_apt(self.spec, apts[2].date, time(12), series=other_series)
         r = self.client.post(self._url(apts[1].pk), {
             "action": "cancel_following", "include_main": "1",
         })
@@ -295,6 +297,46 @@ class SeriesCancelActionTest(TestCase):
         self.assertTrue(Appointment.objects.filter(pk=apts[0].pk).exists())
         self.assertFalse(Appointment.objects.filter(pk=apts[1].pk).exists())
         self.assertFalse(Appointment.objects.filter(pk=apts[2].pk).exists())
+        self.assertTrue(Appointment.objects.filter(pk=other.pk).exists())
+
+    def test_bulk_cancel_rejects_standalone_visit_in_both_routes(self):
+        first = _make_apt(self.spec, date(2026, 6, 9), time(10))
+        other_spec = _make_specialist("other_cancel_spec")
+        other = _make_apt(other_spec, date(2026, 6, 10), time(10))
+        extra = _make_apt(
+            self.spec, first.date, time(11), service=self.extra_massage, parent=first,
+        )
+        other_extra = _make_apt(
+            other_spec, other.date, time(11), service=self.extra_massage, parent=other,
+        )
+        expected = {first.pk, other.pk, extra.pk, other_extra.pk}
+        requests = (
+            (reverse("cabinet:series_cancel_following", args=[first.pk]), {}),
+            (self._url(first.pk), {"action": "cancel_following", "include_main": "1"}),
+            (self._url(first.pk), {
+                "action": "cancel_following", f"include_service_{self.extra_massage.pk}": "1",
+            }),
+        )
+        for url, data in requests:
+            with self.subTest(url=url, data=data):
+                self.assertEqual(self.client.post(url, data).status_code, 400)
+                self.assertEqual(set(Appointment.objects.values_list("pk", flat=True)), expected)
+
+    def test_unknown_action_cannot_cancel_series(self):
+        visits = self._make_series_apts()
+        response = self.client.post(self._url(visits[0].pk), {
+            "action": "unknown", "include_main": "1",
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Appointment.objects.count(), len(visits))
+
+    def test_legacy_route_cancels_only_following_visits_of_specialist(self):
+        earlier, current, later = self._make_series_apts()
+        other_spec = _make_specialist("legacy_other_spec")
+        other = _make_apt(other_spec, later.date, time(12), series=self.series)
+        response = self.client.post(reverse("cabinet:series_cancel_following", args=[current.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(set(Appointment.objects.values_list("pk", flat=True)), {earlier.pk, other.pk})
 
     def test_cancel_one_extra_service_only(self):
         apts = self._make_series_apts(1)
@@ -322,6 +364,11 @@ class SeriesCancelActionTest(TestCase):
                 service=self.extra_massage, parent=apt, series=self.series
             )
             children.append(c)
+        other_spec = _make_specialist("extras_other_spec")
+        other = _make_apt(other_spec, apts[1].date, time(10), series=self.series)
+        other_extra = _make_apt(
+            other_spec, other.date, time(11), service=self.extra_massage, parent=other,
+        )
 
         r = self.client.post(self._url(apts[0].pk), {
             "action": "cancel_following",
@@ -334,6 +381,9 @@ class SeriesCancelActionTest(TestCase):
         # Extra services removed from both (both ≥ apts[0].date)
         self.assertFalse(Appointment.objects.filter(pk=children[0].pk).exists())
         self.assertFalse(Appointment.objects.filter(pk=children[1].pk).exists())
+        self.assertTrue(
+            Appointment.objects.filter(pk=other_extra.pk, parent=other).exists()
+        )
 
 
 # ---------------------------------------------------------------------------
