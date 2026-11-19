@@ -298,7 +298,8 @@ def cabinet_superuser_required(view_func):
     return wrapper
 
 
-@cabinet_superuser_required
+@login_required
+@permission_required("cabinet.manage_specialist_profiles", raise_exception=True)
 @require_http_methods(["GET"])
 def specialists(request):
     return render(request, "cabinet/specialists.html", {
@@ -306,7 +307,8 @@ def specialists(request):
     })
 
 
-@cabinet_superuser_required
+@login_required
+@permission_required("cabinet.manage_specialist_profiles", raise_exception=True)
 @require_http_methods(["GET", "POST"])
 def specialist_add(request):
     form = SpecialistCreateForm(request.POST if request.method == "POST" else None)
@@ -319,10 +321,13 @@ def specialist_add(request):
     return render(request, "cabinet/specialist_add.html", {"form": form})
 
 
-@cabinet_superuser_required
+@login_required
+@permission_required("cabinet.manage_specialist_profiles", raise_exception=True)
 @require_POST
 def specialist_status(request, pk):
-    specialist = get_object_or_404(Specialist, pk=pk)
+    specialist = get_object_or_404(Specialist.objects.select_related("user"), pk=pk)
+    if specialist.user and specialist.user.is_superuser and not request.user.is_superuser:
+        raise PermissionDenied
     form = SpecialistStatusForm(request.POST)
     if not form.is_valid():
         return HttpResponse("Некорректный статус специалиста.", status=400)
@@ -343,11 +348,19 @@ def specialist_roles(request, pk):
     site_permission = Permission.objects.get(
         content_type__app_label="main", codename="manage_site_in_cabinet",
     )
-    inherited_site_permission = user.groups.filter(permissions=site_permission).exists()
+    specialists_permission = Permission.objects.get(
+        content_type__app_label="cabinet", codename="manage_specialist_profiles",
+    )
+    inherited_permissions = {
+        permission.name
+        for permission in (site_permission, specialists_permission)
+        if user.groups.filter(permissions=permission).exists()
+    }
     initial = {
         "can_manage_prices": specialist.can_manage_prices,
         "can_manage_reviews": specialist.can_manage_reviews,
         "can_manage_site": user.user_permissions.filter(pk=site_permission.pk).exists(),
+        "can_manage_specialists": user.user_permissions.filter(pk=specialists_permission.pk).exists(),
     }
     form = SpecialistRolesForm(
         request.POST if request.method == "POST" else None, initial=initial,
@@ -360,17 +373,21 @@ def specialist_roles(request, pk):
             current.can_manage_prices = form.cleaned_data["can_manage_prices"]
             current.can_manage_reviews = form.cleaned_data["can_manage_reviews"]
             current.save(update_fields=["can_manage_prices", "can_manage_reviews"])
-            if form.cleaned_data["can_manage_site"]:
-                user.user_permissions.add(site_permission)
-            else:
-                user.user_permissions.remove(site_permission)
+            for field, permission in (
+                ("can_manage_site", site_permission),
+                ("can_manage_specialists", specialists_permission),
+            ):
+                if form.cleaned_data[field]:
+                    user.user_permissions.add(permission)
+                else:
+                    user.user_permissions.remove(permission)
         messages.success(request, "Права специалиста сохранены.")
         return redirect("cabinet:specialists")
 
     return render(request, "cabinet/specialist_roles.html", {
         "specialist": specialist,
         "form": form,
-        "inherited_site_permission": inherited_site_permission,
+        "inherited_permissions": sorted(inherited_permissions),
     })
 
 

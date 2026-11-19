@@ -19,8 +19,9 @@
       {{ field.errors }}
     </div>
     {% endfor %}
-    {% if inherited_site_permission %}
-    <p class="settings-card__hint">Доступ к настройкам сайта также выдан через группу Django. Снятие индивидуального права сохраняет доступ через группу.</p>
+    {% if inherited_permissions %}
+    <p class="settings-card__hint">Следующее право также выдано через группу Django. Снятие индивидуального права сохраняет доступ через группу.</p>
+    <ul>{% for permission in inherited_permissions %}<li>{{ permission }}</li>{% endfor %}</ul>
     {% endif %}
     <button class="btn btn--primary" type="submit">Сохранить права</button>
   </form>

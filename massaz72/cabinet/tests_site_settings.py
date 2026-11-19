@@ -155,7 +155,7 @@ class CabinetSpecialistRolesTest(TestCase):
         group.permissions.add(self.permission)
         self.editor.groups.add(group)
         self.client.force_login(self.admin)
-        self.assertContains(self.client.get(self.roles_url), "также выдан через группу")
+        self.assertContains(self.client.get(self.roles_url), "также выдано через группу")
         self.assertRedirects(self.client.post(self.roles_url, {}), self.list_url)
         self.assertTrue(self.editor.has_perm("main.manage_site_in_cabinet"))
 
@@ -224,3 +224,26 @@ class CabinetSpecialistLifecycleTest(TestCase):
         client.force_login(self.admin)
         self.assertEqual(client.post(self.add_url, {"name": "Новый профиль"}).status_code, 403)
         self.assertEqual(client.post(self.status_url, {"status": "inactive"}).status_code, 403)
+
+    def test_superuser_can_delegate_profile_management_without_role_management(self):
+        permission = Permission.objects.get(
+            content_type__app_label="cabinet", codename="manage_specialist_profiles",
+        )
+        roles_url = reverse("cabinet:specialist_roles", args=[self.existing.pk])
+        admin_profile = Specialist.objects.create(user=self.admin, name="Администратор")
+        admin_status_url = reverse("cabinet:specialist_status", args=[admin_profile.pk])
+        self.assertRedirects(
+            self.client.post(roles_url, {"can_manage_specialists": "on"}), self.list_url,
+        )
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get(self.list_url), self.add_url)
+        self.assertRedirects(self.client.post(self.add_url, {"name": "Новый профиль"}), self.list_url)
+        self.assertRedirects(self.client.post(self.status_url, {"status": "inactive"}), self.list_url)
+        self.assertEqual(self.client.post(admin_status_url, {"status": "inactive"}).status_code, 403)
+        self.assertEqual(self.client.post(roles_url, {"can_manage_site": "on"}).status_code, 403)
+
+        self.client.force_login(self.admin)
+        self.assertRedirects(self.client.post(roles_url, {}), self.list_url)
+        self.assertFalse(self.user.user_permissions.filter(pk=permission.pk).exists())
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(self.list_url).status_code, 403)

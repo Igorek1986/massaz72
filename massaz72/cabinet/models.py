@@ -100,6 +100,7 @@ class Specialist(models.Model):
     class Meta:
         verbose_name = "Специалист"
         verbose_name_plural = "Специалисты"
+        permissions = [("manage_specialist_profiles", "Может управлять профилями специалистов в кабинете")]
         ordering = ["order"]
 
     def visible_specialist_ids(self) -> list[int]:

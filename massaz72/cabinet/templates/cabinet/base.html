@@ -67,7 +67,7 @@
         Настройки сайта
       </a>
       {% endif %}
-      {% if request.user.is_superuser %}
+      {% if perms.cabinet.manage_specialist_profiles %}
       <a href="{% url 'cabinet:specialists' %}" class="sidebar__link {% block nav_specialists %}{% endblock %}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2"/>

@@ -17,17 +17,19 @@
     </div>
     <div class="settings-card__body">
       <p class="settings-card__hint">{% if specialist.is_active %}Активный специалист{% else %}Неактивный специалист{% endif %}</p>
+      {% if request.user.is_superuser or not specialist.user.is_superuser %}
       <form method="post" action="{% url 'cabinet:specialist_status' specialist.pk %}">
         {% csrf_token %}
         <button class="btn" type="submit" name="status" value="{% if specialist.is_active %}inactive{% else %}active{% endif %}">
           {% if specialist.is_active %}Деактивировать{% else %}Активировать{% endif %}
         </button>
       </form>
+      {% endif %}
       {% if not specialist.user %}
       <p class="settings-card__hint">Аккаунт для входа не привязан.</p>
       {% elif specialist.user.is_superuser %}
       <p class="settings-card__hint">Суперпользователь</p>
-      {% else %}
+      {% elif request.user.is_superuser %}
       <a class="btn" href="{% url 'cabinet:specialist_roles' specialist.pk %}">Права доступа</a>
       {% endif %}
     </div>
