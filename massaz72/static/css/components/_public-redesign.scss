@@ -119,10 +119,34 @@
       flex: 1;
       display: flex;
       justify-content: space-between;
+      align-items: center;
       gap: 8px;
       padding: 18px clamp(12px, 3vw, 48px);
       color: inherit;
       font: clamp(19px, 3vw, 34px)/1.15 Georgia, serif;
+    }
+
+    &__chevrons {
+      display: grid;
+      flex: none;
+      gap: 0;
+      width: 17px;
+    }
+
+    &__chevrons i {
+      display: block;
+      height: 7px;
+      background: linear-gradient(100deg, var(--color-primary) 20%, var(--color-ink) 48%, var(--color-primary) 76%) 100% 0 / 280% 100%;
+      clip-path: polygon(0 0, 50% 61%, 100% 0, 100% 33%, 50% 100%, 0 33%);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      &__chevrons i {
+        animation: redesign-chevron-shimmer 3.8s 2 both;
+      }
+
+      &__chevrons i:nth-child(2) { animation-delay: .12s; }
+      &__chevrons i:nth-child(3) { animation-delay: .24s; }
     }
 
     &__directions a + a { border-inline-start: 1px solid var(--color-hairline); }
@@ -230,4 +254,10 @@
     from { opacity: .5; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+}
+
+
+@keyframes redesign-chevron-shimmer {
+  0%, 55% { background-position: 100% 0; }
+  82%, 100% { background-position: 0 0; }
 }
