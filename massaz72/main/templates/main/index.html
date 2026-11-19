@@ -7,6 +7,24 @@
   {{ site_settings.head_title }}
 {% endblock %}
 
+{% block social_preview %}
+  {% static 'img/social-cover.jpg' as social_cover %}
+  {% with origin=request.scheme|add:"://"|add:request.get_host %}
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:site_name" content="Твой массажист">
+  <meta property="og:url" content="{{ origin }}{% url 'main:index' %}">
+  <meta property="og:title" content="{{ site_settings.head_title|default:'Детский и женский массаж в Тюмени' }}">
+  <meta property="og:description" content="{{ site_settings.meta_description }}">
+  <meta property="og:image" content="{{ origin }}{{ social_cover }}">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Специалистка готовит массажный стол к сеансу">
+  <meta name="twitter:card" content="summary_large_image">
+  {% endwith %}
+{% endblock %}
+
 {% block body %}
 <div class="site-redesign">
   <section class="redesign-hero container">

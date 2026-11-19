@@ -26,3 +26,20 @@ class StaticPagesTest(TestCase):
         resp = self.client.get(reverse("main:privacy"))
         for name in ("main:privacy", "main:consent", "main:cookies"):
             self.assertContains(resp, f'href="{reverse(name)}"')
+
+
+class HomeSocialPreviewTest(TestCase):
+    def test_preview_uses_https_and_the_current_host(self):
+        response = self.client.get(reverse("main:index"), secure=True)
+
+        self.assertContains(response, 'property="og:url" content="https://testserver/"')
+        self.assertContains(
+            response,
+            'property="og:image" content="https://testserver/static/img/social-cover.jpg"',
+        )
+        self.assertContains(response, 'name="twitter:card" content="summary_large_image"')
+
+    def test_policy_page_does_not_include_home_preview(self):
+        response = self.client.get(reverse("main:privacy"))
+
+        self.assertNotContains(response, 'property="og:image"')
