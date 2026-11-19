@@ -253,6 +253,10 @@
     animation: redesign-arrive .65s ease both;
   }
 
+  .service-lotus.will-bloom:not(.is-blooming) .service-lotus__petal {
+    opacity: 0;
+  }
+
   .service-lotus.is-blooming .service-lotus__petal {
     transform-origin: 300px 200px;
     animation: service-lotus-open 1.15s ease-out var(--petal-delay) both;

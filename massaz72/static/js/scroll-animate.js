@@ -34,5 +34,8 @@
     }
   }, { threshold: 0.65 });
 
-  document.querySelectorAll('.site-redesign .service-lotus').forEach(lotus => observer.observe(lotus));
+  document.querySelectorAll('.site-redesign .service-lotus').forEach(lotus => {
+    lotus.classList.add('will-bloom');
+    observer.observe(lotus);
+  });
 })();
