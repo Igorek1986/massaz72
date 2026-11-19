@@ -1,0 +1,5 @@
+{% load static sass_tags %}{% if False %}{% sass_src 'pwa/controls.scss' %}{% endif %}
+<link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicon/apple-touch-icon.png' %}">
+<link rel="manifest" href="{% static 'favicon/site.webmanifest' %}">
+<link rel="stylesheet" href="{% static 'pwa/controls.css' %}">
+<script src="{% static 'pwa/app.js' %}" data-worker="{% url 'pwa-worker' %}" defer></script>

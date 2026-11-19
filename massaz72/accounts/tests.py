@@ -478,6 +478,7 @@ class SchedulerTest(TestCase):
             "send_reminders_daily", "purge_inactive_daily",
             "purge_unconfirmed_bookings", "flush_notifications",
             "remind_unconfirmed_bookings", "remind_pending_account_erasure",
+            "flush_web_push",
         })
         s = Schedule.objects.get(name="send_reminders_daily")
         self.assertEqual(s.func, "accounts.tasks.send_reminders")

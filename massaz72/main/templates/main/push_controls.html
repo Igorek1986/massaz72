@@ -1,0 +1,16 @@
+<div class="push-controls" data-push-url="{% url 'pwa-subscription' %}" hidden>
+  <p data-push-status role="status">Проверяем поддержку уведомлений…</p>
+  <form class="push-controls__form" hidden>
+    {% csrf_token %}
+    <label class="push-controls__consent">
+      <input type="checkbox" required>
+      <span>Даю <a href="{% url 'main:consent' %}#web-push">согласие на обработку данных для уведомлений</a>.
+        С <a href="{% url 'main:privacy' %}#web-push">политикой</a> ознакомлен(а).</span>
+    </label>
+    <div class="push-controls__actions">
+      <button type="submit" class="{{ button_class }}" data-push-enable>Включить уведомления</button>
+      <button type="button" class="{{ button_class }}" data-push-test hidden>Отправить тест</button>
+      <button type="button" class="{{ button_class }}" data-push-disable hidden>Отключить</button>
+    </div>
+  </form>
+</div>

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
+from accounts.web_push import config as web_push_config
 from cabinet.models import Specialist
 from tgbot.models import BotSettings
 
@@ -52,6 +53,7 @@ def build_policy_context() -> SimpleNamespace:
         foreign_transfer=bool(foreign),
         foreign_services=", ".join(foreign),
         telegram_notifications=telegram_notifications,
+        web_push=bool(web_push_config()),
     )
 
 

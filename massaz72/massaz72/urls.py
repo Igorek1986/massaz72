@@ -22,6 +22,8 @@ from django.urls import include, path
 from django.contrib.sitemaps.views import sitemap
 from services.sitemaps import MassageSitemap
 from main.sitemaps import StaticViewSitemap
+from main.pwa import service_worker
+from accounts.push_views import subscription as push_subscription
 
 # Обработчики ошибок
 handler404 = 'main.views.custom_404'
@@ -32,6 +34,8 @@ sitemaps = {
     "services": MassageSitemap,
 }
 urlpatterns = [
+    path("service-worker.js", service_worker, name="pwa-worker"),
+    path("pwa/push/", push_subscription, name="pwa-subscription"),
     path("admin/", admin.site.urls),
     path("", include("main.urls", "main")),
 

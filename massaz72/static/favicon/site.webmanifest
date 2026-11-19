@@ -1,6 +1,10 @@
 {
   "name": "Твой массажист",
   "short_name": "Массаж72",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "lang": "ru",
   "icons": [
     {
       "src": "/static/favicon/web-app-manifest-192x192.png",

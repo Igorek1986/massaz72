@@ -99,3 +99,36 @@ class AccountErasureRequest(models.Model):
 class AccountErasureReminder(models.Model):
     recipient = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     last_sent_at = models.DateTimeField(null=True, blank=True)
+
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    session = models.OneToOneField("sessions.Session", on_delete=models.CASCADE)
+    endpoint = models.URLField(max_length=2048, unique=True)
+    auth = models.CharField(max_length=22)
+    p256dh = models.CharField(max_length=87)
+    vapid_key = models.CharField(max_length=87)
+    consent_at = models.DateTimeField()
+    last_test_at = models.DateTimeField(null=True, blank=True)
+
+
+class PushDelivery(models.Model):
+    class Kind(models.TextChoices):
+        NEW_BOOKING = "new_booking"
+        BOOKING_CONFIRMED = "booking_confirmed"
+        BOOKING_DECLINED = "booking_declined"
+        TEST = "test"
+
+    subscription = models.ForeignKey(PushSubscription, on_delete=models.CASCADE)
+    booking = models.ForeignKey("booking.BookingRequest", null=True, on_delete=models.CASCADE)
+    kind = models.CharField(max_length=24, choices=Kind.choices)
+    available_at = models.DateTimeField(db_index=True)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscription", "booking", "kind"], name="one_push_per_booking_event",
+            ),
+        ]

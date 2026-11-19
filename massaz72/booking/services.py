@@ -6,6 +6,9 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from accounts.models import PushDelivery
+from accounts.push_delivery import queue_booking
+
 from .models import BookingRequest
 
 
@@ -70,16 +73,22 @@ def confirm_booking(booking, specialist=None, *, date=None, time_start=None,
     else:
         appointment = Appointment.objects.create(date=start_date, **common)
 
+    previous_status = booking.status
     booking.status = BookingRequest.Status.CONFIRMED
     booking.specialist = spec
     booking.appointment = appointment
     booking.save(update_fields=["status", "specialist", "appointment", "updated_at"])
+    if previous_status != booking.status:
+        queue_booking(booking, PushDelivery.Kind.BOOKING_CONFIRMED)
     return appointment
 
 
 def decline_booking(booking):
+    previous_status = booking.status
     booking.status = BookingRequest.Status.DECLINED
     booking.save(update_fields=["status", "updated_at"])
+    if previous_status != booking.status:
+        queue_booking(booking, PushDelivery.Kind.BOOKING_DECLINED)
 
 
 def cancel_appointment(appointment):

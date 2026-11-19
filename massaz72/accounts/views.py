@@ -22,7 +22,7 @@ from main.models import SiteSettings
 from .appointments import client_appointments, client_bookings
 from .erasure import is_client_account
 from .forms import ProfileForm, RegisterForm
-from .models import AccountErasureRequest, Client
+from .models import AccountErasureRequest, Client, PushSubscription
 
 
 def _cabinet_enabled() -> bool:
@@ -295,6 +295,7 @@ def request_account_erasure(request: HttpRequest) -> HttpResponse:
             return HttpResponse(status=403)
         AccountErasureRequest.objects.get_or_create(user=user)
         Client.objects.filter(user=user).update(reminder_enabled=False)
+        PushSubscription.objects.filter(user=user).delete()
     return redirect(f"{reverse('accounts:profile')}#account-erasure")
 
 

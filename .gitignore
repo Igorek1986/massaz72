@@ -129,6 +129,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.web-push
 .venv
 env/
 venv/

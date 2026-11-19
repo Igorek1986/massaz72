@@ -339,7 +339,12 @@ def send_booking_reminder(bot, booking) -> int:
 
 def notify_new_booking(booking) -> int:
     """Уведомление о новой заявке — с учётом тихих часов (может отложиться)."""
+    from accounts.models import PushDelivery
+    from accounts.push_delivery import queue_booking
+
     from .notify import notify
+
+    queue_booking(booking, PushDelivery.Kind.NEW_BOOKING)
     notify("new_booking", {"booking_id": booking.pk})
     return 0
 

@@ -1,0 +1,34 @@
+.push-controls {
+  display: grid;
+  gap: 12px;
+
+  [hidden],
+  &[hidden] {
+    display: none;
+  }
+
+  &__form,
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  &__form {
+    flex-direction: column;
+  }
+
+  &__consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+
+    a {
+      text-decoration: underline;
+    }
+  }
+}
+
+[data-push-section][hidden] {
+  display: none;
+}

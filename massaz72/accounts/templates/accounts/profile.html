@@ -71,6 +71,13 @@
         <button type="submit" name="change_password" class="account-form__submit">Изменить пароль</button>
       </form>
 
+      {% if not erasure_requested %}
+      <section data-push-section hidden aria-labelledby="push-title">
+        <h2 class="account__subtitle" id="push-title">Уведомления на iPhone</h2>
+        {% include "main/push_controls.html" with button_class="account-form__submit" %}
+      </section>
+      {% endif %}
+
       {% if can_request_erasure %}
       <section id="account-erasure" aria-labelledby="account-erasure-title">
         <h2 class="account__subtitle" id="account-erasure-title">Удаление аккаунта и персональных данных</h2>

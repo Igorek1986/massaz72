@@ -47,6 +47,9 @@ ALLOWED_HOSTS = getenv("ALLOWED_HOSTS", "").split(",")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CSRF_TRUSTED_ORIGINS = [o for o in getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
 
+WEB_PUSH_VAPID_PRIVATE_KEY = getenv("WEB_PUSH_VAPID_PRIVATE_KEY", "")
+WEB_PUSH_VAPID_SUBJECT = getenv("WEB_PUSH_VAPID_SUBJECT", "")
+
 
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 год
@@ -264,6 +267,8 @@ logging.config.dictConfig(
             },
         },
         "loggers": {
+            "urllib3.connectionpool": {"level": "INFO"},
+            "django.db.backends": {"level": "INFO"},
             "": {
                 "level": LOGLEVEL,
                 "handlers": [

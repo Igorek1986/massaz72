@@ -30,6 +30,15 @@
     {% include "cabinet/partials/tg_link_section.html" %}
   </div>
 
+  <section class="settings-card" data-push-section hidden aria-labelledby="push-title">
+    <div class="settings-card__header">
+      <h2 class="settings-card__title" id="push-title">Уведомления на iPhone</h2>
+    </div>
+    <div class="settings-card__body">
+      {% include "main/push_controls.html" with button_class="btn btn--primary btn--sm" %}
+    </div>
+  </section>
+
   {% if perms.main.manage_site_in_cabinet %}
   <div class="settings-card">
     <div class="settings-card__header">
