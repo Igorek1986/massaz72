@@ -21,8 +21,10 @@
         {% for error in field.errors %}<span class="form-error">{{ error }}</span>{% endfor %}
       </div>
       {% endfor %}
+      <div class="form-field--full">
+        <button class="btn btn--primary" type="submit">Добавить специалиста</button>
+      </div>
     </div>
-    <button class="btn btn--primary" type="submit">Добавить специалиста</button>
   </form>
 </section>
 {% endblock %}
