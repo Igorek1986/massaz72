@@ -1,10 +1,69 @@
 (() => {
+  function setupInstallPromotion(isAppleMobile, standalone) {
+    const promotion = document.querySelector("[data-pwa-install]");
+    if (!promotion || standalone || !window.isSecureContext
+        || (!isAppleMobile && !/Android/.test(navigator.userAgent))) return;
+
+    const dialog = promotion.querySelector("dialog");
+    if (typeof dialog.showModal !== "function") return;
+
+    const preference = "massaz_pwa_install_hidden_until";
+    const pause = 30 * 24 * 60 * 60 * 1000;
+    try {
+      if (Number(localStorage.getItem(preference)) > Date.now()) return;
+    } catch {
+      // The instructions still work in browsers with storage disabled.
+    }
+
+    const nativeInstall = promotion.querySelector("[data-pwa-install-native]");
+    let installEvent;
+
+    function hidePromotion() {
+      if (dialog.open) dialog.close();
+      promotion.hidden = true;
+      try {
+        localStorage.setItem(preference, String(Date.now() + pause));
+      } catch {
+        // Keep it hidden for the current page when storage is unavailable.
+      }
+    }
+
+    promotion.querySelector(isAppleMobile ? "[data-pwa-ios]" : "[data-pwa-android]").hidden = false;
+    promotion.querySelector("[data-pwa-install-open]").addEventListener("click", () => dialog.showModal());
+    promotion.querySelector("[data-pwa-install-close]").addEventListener("click", () => dialog.close());
+    promotion.querySelector("[data-pwa-install-dismiss]").addEventListener("click", hidePromotion);
+    promotion.hidden = false;
+
+    if (!isAppleMobile) {
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        installEvent = event;
+        nativeInstall.hidden = false;
+      });
+      window.addEventListener("appinstalled", hidePromotion);
+      nativeInstall.addEventListener("click", async () => {
+        const prompt = installEvent;
+        if (!prompt) return;
+        installEvent = undefined;
+        nativeInstall.hidden = true;
+        try {
+          await prompt.prompt();
+          const choice = await prompt.userChoice;
+          if (choice.outcome === "accepted") hidePromotion();
+        } catch {
+          // The manual Chrome instructions remain available.
+        }
+      });
+    }
+  }
+
   const script = document.currentScript;
   const root = document.querySelector("[data-push-url]");
   const section = root?.closest("[data-push-section]");
   const isAppleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  setupInstallPromotion(isAppleMobile, standalone);
   const worker = window.isSecureContext && "serviceWorker" in navigator
     ? navigator.serviceWorker.register(script.dataset.worker, { updateViaCache: "none" }).catch(() => null)
     : null;

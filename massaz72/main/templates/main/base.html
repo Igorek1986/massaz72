@@ -184,6 +184,9 @@
 </a>
 
 <main class="content">
+  {% if not request.site_design_preview %}
+    {% block install_promo %}{% endblock %}
+  {% endif %}
   {% block body %}
 
   {% endblock %}

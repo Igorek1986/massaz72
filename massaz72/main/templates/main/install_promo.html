@@ -1,0 +1,34 @@
+{% load static %}
+<div class="pwa-install" data-pwa-install hidden>
+  <aside class="pwa-install__banner" aria-label="Приложение «Твой массажист»">
+    <img class="pwa-install__icon" src="{% static 'favicon/apple-touch-icon.png' %}" width="36" height="36" alt="" loading="lazy">
+    <div class="pwa-install__copy">
+      <strong>Массаж72</strong>
+      <span>С экрана «Домой»</span>
+    </div>
+    <button class="pwa-install__action" type="button" data-pwa-install-open aria-haspopup="dialog" aria-controls="pwa-install-guide">Установить</button>
+    <button class="pwa-install__dismiss" type="button" data-pwa-install-dismiss aria-label="Скрыть предложение об установке">
+      <span aria-hidden="true">×</span>
+    </button>
+  </aside>
+  <dialog class="pwa-install__dialog" id="pwa-install-guide" aria-labelledby="pwa-install-title">
+    <div class="pwa-install__guide">
+      <h2 id="pwa-install-title">Как установить приложение</h2>
+      <ol class="pwa-install__steps" data-pwa-ios hidden>
+        <li>Откройте сайт в Safari и нажмите <strong>«Поделиться»</strong>. В некоторых версиях эта кнопка находится в меню страницы.</li>
+        <li>Выберите <strong>«На экран „Домой“»</strong>.</li>
+        <li>Если есть переключатель <strong>«Открыть как веб-приложение»</strong>, включите его. Нажмите <strong>«Добавить»</strong>.</li>
+      </ol>
+      <ol class="pwa-install__steps" data-pwa-android hidden>
+        <li>Откройте этот сайт в Chrome и нажмите <strong>⋮</strong> рядом с адресной строкой.</li>
+        <li>Выберите <strong>«Установить и создать ярлык»</strong> или <strong>«Добавить на главный экран»</strong>.</li>
+        <li>Нажмите <strong>«Установить»</strong>, чтобы подтвердить.</li>
+      </ol>
+      <p>Затем откройте приложение с экрана телефона.</p>
+      <div class="pwa-install__actions">
+        <button class="pwa-install__action" type="button" data-pwa-install-native hidden>Установить сейчас</button>
+        <button class="pwa-install__action pwa-install__action--secondary" type="button" data-pwa-install-close autofocus>Закрыть</button>
+      </div>
+    </div>
+  </dialog>
+</div>
