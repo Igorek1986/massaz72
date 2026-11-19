@@ -160,6 +160,11 @@
 
     &__directions a + a { border-inline-start: 1px solid var(--color-hairline); }
 
+    &__directions a:focus-visible {
+      outline-offset: -7px;
+      border-radius: 9px;
+    }
+
     @media (max-width: 750px) {
       grid-template-columns: minmax(0, 1fr);
 
