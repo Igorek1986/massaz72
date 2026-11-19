@@ -78,16 +78,15 @@
     }
 
     .massage__cta {
-      background: #fff3e7;
-      color: #472330;
-    }
-
-    .massage__cta--online {
       color: #391d2b;
-      background: linear-gradient(115deg, #fff0df, #f2b9ca 55%, #e39ab7);
+      background: linear-gradient(115deg, #fff0df 0%, #efb1c6 32%, #fff4e7 50%, #efb1c6 68%, #fff0df 100%) 0 50% / 220% 100%;
 
       &:hover {
-        background: linear-gradient(115deg, #fff5e9, #f8c9d6 55%, #edb2c9);
+        box-shadow: 0 0 14px rgba(242, 185, 202, .35);
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        animation: redesign-booking-shimmer 7s ease-in-out infinite;
       }
     }
 
@@ -270,4 +269,10 @@
 @keyframes redesign-chevron-shimmer {
   0%, 12% { background-position: 100% 0; }
   38%, 100% { background-position: 0 0; }
+}
+
+
+@keyframes redesign-booking-shimmer {
+  0%, 12%, 68%, 100% { background-position: 0 50%; }
+  40% { background-position: 100% 50%; }
 }
