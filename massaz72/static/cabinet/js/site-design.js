@@ -6,38 +6,7 @@
   const frame = document.getElementById('design-preview');
   const colors = [...form.querySelectorAll('[data-theme-color]')];
 
-  const presets = ['#ffffff', '#fbf4ed', '#f0dfd4', '#e2cdd2', '#d991ac',
-    '#803650', '#582d40', '#33252f', '#21191f', '#111111'];
-
-  for (const input of colors) {
-    const row = input.closest('details');
-    const hex = row.querySelector('[data-color-hex]');
-    const swatches = row.querySelector('.site-designer__presets');
-    for (const color of presets) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.style.setProperty('--preset-color', color);
-      button.setAttribute('aria-label', color);
-      button.title = color;
-      button.addEventListener('click', () => {
-        input.value = color;
-        hex.value = color;
-        applyPalette();
-      });
-      swatches.append(button);
-    }
-    hex.value = input.value;
-    hex.addEventListener('input', () => {
-      const value = '#' + hex.value.trim().replace(/^#/, '');
-      if (/^#[0-9a-f]{6}$/i.test(value)) input.value = value;
-    });
-    hex.addEventListener('blur', () => { hex.value = input.value; });
-  }
-
   function applyPalette() {
-    for (const input of colors) {
-      input.closest('details').style.setProperty('--preview-color', input.value);
-    }
     const doc = frame.contentDocument;
     if (!doc?.getElementById('site-palette')) return;
 
@@ -49,15 +18,7 @@
     }
   }
 
-  function closePalette(restoreFocus = false) {
-    const open = form.querySelector('.site-designer__color[open]');
-    if (!open) return;
-    open.open = false;
-    if (restoreFocus) open.querySelector('summary').focus();
-  }
-
   function chooseTheme() {
-    closePalette();
     for (const section of form.querySelectorAll('[data-theme-fields]')) {
       section.hidden = section.dataset.themeFields !== theme.value;
     }
@@ -87,15 +48,9 @@
   width.addEventListener('change', () => frame.classList.toggle('site-designer__frame--mobile', width.value === 'mobile'));
   document.getElementById('design-reset').addEventListener('click', () => {
     for (const input of colors) {
-      if (input.dataset.themeColor !== theme.value) continue;
-      input.value = input.dataset.defaultColor;
-      input.closest('details').querySelector('[data-color-hex]').value = input.value;
+      if (input.dataset.themeColor === theme.value) input.value = input.dataset.defaultColor;
     }
     applyPalette();
   });
-  form.addEventListener('keydown', event => {
-    if (event.key === 'Escape') closePalette(true);
-  });
-  applyPalette();
   choosePage();
 })();

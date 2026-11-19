@@ -77,7 +77,7 @@ class SitePaletteForm(forms.Form):
                     label=label,
                     initial=palette.get(theme, {}).get(key, definition[index]),
                     widget=forms.TextInput(attrs={
-                        "type": "color", "hidden": True, "data-theme-color": theme,
+                        "type": "color", "data-theme-color": theme,
                         "data-css-variable": variable,
                         "data-default-color": definition[index],
                     }),

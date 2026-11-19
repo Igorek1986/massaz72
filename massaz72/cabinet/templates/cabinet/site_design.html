@@ -25,12 +25,12 @@
 
     <div class="site-designer__colors" data-theme-fields="light">
       {% for field in light_fields %}
-      {% include "cabinet/partials/design_color.html" %}
+      <label class="site-designer__color">{{ field }} <span>{{ field.label }}{{ field.errors }}</span></label>
       {% endfor %}
     </div>
     <div class="site-designer__colors" data-theme-fields="dark" hidden>
       {% for field in dark_fields %}
-      {% include "cabinet/partials/design_color.html" %}
+      <label class="site-designer__color">{{ field }} <span>{{ field.label }}{{ field.errors }}</span></label>
       {% endfor %}
     </div>
 
