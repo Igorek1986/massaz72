@@ -6,9 +6,6 @@
 {% block content %}
 <div class="page-header">
   <h1 class="page-header__title">Настройки</h1>
-  {% if perms.main.manage_site_in_cabinet %}
-  <a class="btn" href="{% url 'cabinet:site_settings' %}">Настройки сайта</a>
-  {% endif %}
 </div>
 
 <div class="settings-layout">
