@@ -1,0 +1,30 @@
+{% extends "cabinet/base.html" %}
+
+{% block title %}Специалисты{% endblock %}
+{% block nav_specialists %}sidebar__link--active{% endblock %}
+
+{% block content %}
+<div class="page-header"><h1 class="page-header__title">Специалисты</h1></div>
+{% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
+<div class="settings-layout">
+  {% for specialist in specialists %}
+  <section class="settings-card">
+    <div class="settings-card__header">
+      <h2 class="settings-card__title">{{ specialist.name }}</h2>
+    </div>
+    <div class="settings-card__body">
+      {% if not specialist.is_active %}<p class="settings-card__hint">Неактивный специалист</p>{% endif %}
+      {% if not specialist.user %}
+      <p class="settings-card__hint">Аккаунт для входа не привязан.</p>
+      {% elif specialist.user.is_superuser %}
+      <p class="settings-card__hint">Суперпользователь</p>
+      {% else %}
+      <a class="btn" href="{% url 'cabinet:specialist_roles' specialist.pk %}">Права доступа</a>
+      {% endif %}
+    </div>
+  </section>
+  {% empty %}
+  <p>Специалисты пока не добавлены.</p>
+  {% endfor %}
+</div>
+{% endblock %}

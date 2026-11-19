@@ -4,6 +4,8 @@ from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.models import Permission
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -23,7 +25,7 @@ from massaz72.utils import _slugify_ru
 
 from .forms import (
     AppointmentForm, BlockedSlotForm, DiscountForm, MassageForm,
-    ScheduleExceptionForm, SessionOptionForm, WorkScheduleForm,
+    ScheduleExceptionForm, SessionOptionForm, SpecialistRolesForm, WorkScheduleForm,
     find_time_conflicts, _conflict_message,
 )
 from booking.models import BookingSessionOption
@@ -285,10 +287,72 @@ def settings(request):
     })
 
 
-@specialist_required
+def cabinet_superuser_required(view_func):
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@cabinet_superuser_required
+@require_http_methods(["GET"])
+def specialists(request):
+    return render(request, "cabinet/specialists.html", {
+        "specialists": Specialist.objects.select_related("user").order_by("-is_active", "order", "pk"),
+    })
+
+
+@cabinet_superuser_required
+@require_http_methods(["GET", "POST"])
+def specialist_roles(request, pk):
+    specialist = get_object_or_404(Specialist.objects.select_related("user"), pk=pk)
+    user = specialist.user
+    if user is None or user.is_superuser:
+        raise PermissionDenied
+
+    site_permission = Permission.objects.get(
+        content_type__app_label="main", codename="manage_site_in_cabinet",
+    )
+    inherited_site_permission = user.groups.filter(permissions=site_permission).exists()
+    initial = {
+        "can_manage_prices": specialist.can_manage_prices,
+        "can_manage_reviews": specialist.can_manage_reviews,
+        "can_manage_site": user.user_permissions.filter(pk=site_permission.pk).exists(),
+    }
+    form = SpecialistRolesForm(
+        request.POST if request.method == "POST" else None, initial=initial,
+    )
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            current = get_object_or_404(Specialist.objects.select_for_update(), pk=pk)
+            if current.user_id != user.pk or current.user.is_superuser:
+                raise PermissionDenied
+            current.can_manage_prices = form.cleaned_data["can_manage_prices"]
+            current.can_manage_reviews = form.cleaned_data["can_manage_reviews"]
+            current.save(update_fields=["can_manage_prices", "can_manage_reviews"])
+            if form.cleaned_data["can_manage_site"]:
+                user.user_permissions.add(site_permission)
+            else:
+                user.user_permissions.remove(site_permission)
+        messages.success(request, "Права специалиста сохранены.")
+        return redirect("cabinet:specialists")
+
+    return render(request, "cabinet/specialist_roles.html", {
+        "specialist": specialist,
+        "form": form,
+        "inherited_site_permission": inherited_site_permission,
+    })
+
+
+@login_required
 @permission_required("main.manage_site_in_cabinet", raise_exception=True)
 @require_http_methods(["GET", "POST"])
 def site_settings_edit(request):
+    if not request.user.is_superuser and not hasattr(request.user, "specialist"):
+        raise PermissionDenied
     if request.method == "POST":
         with transaction.atomic():
             instance = SiteSettings.objects.select_for_update().first()

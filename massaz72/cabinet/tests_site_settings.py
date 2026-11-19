@@ -95,3 +95,79 @@ class CabinetSiteSettingsTest(TestCase):
         client = Client(enforce_csrf_checks=True)
         client.force_login(self.user)
         self.assertEqual(client.post(self.url, self.form_data()).status_code, 403)
+
+
+class CabinetSpecialistRolesTest(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.admin = user_model.objects.create_superuser("role-admin")
+        self.editor = user_model.objects.create_user("role-editor", is_staff=True)
+        self.specialist = Specialist.objects.create(
+            user=self.editor, name="Редактор", is_active=False,
+        )
+        self.unlinked = Specialist.objects.create(name="Без аккаунта")
+        self.permission = Permission.objects.get(
+            content_type__app_label="main", codename="manage_site_in_cabinet",
+        )
+        self.list_url = reverse("cabinet:specialists")
+        self.roles_url = reverse("cabinet:specialist_roles", args=[self.specialist.pk])
+
+    def test_superuser_lists_active_inactive_and_unlinked_specialists(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(self.list_url)
+        self.assertContains(response, "Редактор")
+        self.assertContains(response, "Без аккаунта")
+        self.assertContains(response, "Неактивный специалист")
+        self.assertContains(response, reverse("cabinet:site_settings"))
+        self.assertEqual(self.client.get(reverse("cabinet:site_settings")).status_code, 200)
+
+    def test_non_superuser_cannot_open_or_submit_roles_even_with_site_permission(self):
+        self.editor.user_permissions.add(self.permission)
+        self.client.force_login(self.editor)
+        self.assertEqual(self.client.get(self.list_url).status_code, 403)
+        self.assertEqual(self.client.get(self.roles_url).status_code, 403)
+        self.assertEqual(self.client.post(self.roles_url, {"can_manage_reviews": "on"}).status_code, 403)
+        self.specialist.refresh_from_db()
+        self.assertFalse(self.specialist.can_manage_reviews)
+
+    def test_superuser_can_grant_and_revoke_individual_roles(self):
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(self.roles_url), "Управление настройками сайта")
+        response = self.client.post(self.roles_url, {
+            "can_manage_reviews": "on", "can_manage_site": "on",
+        })
+        self.assertRedirects(response, self.list_url)
+        self.specialist.refresh_from_db()
+        self.assertFalse(self.specialist.can_manage_prices)
+        self.assertTrue(self.specialist.can_manage_reviews)
+        self.assertTrue(self.editor.user_permissions.filter(pk=self.permission.pk).exists())
+
+        self.client.force_login(self.editor)
+        self.assertContains(self.client.get(reverse("cabinet:index")), reverse("cabinet:site_settings"))
+        self.client.force_login(self.admin)
+        self.assertRedirects(self.client.post(self.roles_url, {}), self.list_url)
+        self.specialist.refresh_from_db()
+        self.assertFalse(self.specialist.can_manage_reviews)
+        self.assertFalse(self.editor.user_permissions.filter(pk=self.permission.pk).exists())
+
+    def test_group_permission_is_preserved_and_disclosed(self):
+        group = Group.objects.create(name="Редакторы")
+        group.permissions.add(self.permission)
+        self.editor.groups.add(group)
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(self.roles_url), "также выдан через группу")
+        self.assertRedirects(self.client.post(self.roles_url, {}), self.list_url)
+        self.assertTrue(self.editor.has_perm("main.manage_site_in_cabinet"))
+
+    def test_cannot_edit_unlinked_or_superuser_accounts(self):
+        admin_profile = Specialist.objects.create(user=self.admin, name="Администратор")
+        self.client.force_login(self.admin)
+        for profile in (self.unlinked, admin_profile):
+            url = reverse("cabinet:specialist_roles", args=[profile.pk])
+            self.assertEqual(self.client.get(url).status_code, 403)
+            self.assertEqual(self.client.post(url, {}).status_code, 403)
+
+    def test_roles_require_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.admin)
+        self.assertEqual(client.post(self.roles_url, {}).status_code, 403)

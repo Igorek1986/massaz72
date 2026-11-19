@@ -59,6 +59,22 @@
         </svg>
         Настройки
       </a>
+      {% if perms.main.manage_site_in_cabinet %}
+      <a href="{% url 'cabinet:site_settings' %}" class="sidebar__link {% block nav_site_settings %}{% endblock %}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18m-12 0v11"/>
+        </svg>
+        Настройки сайта
+      </a>
+      {% endif %}
+      {% if request.user.is_superuser %}
+      <a href="{% url 'cabinet:specialists' %}" class="sidebar__link {% block nav_specialists %}{% endblock %}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2"/>
+        </svg>
+        Специалисты
+      </a>
+      {% endif %}
       {% if request.user.is_superuser or request.user.specialist.can_manage_reviews %}
       <a href="{% url 'cabinet:reviews' %}" class="sidebar__link {% block nav_reviews %}{% endblock %}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

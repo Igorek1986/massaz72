@@ -329,3 +329,8 @@ class SessionOptionForm(forms.ModelForm):
             ),
             "order": forms.NumberInput(attrs={"class": "form-input", "min": "0"}),
         }
+
+class SpecialistRolesForm(forms.Form):
+    can_manage_prices = forms.BooleanField(label="Управление каталогом и ценами", required=False)
+    can_manage_reviews = forms.BooleanField(label="Управление отзывами", required=False)
+    can_manage_site = forms.BooleanField(label="Управление настройками сайта", required=False)

@@ -8,6 +8,8 @@ app_name = "cabinet"
 urlpatterns = [
     path("", views.index, name="index"),
     path("settings/", views.settings, name="settings"),
+    path("specialists/", views.specialists, name="specialists"),
+    path("specialists/<int:pk>/roles/", views.specialist_roles, name="specialist_roles"),
     path("settings/site/", views.site_settings_edit, name="site_settings"),
     path(
         "login/",
