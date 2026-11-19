@@ -61,6 +61,11 @@ class AccountErasureTest(TestCase):
         request = AccountErasureRequest.objects.create(user=self.user)
         return request, reverse("cabinet:process_erasure", args=[request.pk])
 
+    def _confirmed(self, request):
+        page = self.client.get(self.list_url)
+        item = next(item for item in page.context["erasure_requests"] if item.pk == request.pk)
+        return {"confirmed": "on", "erasure_scope": item.confirmation}
+
     def test_request_requires_client_session_post_csrf_and_checkbox(self):
         self.assertEqual(self.client.post(self.submit_url, {"confirm_erasure": "on"}).status_code, 302)
         self.client.force_login(self.user)
@@ -101,6 +106,7 @@ class AccountErasureTest(TestCase):
         self.client.force_login(self.operator)
         self.assertEqual(self.client.get(url).status_code, 405)
         self.assertEqual(self.client.post(url).status_code, 400)
+        self.assertEqual(self.client.post(url, {"confirmed": "on"}).status_code, 409)
         request.refresh_from_db()
         self.assertIsNone(request.completed_at)
 
@@ -120,7 +126,7 @@ class AccountErasureTest(TestCase):
         strict = TestClient(enforce_csrf_checks=True)
         strict.force_login(operator)
         self.assertEqual(strict.post(url, {"confirmed": "on"}).status_code, 403)
-        self.assertRedirects(self.client.post(url, {"confirmed": "on"}), self.list_url)
+        self.assertRedirects(self.client.post(url, self._confirmed(request)), self.list_url)
         request.refresh_from_db()
         self.assertIsNotNone(request.completed_at)
         self.assertIsNone(request.user_id)
@@ -139,7 +145,7 @@ class AccountErasureTest(TestCase):
         self._make_booking(visit)
         request, url = self._process_url()
         self.client.force_login(self.operator)
-        self.assertRedirects(self.client.post(url, {"confirmed": "on"}), self.list_url)
+        self.assertRedirects(self.client.post(url, self._confirmed(request)), self.list_url)
         request.refresh_from_db()
         self.assertIsNotNone(request.completed_at)
         visit.refresh_from_db()
@@ -156,6 +162,10 @@ class AccountErasureTest(TestCase):
         extra = self._make_visit(parent=second)
         other_visit = self._make_visit()
         booking = self._make_booking(main)
+        guest_booking = BookingRequest.objects.create(
+            user=self.user, source=BookingRequest.Source.GUEST,
+            preferred_date=main.date, preferred_time=main.time_start,
+        )
         review = Review.objects.create(author=self.user, name="Клиент", rating=5, text="Тест")
         other_review = Review.objects.create(name="Другой", rating=5, text="Не связан")
         telegram_user = TelegramUser.objects.create(telegram_id=self.profile.telegram_id)
@@ -176,13 +186,23 @@ class AccountErasureTest(TestCase):
         request, url = self._process_url()
         self.client.force_login(self.operator)
 
-        self.assertRedirects(self.client.post(url, {"confirmed": "on"}), self.list_url)
+        page = self.client.get(self.list_url)
+        scope = page.context["erasure_requests"][0].scope
+        self.assertEqual(scope.booking_ids, (booking.pk,))
+        self.assertEqual(scope.guest_booking_ids, (guest_booking.pk,))
+        self.assertCountEqual(scope.visit_ids, (main.pk, second.pk, extra.pk))
+        self.assertEqual(scope.review_ids, (review.pk,))
+        self.assertEqual(scope.telegram_ids, (telegram_user.pk,))
+        self.assertCountEqual(scope.notification_ids, [notice.pk for notice in notifications])
+        self.assertRedirects(self.client.post(url, self._confirmed(request)), self.list_url)
         request.refresh_from_db()
         self.assertIsNone(request.user_id)
         self.assertIsNotNone(request.completed_at)
         self.assertFalse(get_user_model().objects.filter(pk=self.user.pk).exists())
         self.assertFalse(Client.objects.filter(pk=self.profile.pk).exists())
         self.assertFalse(BookingRequest.objects.filter(pk=booking.pk).exists())
+        guest_booking.refresh_from_db()
+        self.assertIsNone(guest_booking.user_id)
         self.assertFalse(Review.objects.filter(pk=review.pk).exists())
         self.assertFalse(TelegramUser.objects.filter(pk=telegram_user.pk).exists())
         self.assertFalse(DialogMessage.objects.filter(user=telegram_user).exists())
@@ -206,18 +226,62 @@ class AccountErasureTest(TestCase):
         another = get_user_model().objects.create_user("another_client")
         Client.objects.create(user=another, telegram_id=self.profile.telegram_id)
         telegram_user = TelegramUser.objects.create(telegram_id=self.profile.telegram_id)
-        _, url = self._process_url()
+        request, url = self._process_url()
         self.client.force_login(self.operator)
-        self.assertRedirects(self.client.post(url, {"confirmed": "on"}), self.list_url)
+        scope = self.client.get(self.list_url).context["erasure_requests"][0].scope
+        self.assertTrue(scope.shared_telegram)
+        self.assertEqual(scope.telegram_ids, ())
+        self.assertRedirects(self.client.post(url, self._confirmed(request)), self.list_url)
         self.assertTrue(TelegramUser.objects.filter(pk=telegram_user.pk).exists())
 
     def test_operator_can_complete_request_after_manual_review_of_missing_user(self):
         request, url = self._process_url()
         self.user.delete()
         self.client.force_login(self.operator)
-        self.assertRedirects(self.client.post(url, {"confirmed": "on"}), self.list_url)
+        self.assertRedirects(self.client.post(url, self._confirmed(request)), self.list_url)
         request.refresh_from_db()
         self.assertIsNotNone(request.completed_at)
+
+    def test_confirmation_is_rejected_if_records_change_even_with_the_same_count(self):
+        visit = self._make_visit()
+        original = self._make_booking(visit)
+        request, url = self._process_url()
+        self.client.force_login(self.operator)
+        confirmation = self._confirmed(request)
+        original.delete()
+        replacement = self._make_booking(visit)
+
+        response = self.client.post(url, confirmation)
+        self.assertContains(response, "Состав запроса изменился", status_code=409)
+        request.refresh_from_db()
+        self.assertIsNone(request.completed_at)
+        self.assertTrue(BookingRequest.objects.filter(pk=replacement.pk).exists())
+        self.assertTrue(get_user_model().objects.filter(pk=self.user.pk).exists())
+        visit.refresh_from_db()
+        self.assertEqual(visit.client_name, "Тестовый клиент")
+
+    def test_preview_omits_visits_in_a_series_referenced_by_another_account(self):
+        series = AppointmentSeries.objects.create(specialist=self.specialist, total_sessions=2)
+        own_visit = self._make_visit(series=series)
+        shared_visit = self._make_visit(series=series, client_name="Другой клиент")
+        other = get_user_model().objects.create_user("push-shared-visit-owner")
+        booking = self._make_booking(own_visit)
+        other_booking = self._make_booking(shared_visit)
+        BookingRequest.objects.filter(pk=other_booking.pk).update(user=other)
+        request, url = self._process_url()
+        self.client.force_login(self.operator)
+        page = self.client.get(self.list_url)
+        scope = page.context["erasure_requests"][0].scope
+        self.assertEqual(scope.visit_ids, ())
+        self.assertCountEqual(scope.shared_visit_ids, (own_visit.pk, shared_visit.pk))
+        self.assertRedirects(self.client.post(url, self._confirmed(request)), self.list_url)
+
+        self.assertFalse(BookingRequest.objects.filter(pk=booking.pk).exists())
+        other_booking.refresh_from_db()
+        self.assertEqual((other_booking.user_id, other_booking.appointment_id), (other.pk, shared_visit.pk))
+        for visit, name in ((own_visit, "Тестовый клиент"), (shared_visit, "Другой клиент")):
+            visit.refresh_from_db()
+            self.assertEqual((visit.client_name, visit.series_id), (name, series.pk))
 
     @patch("accounts.erasure_reminders.send_account_erasure_reminder", return_value=True)
     def test_reminders_follow_open_requests_and_staff_permission(self, deliver):

@@ -12,6 +12,27 @@
         <h2 class="account__subtitle" id="admin-push-title">Уведомления на iPhone</h2>
         {% include "main/push_controls.html" with button_class="pwa-install__action" %}
       </section>
+      <section class="push-devices" aria-labelledby="push-device-title">
+        <h2 class="account__subtitle" id="push-device-title">Устройства с push</h2>
+        {% if push_devices %}
+        <ul class="push-devices__list">
+          {% for device in push_devices %}
+          <li class="push-devices__row">
+            <div class="push-devices__info">
+              <strong>{{ device.get_device_display }}{% if device.session_id == current_push_session %} · Это устройство{% endif %}</strong>
+              <span class="account__muted">Подключено {{ device.consent_at|date:'d.m.Y H:i' }}</span>
+            </div>
+            <form method="post" action="{% url 'accounts:revoke_push_device' device.pk %}">
+              {% csrf_token %}
+              <button class="pwa-install__action pwa-install__action--secondary" type="submit" aria-label="Отключить push на {{ device.get_device_display }}, подключено {{ device.consent_at|date:'d.m.Y H:i' }}">Отключить</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="account__muted">Подключённых устройств пока нет.</p>
+        {% endif %}
+      </section>
       {% if is_booking_admin %}
       <p><a href="{% url 'admin:booking_bookingrequest_changelist' %}">Перейти к заявкам</a></p>
       {% endif %}

@@ -69,8 +69,9 @@
   const section = root?.closest("[data-push-section]");
   const pushPromo = document.querySelector("[data-push-promotion]");
   const pushDialog = document.querySelector("[data-push-login-dialog]");
-  const isAppleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent)
+  const isIPad = /iPad/.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAppleMobile = isIPad || /iPhone|iPod/.test(navigator.userAgent);
   const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
   setupInstallPromotion(isAppleMobile, standalone);
   const worker = window.isSecureContext && "serviceWorker" in navigator
@@ -248,7 +249,7 @@
         status.textContent = "Настройки доставки обновились. Нажмите «Включить уведомления» ещё раз.";
         return;
       }
-      await request("subscribe", { consent: true, subscription: subscription.toJSON() });
+      await request("subscribe", { consent: true, device: isIPad ? "ipad" : "iphone", subscription: subscription.toJSON() });
       active = true;
       consent.checked = false;
       showState();

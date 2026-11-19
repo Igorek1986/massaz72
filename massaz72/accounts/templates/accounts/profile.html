@@ -76,6 +76,7 @@
         <h2 class="account__subtitle" id="push-title">Уведомления на iPhone</h2>
         {% include "main/push_controls.html" with button_class="account-form__submit" %}
       </section>
+      <p class="account__alt"><a href="{% url 'accounts:notifications' %}#push-device-title">Устройства с push</a></p>
       {% endif %}
 
       {% if can_request_erasure %}

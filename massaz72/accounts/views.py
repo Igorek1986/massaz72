@@ -25,8 +25,7 @@ from .appointments import client_appointments, client_bookings
 from .erasure import is_client_account
 from .forms import ProfileForm, RegisterForm
 from .models import AccountErasureRequest, Client, PushSubscription
-from .permissions import can_process_erasure, is_booking_admin
-from .push_delivery import queue_erasure_request
+from .push_delivery import eligible as can_enable_push, queue_erasure_request
 
 
 def _cabinet_enabled() -> bool:
@@ -105,9 +104,23 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 @never_cache
 @require_safe
 def notifications(request: HttpRequest) -> HttpResponse:
-    if not (is_booking_admin(request.user) or can_process_erasure(request.user)):
+    subscriptions = list(PushSubscription.objects.filter(
+        user=request.user, session__expire_date__gt=timezone.now(),
+    ).only("pk", "device", "session_id", "consent_at").order_by("-consent_at", "-pk"))
+    if not subscriptions and not can_enable_push(request.user):
         return HttpResponse(status=403)
-    return render(request, "accounts/notifications.html")
+    return render(request, "accounts/notifications.html", {
+        "push_devices": subscriptions,
+        "current_push_session": request.session.session_key,
+    })
+
+
+@login_required(login_url="accounts:login")
+@require_POST
+def revoke_push_device(request: HttpRequest, pk: int) -> HttpResponse:
+    subscription = get_object_or_404(PushSubscription, pk=pk, user=request.user)
+    subscription.delete()
+    return redirect("accounts:notifications")
 
 
 @client_required

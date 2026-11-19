@@ -39,6 +39,10 @@
     </div>
   </section>
 
+  <div>
+    <a class="btn btn--ghost" href="{% url 'accounts:notifications' %}#push-device-title">Устройства с push</a>
+  </div>
+
   {% if perms.main.manage_site_in_cabinet %}
   <div class="settings-card">
     <div class="settings-card__header">

@@ -71,6 +71,9 @@ def subscription(request):
             if data.get("consent") is not True:
                 return JsonResponse({}, status=400)
             details = web_push.validate_subscription(data.get("subscription"))
+            device = data.get("device")
+            if device in (PushSubscription.Device.IPHONE, PushSubscription.Device.IPAD):
+                details["device"] = device
             current.update_or_create(
                 user=user, session_id=request.session.session_key,
                 defaults={**details, "vapid_key": config[1], "consent_at": now},

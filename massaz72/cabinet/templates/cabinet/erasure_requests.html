@@ -7,28 +7,83 @@
 <div class="page-header">
   <h1 class="page-header__title">Запросы на удаление ПД</h1>
 </div>
-{% if erasure_error %}
-<p role="alert">{{ erasure_error }}</p>
-{% endif %}
-{% for item in erasure_requests %}
-<section class="settings-section">
-  <h2>Запрос № {{ item.pk }}</h2>
-  <p>{{ item.created_at|date:'d.m.Y H:i' }} · {{ item.user.username|default:'Аккаунт уже отсутствует' }}</p>
-  {% if item.user_id %}
-  <p>Предстоящие визиты останутся в расписании без данных клиента. Специалист сможет удалить их из расписания. Проверьте гостевые заявки, сообщения в мессенджерах, копии и данные, обязательные к хранению.</p>
-  {% else %}
-  <p>Аккаунт отсутствует. Проверьте остальные данные по этому запросу вручную.</p>
+<div class="settings-layout">
+  {% if erasure_error %}
+  <p role="alert">{{ erasure_error }}</p>
   {% endif %}
-  <form action="{% url 'cabinet:process_erasure' item.pk %}" method="post">
-    {% csrf_token %}
-    <label>
-      <input type="checkbox" name="confirmed" required>
-      Я проверил запрос и подтверждаю удаление.
-    </label>
-    <button class="btn btn--danger" type="submit">{% if item.user_id %}Удалить аккаунт и данные{% else %}Завершить запрос{% endif %}</button>
-  </form>
-</section>
-{% empty %}
-<p class="settings-empty">Нет открытых запросов.</p>
-{% endfor %}
+  {% for item in erasure_requests %}
+  <section class="settings-card" aria-labelledby="erasure-title-{{ item.pk }}">
+    <div class="settings-card__header">
+      <h2 class="settings-card__title" id="erasure-title-{{ item.pk }}">Запрос № {{ item.pk }}</h2>
+    </div>
+    <div class="settings-card__body erasure-card">
+      <p class="erasure-card__meta"><time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'d.m.Y H:i' }}</time> · {{ item.user.username|default:'Аккаунт уже отсутствует' }}</p>
+      {% if not item.scope %}
+      <p>Этот запрос связан с учётной записью, которую нельзя удалить из кабинета. Проверьте его вручную.</p>
+      {% else %}
+      {% with scope=item.scope %}
+      {% if scope.user_id %}
+      <section class="erasure-card__section">
+        <h3>Что будет удалено</h3>
+        <dl class="erasure-card__counts">
+          <div><dt>Аккаунт и профиль клиента</dt><dd>1</dd></div>
+          <div><dt>Заявки из этого аккаунта</dt><dd>{{ scope.booking_ids|length }}</dd></div>
+          <div><dt>Отзывы из этого аккаунта</dt><dd>{{ scope.review_ids|length }}</dd></div>
+          <div><dt>Подписки на push</dt><dd>{{ scope.push_ids|length }}</dd></div>
+          <div><dt>Оповещения в очереди Telegram</dt><dd>{{ scope.notification_ids|length }}</dd></div>
+          {% if scope.telegram_ids %}
+          <div><dt>Связанный профиль Telegram-бота и его история</dt><dd>{{ scope.telegram_ids|length }}</dd></div>
+          {% endif %}
+        </dl>
+      </section>
+      <section class="erasure-card__section">
+        <h3>Что будет обезличено</h3>
+        <dl class="erasure-card__counts">
+          <div><dt>Записи в расписании, включая доп. услуги</dt><dd>{{ scope.visit_ids|length }}</dd></div>
+        </dl>
+        {% if scope.visit_ids %}
+        <p>Из этих записей будут удалены имя, телефон, адрес и заметки. В расписании сохранятся дата, время, услуга и стоимость.</p>
+        {% endif %}
+      </section>
+      {% if scope.booking_ids or scope.review_ids or scope.visit_ids %}
+      <details class="erasure-card__section">
+        <summary>Номера записей</summary>
+        {% if scope.booking_ids %}<p>Заявки № {{ scope.booking_ids|join:", " }}</p>{% endif %}
+        {% if scope.review_ids %}<p>Отзывы № {{ scope.review_ids|join:", " }}</p>{% endif %}
+        {% if scope.visit_ids %}<p>Записи в расписании № {{ scope.visit_ids|join:", " }}</p>{% endif %}
+      </details>
+      {% endif %}
+      <section class="erasure-card__section">
+        <h3>Что проверить вручную</h3>
+        <p>Проверьте гостевые заявки, внешнюю переписку, резервные копии и данные, подлежащие хранению.</p>
+        {% if scope.guest_booking_ids %}
+        <p>С аккаунтом связаны заявки вне личного кабинета № {{ scope.guest_booking_ids|join:", " }}. После удаления они сохранятся без привязки к аккаунту.</p>
+        {% endif %}
+        {% if scope.shared_visit_ids %}
+        <p>Записи в расписании № {{ scope.shared_visit_ids|join:", " }} связаны с другими заявками. Проверьте их вручную.</p>
+        {% endif %}
+        {% if scope.shared_telegram %}
+        <p>Связанный профиль Telegram используется в других записях и требует отдельной проверки.</p>
+        {% endif %}
+      </section>
+      {% else %}
+      <p>Аккаунт уже отсутствует. После ручной проверки остальных данных можно закрыть запрос.</p>
+      {% endif %}
+      {% endwith %}
+      <form class="erasure-card__form" action="{% url 'cabinet:process_erasure' item.pk %}" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="erasure_scope" value="{{ item.confirmation }}">
+        <label class="erasure-card__confirm">
+          <input type="checkbox" name="confirmed" required>
+          <span>Я проверил запрос и подтверждаю действие.</span>
+        </label>
+        <button class="btn btn--danger" type="submit">{% if item.user_id %}Удалить аккаунт и данные{% else %}Завершить запрос{% endif %}</button>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+  {% empty %}
+  <p class="settings-empty">Нет открытых запросов.</p>
+  {% endfor %}
+</div>
 {% endblock %}

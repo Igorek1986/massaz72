@@ -102,6 +102,11 @@ class AccountErasureReminder(models.Model):
 
 
 class PushSubscription(models.Model):
+    class Device(models.TextChoices):
+        UNKNOWN = "", "iPhone или iPad"
+        IPHONE = "iphone", "iPhone"
+        IPAD = "ipad", "iPad"
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     session = models.OneToOneField("sessions.Session", on_delete=models.CASCADE)
     endpoint = models.URLField(max_length=2048, unique=True)
@@ -110,6 +115,7 @@ class PushSubscription(models.Model):
     vapid_key = models.CharField(max_length=87)
     consent_at = models.DateTimeField()
     last_test_at = models.DateTimeField(null=True, blank=True)
+    device = models.CharField(max_length=6, choices=Device.choices, default=Device.UNKNOWN, blank=True)
 
 
 class PushDelivery(models.Model):

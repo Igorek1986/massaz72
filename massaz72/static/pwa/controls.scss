@@ -223,3 +223,31 @@
     }
   }
 }
+
+.push-devices {
+  display: grid;
+  gap: 12px;
+
+  &__list {
+    display: grid;
+    gap: 8px;
+    padding-inline-start: 0;
+    list-style: none;
+  }
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--color-hairline);
+    border-radius: 10px;
+  }
+
+  &__info {
+    display: grid;
+    gap: 4px;
+  }
+}

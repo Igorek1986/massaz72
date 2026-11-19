@@ -2032,3 +2032,54 @@ body.cabinet-body {
 
   &:disabled { opacity: .5; }
 }
+
+.erasure-card {
+  display: grid;
+  gap: 16px;
+  overflow-wrap: anywhere;
+
+  &__meta {
+    color: var(--cab-muted);
+  }
+
+  &__section,
+  &__counts {
+    display: grid;
+    gap: 8px;
+  }
+
+  &__section h3 {
+    font-size: 15px;
+  }
+
+  &__counts > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__counts dd {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__form {
+    display: grid;
+    justify-items: start;
+    gap: 16px;
+    padding-block-start: 12px;
+    border-block-start: 1px solid var(--cab-border);
+  }
+
+  &__confirm {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  &__confirm input {
+    flex: none;
+    inline-size: 18px;
+    block-size: 18px;
+  }
+}

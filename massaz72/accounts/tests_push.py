@@ -132,9 +132,9 @@ class PushWorkflowTest(TestCase):
             self.url, {"action": action, **data}, content_type="application/json",
         )
 
-    def subscribe(self, browser=None, suffix="synthetic"):
+    def subscribe(self, browser=None, suffix="synthetic", device=None):
         payload = {**self.web_subscription, "endpoint": f"https://web.push.apple.com/{suffix}"}
-        self.assertEqual(self.post(browser, consent=True, subscription=payload).status_code, 200)
+        self.assertEqual(self.post(browser, consent=True, subscription=payload, device=device).status_code, 200)
         return PushSubscription.objects.get(endpoint=payload["endpoint"])
 
     def booking(self, **fields):
@@ -180,7 +180,7 @@ class PushWorkflowTest(TestCase):
         url = reverse("accounts:notifications")
         guest = Browser()
         self.assertRedirects(guest.get(url), f"{reverse('accounts:login')}?next={url}")
-        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertContains(self.client.get(url), "Устройства с push")
 
         admin = User.objects.create_superuser(username="push-admin")
         self.client.force_login(admin)
@@ -193,6 +193,41 @@ class PushWorkflowTest(TestCase):
         subscription = self.subscribe()
         self.assertEqual(subscription.user_id, admin.pk)
         self.assertEqual(self.post(action="test").status_code, 202)
+
+    def test_device_list_marks_current_subscription_and_revokes_only_the_owners_device(self):
+        mine = self.subscribe(device="iphone")
+        tablet_browser = Browser()
+        tablet_browser.force_login(self.customer)
+        tablet = self.subscribe(tablet_browser, "tablet", device="ipad")
+        expired_browser = Browser()
+        expired_browser.force_login(self.customer)
+        expired = self.subscribe(expired_browser, "expired")
+        Session.objects.filter(pk=expired.session_id).update(expire_date=timezone.now())
+        other_browser = Browser()
+        other_browser.force_login(self.other.user)
+        other = self.subscribe(other_browser, "someone-else", device="unsupported")
+        self.assertEqual(other.device, PushSubscription.Device.UNKNOWN)
+
+        url = reverse("accounts:notifications")
+        page = self.client.get(url)
+        self.assertCountEqual([device.pk for device in page.context["push_devices"]], [mine.pk, tablet.pk])
+        self.assertContains(page, "iPhone · Это устройство", count=1)
+        self.assertContains(page, "iPad")
+        self.assertFalse(tablet.endpoint.encode() in page.content)
+        self.assertFalse(tablet.session_id.encode() in page.content)
+        revoke = reverse("accounts:revoke_push_device", args=[tablet.pk])
+        self.assertEqual(self.client.get(revoke).status_code, 405)
+        self.assertIn("/login/", Browser().post(revoke)["Location"])
+        self.assertEqual(other_browser.post(revoke).status_code, 404)
+        strict = Browser(enforce_csrf_checks=True)
+        strict.force_login(self.customer)
+        self.assertEqual(strict.post(revoke).status_code, 403)
+        self.assertEqual(self.post(tablet_browser, action="test").status_code, 202)
+        self.assertRedirects(self.client.post(revoke), url)
+        self.assertFalse(PushSubscription.objects.filter(pk=tablet.pk).exists())
+        self.assertFalse(PushDelivery.objects.filter(subscription_id=tablet.pk).exists())
+        self.assertTrue(PushSubscription.objects.filter(pk=other.pk).exists())
+        self.assertTrue(self.client.get(self.url).json()["active"])
 
     def test_new_bookings_reach_admins_with_permissions_and_stop_after_revocation(self):
         view = Permission.objects.get(content_type__app_label="booking", codename="view_bookingrequest")
