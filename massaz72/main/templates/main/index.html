@@ -6,11 +6,13 @@
 {% endblock %}
 
 {% block body %}
-  <section class="massage" {% if site_settings.background %}style="background-image: url('{{ site_settings.background.url }}')"{% endif %}>
-    <div class="massage__content">
-      <h1 class="massage__title">{{ site_settings.main_title }}</h1>
+<div class="site-redesign">
+  <section class="redesign-hero container">
+    <div class="redesign-hero__copy">
+      <p class="redesign-hero__location">Тюмень</p>
+      <h1>{{ site_settings.main_title }}</h1>
       {% if site_settings.main_subtitle %}
-      <p class="massage__subtitle">{{ site_settings.main_subtitle }}</p>
+      <p>{{ site_settings.main_subtitle }}</p>
       {% endif %}
       {% if online_booking_enabled %}
       <a href="{% url 'booking:page' %}" class="massage__cta">Записаться онлайн</a>
@@ -18,6 +20,16 @@
       <a href="#about" class="massage__cta">Записаться</a>
       {% endif %}
     </div>
+    <figure class="redesign-hero__art hero-art">
+      <img src="{% if site_settings.background %}{{ site_settings.background.url }}{% else %}{% static 'design-preview/assets/memoji-hero.webp' %}{% endif %}" alt="" fetchpriority="high">
+      <span class="redesign-hero__light" aria-hidden="true"></span>
+    </figure>
+    {% if adult_massages or child_massages %}
+    <nav class="redesign-hero__directions" aria-label="Выбор направления">
+      {% if adult_massages %}<a href="#massage">Для себя <span aria-hidden="true">↘</span></a>{% endif %}
+      {% if child_massages %}<a href="#cids">Для ребёнка <span aria-hidden="true">↘</span></a>{% endif %}
+    </nav>
+    {% endif %}
   </section>
 
   {% if active_discount %}
@@ -54,6 +66,7 @@
                  {% if massage.image %}style="background-image: url('{{ massage.image.url }}')"{% endif %}></div>
             <div class="service-card__meta">
               <h3 class="service-card__name">{{ massage.name|capfirst }}</h3>
+              <span class="service-card__facts">{% if massage.duration_min and massage.duration_min != massage.duration_max %}{{ massage.duration_min }}–{% endif %}{{ massage.duration_max }} мин · {{ massage.location }}</span>
               <p class="service-card__price">
                 {% if active_discount %}<span class="price-original">{{ massage.price|floatformat:0 }} ₽</span><span class="price-discounted">{{ massage.price|apply_discount:active_discount }} ₽</span>{% else %}{{ massage.price|floatformat:0 }} ₽{% endif %}
               </p>
@@ -73,6 +86,7 @@
                  {% if massage.image %}style="background-image: url('{{ massage.image.url }}')"{% endif %}></div>
             <div class="service-card__meta">
               <h3 class="service-card__name">{{ massage.name|capfirst }}</h3>
+              <span class="service-card__facts">{% if massage.duration_min and massage.duration_min != massage.duration_max %}{{ massage.duration_min }}–{% endif %}{{ massage.duration_max }} мин · {{ massage.location }}</span>
               <p class="service-card__price">
                 {% if active_discount %}<span class="price-original">{{ massage.price|floatformat:0 }} ₽</span><span class="price-discounted">{{ massage.price|apply_discount:active_discount }} ₽</span>{% else %}{{ massage.price|floatformat:0 }} ₽{% endif %}
               </p>
@@ -229,4 +243,6 @@
   {% if reviews_enabled %}
     {% include "reviews/section.html" %}
   {% endif %}
+</div>
+<script defer src="{% static 'design-preview/motion.js' %}"></script>
 {% endblock %}

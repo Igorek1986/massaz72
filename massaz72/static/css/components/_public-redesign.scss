@@ -1,0 +1,156 @@
+.site-redesign {
+  background: #fcf6ef;
+  color: #412935;
+
+  .redesign-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
+    padding: 0;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #4a2536;
+    color: #fff5ec;
+
+    &__copy {
+      display: grid;
+      align-content: center;
+      justify-items: start;
+      gap: clamp(14px, 2vw, 24px);
+      padding: clamp(22px, 4vw, 64px);
+    }
+
+    &__copy h1 {
+      font: 400 clamp(38px, 5.1vw, 78px)/1 Georgia, serif;
+      letter-spacing: -.045em;
+      overflow-wrap: anywhere;
+    }
+
+    &__location {
+      color: #f4c7c6;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .massage__cta {
+      background: #fff3e7;
+      color: #472330;
+    }
+
+    &__art {
+      position: relative;
+      min-height: 350px;
+      overflow: hidden;
+    }
+
+    &__art img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 60% 24%;
+    }
+
+    &__light {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(ellipse at var(--x, 60%) var(--y, 40%), rgba(255, 223, 177, .24), transparent 48%);
+      transition: opacity .5s ease;
+    }
+
+    .lit .redesign-hero__light { opacity: 1; }
+
+    &__directions {
+      grid-column: 1 / -1;
+      display: flex;
+      background: #f3e3dc;
+      color: #432a32;
+    }
+
+    &__directions a {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 18px clamp(12px, 3vw, 48px);
+      color: inherit;
+      font: clamp(19px, 3vw, 34px)/1.15 Georgia, serif;
+    }
+
+    &__directions a + a { border-inline-start: 1px solid #d6c5b8; }
+
+    @media (max-width: 750px) {
+      grid-template-columns: minmax(0, 1fr);
+
+      &__art {
+        min-height: 0;
+        aspect-ratio: 1.7;
+      }
+    }
+  }
+
+  .service__section-title,
+  .massage__detail-title {
+    color: #4a2536;
+    font: 400 clamp(32px, 4vw, 57px)/1.08 Georgia, serif;
+    overflow-wrap: anywhere;
+  }
+
+  .service-card {
+    opacity: 1;
+    transform: none;
+    border: 1px solid #e4d6cc;
+    background: #fffaf6;
+
+    &__photo { padding-bottom: 56%; }
+
+    &__meta {
+      position: static;
+      display: grid;
+      gap: 8px;
+      padding: 18px;
+      background: none;
+    }
+
+    &__name { font: 400 clamp(21px, 2vw, 30px)/1.1 Georgia, serif; }
+    &__facts { color: #694955; font-size: 14px; }
+    &__price, &__promo { margin: 0; }
+  }
+
+  .service-card.revealed .service-card__photo--empty {
+    background-image: url('../design-preview/assets/lotus-bloom.svg');
+  }
+
+  .redesign-service-image {
+    display: block;
+    width: 100%;
+    max-height: 440px;
+    aspect-ratio: 1.8;
+    object-fit: cover;
+    border-radius: 14px;
+  }
+
+  a:focus-visible {
+    outline: 3px solid #9d4666;
+    outline-offset: -3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .redesign-hero__light, .service-card, .service-card__photo { transition: none; }
+    .service-card:hover .service-card__photo { transform: none; }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-redesign .redesign-hero__copy,
+  .site-redesign .service-card.revealed {
+    animation: redesign-arrive .65s ease both;
+  }
+
+  @keyframes redesign-arrive {
+    from { opacity: .5; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
