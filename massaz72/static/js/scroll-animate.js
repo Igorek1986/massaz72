@@ -11,7 +11,7 @@
     { threshold: 0.15, rootMargin: '0px 0px -30px 0px' }
   );
 
-  document.querySelectorAll('.service-card').forEach((card, i) => {
+  document.querySelectorAll('.service-card:not(.site-redesign .service-card)').forEach((card, i) => {
     card.style.transitionDelay = i % 3 * 0.1 + 's';
     observer.observe(card);
   });

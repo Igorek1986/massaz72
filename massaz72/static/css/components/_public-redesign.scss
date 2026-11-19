@@ -248,8 +248,7 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .site-redesign .redesign-hero__copy,
-  .site-redesign .service-card.revealed {
+  .site-redesign .redesign-hero__copy {
     animation: redesign-arrive .65s ease both;
   }
 
