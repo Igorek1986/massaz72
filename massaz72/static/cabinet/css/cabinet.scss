@@ -2016,3 +2016,19 @@ body.cabinet-body {
     background: #fff;
   }
 }
+
+
+.site-designer__eyedropper {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px;
+
+  &[aria-pressed="true"] {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+
+  &:disabled { opacity: .5; }
+}

@@ -61,7 +61,7 @@
     closePicker();
     const row = input.closest('.site-designer__color-row');
     const trigger = row.querySelector('.site-designer__color-trigger');
-    active = { input, trigger };
+    active = { input, trigger, originalColor: input.value };
     label.textContent = trigger.textContent.trim();
     hex.value = input.value;
     readColor(input.value);
@@ -119,9 +119,6 @@
   });
   hex.addEventListener('blur', () => { if (active) hex.value = active.input.value; });
   picker.querySelector('[data-picker-close]').addEventListener('click', () => closePicker(true));
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') closePicker(true);
-  });
   document.addEventListener('click', event => {
     if (!event.target.closest('#design-color-picker, .site-designer__color-trigger')) closePicker();
   });
@@ -220,9 +217,19 @@
     closePicker();
     setPicking(!picking, picking ? '' : 'Нажмите на цвет в предпросмотре. Esc отменяет выбор.');
   });
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && picking) setPicking(false);
-  });
+  function handleEscape(event) {
+    if (event.key !== 'Escape') return;
+    if (picking) {
+      setPicking(false);
+      eyedropper.focus();
+    } else if (active) {
+      active.input.value = active.originalColor;
+      closePicker(true);
+      applyPalette();
+    }
+  }
+
+  document.addEventListener('keydown', handleEscape);
 
   function chooseTheme() {
     closePicker();
@@ -252,9 +259,7 @@
       if (picking && highlighted !== event.target) highlight(event.target);
     });
     doc.addEventListener('pointerleave', () => highlight(null));
-    doc.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && picking) setPicking(false);
-    });
+    doc.addEventListener('keydown', handleEscape);
     doc.addEventListener('click', event => {
       if (picking) {
         event.preventDefault();

@@ -65,7 +65,13 @@
         <option value="wide">Обычный</option>
         <option value="mobile">Телефон</option>
       </select>
-      <button class="btn" type="button" id="design-eyedropper" aria-pressed="false" disabled>Пипетка</button>
+      <button class="btn site-designer__eyedropper" type="button" id="design-eyedropper"
+              aria-label="Пипетка" title="Пипетка" aria-pressed="false" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m13 8 3 3m-5-5 7 7M12 7l5-5a2.8 2.8 0 0 1 4 4l-5 5M13 8l-9 9-1 4 4-1 9-9"/>
+        </svg>
+      </button>
     </div>
     <p id="design-eyedropper-feedback" role="status" hidden></p>
     <p class="settings-card__hint">Цвета применяются сразу в предпросмотре. Посетители увидят их после публикации.</p>
