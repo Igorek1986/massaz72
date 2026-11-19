@@ -90,6 +90,21 @@ class CabinetSiteSettingsTest(TestCase):
         self.site.refresh_from_db()
         self.assertNotEqual(self.site.main_title, "Новый заголовок")
 
+    def test_editor_can_copy_default_and_existing_text_without_publishing(self):
+        self.grant_access()
+        response = self.client.get(self.url, {"edit_privacy": "1"})
+        text = response.context["form"]["privacy_body"].value()
+        self.assertIn("1. Общие положения", text)
+        self.assertIn("IP-адрес", text)
+        self.assertNotIn("<table>", text)
+        self.site.refresh_from_db()
+        self.assertEqual(self.site.privacy_body, "")
+
+        self.site.privacy_body = "Действующая редакция"
+        self.site.save(update_fields=["privacy_body"])
+        response = self.client.get(self.url, {"edit_privacy": "1"})
+        self.assertEqual(response.context["form"]["privacy_body"].value(), self.site.privacy_body)
+
     def test_editor_can_publish_policy_text(self):
         self.grant_access()
         self.assertContains(self.client.get(self.url), 'name="privacy_body"')

@@ -18,6 +18,7 @@ from booking.models import BookingRequest
 from booking.services import confirm_booking, decline_booking
 from main.forms import CabinetSiteSettingsForm, SITE_SETTINGS_SECTIONS
 from main.models import SiteSettings
+from main.policy import published_privacy_text
 from reviews.models import Review
 from services.models import Massage
 
@@ -410,7 +411,10 @@ def site_settings_edit(request):
                 messages.success(request, "Настройки сайта сохранены.")
                 return redirect("cabinet:site_settings")
     else:
-        form = CabinetSiteSettingsForm(instance=SiteSettings.objects.first())
+        initial = {}
+        if request.GET.get("edit_privacy") == "1":
+            initial["privacy_body"] = published_privacy_text()
+        form = CabinetSiteSettingsForm(instance=SiteSettings.objects.first(), initial=initial)
 
     sections = [
         (title, [form[name] for name in names])

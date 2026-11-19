@@ -1,4 +1,8 @@
+from html import unescape
 from types import SimpleNamespace
+
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 from cabinet.models import Specialist
 from tgbot.models import BotSettings
@@ -47,3 +51,13 @@ def build_policy_context() -> SimpleNamespace:
         foreign_transfer=bool(foreign),
         foreign_services=", ".join(foreign),
     )
+
+
+def published_privacy_text():
+    policy = build_policy_context()
+    if policy.body:
+        return policy.body
+
+    rendered = render_to_string("main/privacy_default.html", {"p": policy})
+    lines = (line.strip() for line in unescape(strip_tags(rendered)).splitlines())
+    return "\n\n".join(line for line in lines if line)
