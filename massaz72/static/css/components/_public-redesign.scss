@@ -87,6 +87,12 @@
 
       @media (prefers-reduced-motion: no-preference) {
         animation: redesign-booking-shimmer 7s ease-in-out infinite;
+
+        &.is-pointer-shimmer {
+          animation: none;
+          background: radial-gradient(ellipse at var(--pointer-x) var(--pointer-y), #fff7ec, transparent 62%),
+            linear-gradient(115deg, #fff0df, #efb1c6);
+        }
       }
     }
 

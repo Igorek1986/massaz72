@@ -28,3 +28,15 @@ if ('IntersectionObserver' in window) {
   }, { threshold: 0.12 });
   document.querySelectorAll('.card').forEach(card => observer.observe(card));
 }
+
+document.querySelectorAll('[data-pointer-shimmer]').forEach(button => {
+  button.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'mouse' || reduced.matches) return;
+    const bounds = button.getBoundingClientRect();
+    button.style.setProperty('--pointer-x', `${event.clientX - bounds.left}px`);
+    button.style.setProperty('--pointer-y', `${event.clientY - bounds.top}px`);
+    button.classList.add('is-pointer-shimmer');
+  }, { passive: true });
+
+  button.addEventListener('pointerleave', () => button.classList.remove('is-pointer-shimmer'));
+});
