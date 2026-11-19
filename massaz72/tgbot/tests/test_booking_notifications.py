@@ -53,6 +53,32 @@ class BookingNotifyTest(TestCase):
             BookingNotification.objects.filter(booking=self.booking).count(), 1
         )
 
+    @patch("tgbot.notifications.abs_url", return_value="https://example.test/cabinet/requests/")
+    def test_notices_and_updates_expose_only_cabinet_link(self, abs_url):
+        from tgbot.notifications import refresh_booking_messages, send_booking_reminder, send_booking_to_admins
+
+        self.booking.phone = "555"
+        self.booking.address = "Адрес для выезда"
+        self.booking.messenger_username = "example_client"
+        self.booking.comment = "Закрытый комментарий"
+        self.booking.save()
+        bot = make_bot()
+        self.assertEqual(send_booking_to_admins(bot, self.booking), 1)
+        self.assertEqual(send_booking_reminder(bot, self.booking), 1)
+        for call, title in zip(bot.send_message.call_args_list, (
+            "Новая заявка на запись. Откройте кабинет специалиста.",
+            "Заявка ждёт обработки. Откройте кабинет специалиста.",
+        )):
+            self.assertEqual(call.args, (111, f"{title}\n{abs_url.return_value}"))
+            self.assertEqual(call.kwargs, {"disable_web_page_preview": True})
+        self.booking.status = BookingRequest.Status.CANCELLED
+        self.booking.save()
+        self.assertEqual(send_booking_reminder(bot, self.booking), 0)
+        refresh_booking_messages(bot, self.booking)
+        for call in bot.edit_message_text.call_args_list:
+            self.assertEqual(call.args[0], f"Заявка на запись отменена.\n{abs_url.return_value}")
+            self.assertIsNone(call.kwargs["reply_markup"])
+
     def test_deferred_outside_window(self):
         from tgbot.models import PendingNotification
         bot = make_bot()
@@ -88,52 +114,22 @@ class BookingActionTest(TestCase):
             booking=self.booking, admin_telegram_id=111, message_id=10
         )
 
-    def test_confirm_creates_appointment_and_clears(self):
-        bot = MagicMock()
-        handle_booking_action(bot, make_call(f"br_confirm_{self.booking.pk}", uid=111))
-        self.booking.refresh_from_db()
-        self.assertEqual(self.booking.status, BookingRequest.Status.CONFIRMED)
-        self.assertEqual(Appointment.objects.count(), 1)
-        self.assertEqual(BookingNotification.objects.count(), 0)
-        bot.delete_message.assert_called_once()
-        bot.answer_callback_query.assert_called_once()
-
-    def test_decline(self):
-        bot = MagicMock()
-        handle_booking_action(bot, make_call(f"br_decline_{self.booking.pk}", uid=111))
-        self.booking.refresh_from_db()
-        self.assertEqual(self.booking.status, BookingRequest.Status.DECLINED)
-        self.assertEqual(Appointment.objects.count(), 0)
-        self.assertEqual(BookingNotification.objects.count(), 0)
-
-    def test_confirm_cancelled_does_not_create(self):
-        # Клиент отменил — мастер не может подтвердить (нет записи).
-        self.booking.status = BookingRequest.Status.CANCELLED
-        self.booking.save(update_fields=["status"])
-        bot = MagicMock()
-        handle_booking_action(bot, make_call(f"br_confirm_{self.booking.pk}", uid=111))
-        self.assertEqual(Appointment.objects.count(), 0)
-        self.booking.refresh_from_db()
-        self.assertEqual(self.booking.status, BookingRequest.Status.CANCELLED)
-
-    def test_cancelled_keyboard_has_no_buttons(self):
-        from tgbot.notifications import build_booking_keyboard
-        self.booking.status = BookingRequest.Status.CANCELLED
-        self.assertEqual(build_booking_keyboard(self.booking).keyboard, [])
+    def test_legacy_actions_replace_message_without_changing_booking(self):
+        for action in ("confirm", "decline"):
+            with self.subTest(action=action):
+                bot = MagicMock()
+                handle_booking_action(bot, make_call(f"br_{action}_{self.booking.pk}", uid=111))
+                self.booking.refresh_from_db()
+                self.assertEqual(self.booking.status, BookingRequest.Status.PENDING)
+                bot.edit_message_text.assert_called_once()
+                self.assertIsNone(bot.edit_message_text.call_args.kwargs["reply_markup"])
+        self.assertFalse(Appointment.objects.exists())
 
     def test_non_admin_denied(self):
         bot = MagicMock()
         handle_booking_action(bot, make_call(f"br_confirm_{self.booking.pk}", uid=999))
-        self.booking.refresh_from_db()
-        self.assertEqual(self.booking.status, BookingRequest.Status.PENDING)
-        self.assertEqual(Appointment.objects.count(), 0)
         bot.answer_callback_query.assert_called_once_with("cb-1", "Нет доступа.")
-
-    def test_unknown_booking(self):
-        bot = MagicMock()
-        handle_booking_action(bot, make_call("br_confirm_999999", uid=111))
-        self.assertEqual(Appointment.objects.count(), 0)
-        bot.delete_message.assert_called_once()
+        bot.edit_message_text.assert_not_called()
 
 
 class BookingBindTest(TestCase):
@@ -202,14 +198,6 @@ class BookingBindTest(TestCase):
         )
         bot.edit_message_text.assert_called()
 
-    def test_booking_text_shows_contact_when_bound(self):
-        from tgbot.notifications import build_booking_text
-        self.booking.messenger = "telegram"
-        self.booking.messenger_user_id = 999
-        self.booking.messenger_username = "ivan"
-        self.booking.save()
-        self.assertIn("@ivan", build_booking_text(self.booking))
-
     def test_client_confirm(self):
         from tgbot.notifications import handle_client_booking_confirm
         bot = MagicMock()
@@ -246,22 +234,6 @@ class BookingBindTest(TestCase):
         bot = MagicMock()
         handle_client_booking_confirm(bot, make_call("cbk_confirm_999999", uid=555))
         bot.answer_callback_query.assert_called_with("cb-1", "Заявка не найдена.")
-
-    def test_booking_text_shows_client_confirmed(self):
-        from tgbot.notifications import build_booking_text
-        self.booking.client_confirmed = True
-        self.booking.save()
-        self.assertIn("Клиент подтвердил", build_booking_text(self.booking))
-
-    def test_booking_text_shows_sessions(self):
-        from booking.models import BookingSessionOption
-        from cabinet.models import Specialist
-        from tgbot.notifications import build_booking_text
-        spec = Specialist.objects.create(name="Мастер С")
-        opt = BookingSessionOption.objects.create(specialist=spec, count=5, label="5 сеансов")
-        self.booking.sessions = opt
-        self.booking.save()
-        self.assertIn("5 сеансов", build_booking_text(self.booking))
 
     def test_unique_link_token_generated(self):
         other = BookingRequest.objects.create(
@@ -424,3 +396,48 @@ class TargetedNotifyTest(TestCase):
         s1.refresh_from_db(); s2.refresh_from_db()
         self.assertEqual(s2.telegram_id, 777)
         self.assertIsNone(s1.telegram_id)  # не задело другого
+
+
+class NativeBotBookingTest(TestCase):
+    def setUp(self):
+        from booking.models import BookingSessionOption
+        from tgbot.models import TelegramUser
+
+        specialist = Specialist.objects.create(name="Мастер")
+        service = Massage.objects.create(
+            name="Услуга", price=2000, duration_min=30, duration_max=60,
+            location="Кабинет", massage_type=Massage.ADULT, slug="test-service",
+        )
+        option = BookingSessionOption.objects.create(specialist=specialist, count=3)
+        self.user = TelegramUser.objects.create(telegram_id=123, consent_at=timezone.now())
+        self.state = {
+            "therapist_id": specialist.pk, "massage_id": service.pk, "sessions_id": option.pk,
+            "date_iso": (timezone.localdate() + timedelta(days=2)).isoformat(),
+            "timeslot_label": "10:00",
+        }
+
+    @patch("tgbot.bot._bk_free_times", return_value=["10:00"])
+    def test_booking_is_saved_for_cabinet(self, free_times):
+        from tgbot.bot import _create_bot_booking
+
+        booking = _create_bot_booking(self.user, self.state)
+        self.assertEqual(booking.source, BookingRequest.Source.BOT)
+        self.assertEqual(booking.status, BookingRequest.Status.PENDING)
+        self.assertEqual(booking.sessions_id, self.state["sessions_id"])
+        self.assertEqual(booking.messenger_user_id, self.user.telegram_id)
+        self.assertEqual(booking.consent_at, self.user.consent_at)
+
+    @patch("tgbot.bot._bk_free_times", return_value=[])
+    def test_stale_slot_does_not_create_booking(self, free_times):
+        from tgbot.bot import _create_bot_booking
+
+        self.assertIsNone(_create_bot_booking(self.user, self.state))
+        self.assertFalse(BookingRequest.objects.exists())
+
+    def test_invalid_service_or_option_does_not_create_booking(self):
+        from tgbot.bot import _create_bot_booking
+
+        for field in ("therapist_id", "massage_id", "sessions_id"):
+            with self.subTest(field=field):
+                self.assertIsNone(_create_bot_booking(self.user, {**self.state, field: 999}))
+        self.assertFalse(BookingRequest.objects.exists())

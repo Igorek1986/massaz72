@@ -18,7 +18,7 @@
 import calendar as _cal
 import html
 import logging
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 
 import telebot
 from django.utils import timezone
@@ -809,46 +809,28 @@ def _forward_to_admins(bot: telebot.TeleBot, message) -> None:
     )
 
 
-def _send_booking_to_admins(bot: telebot.TeleBot, user: TelegramUser, state: dict) -> None:
-    """Отправляет сводку заявки всем активным администраторам."""
-    name = html.escape(user.display_name)
-    username = f" (@{html.escape(user.username)})" if user.username else ""
+def _create_bot_booking(user: TelegramUser, state: dict):
+    from booking.models import BookingRequest, BookingSessionOption
+    from services.models import Massage
 
-    header = f"📅 <b>Заявка на запись</b>\n{name}{username}\nID: <code>{user.telegram_id}</code>\n\n"
-    if state.get("massage_name"):
-        header += f"Массаж: <b>{html.escape(state['massage_name'])}</b>\n"
-    if state.get("massage_price"):
-        header += f"Стоимость: <b>{int(float(state['massage_price']))} ₽</b>\n"
-    if state.get("therapist_name"):
-        header += f"Массажист: <b>{html.escape(state['therapist_name'])}</b>\n"
-    if state.get("sessions_label"):
-        header += f"Сеансов: <b>{html.escape(state['sessions_label'])}</b>\n"
-    if state.get("date_iso"):
-        header += f"Желаемая дата: <b>{_format_date(state['date_iso'])}</b>\n"
-    if state.get("timeslot_label"):
-        header += f"Время: <b>{html.escape(state['timeslot_label'])}</b>\n"
-    header += "\n↩️ Ответьте на это сообщение (Reply), чтобы написать клиенту."
-
-    summary = (
-        f"Запись: {state.get('massage_name', '')} / "
-        f"{state.get('sessions_label', '')} / "
-        f"{_format_date(state['date_iso']) if state.get('date_iso') else ''} / "
-        f"{state.get('timeslot_label', '')}"
+    option = BookingSessionOption.objects.filter(
+        pk=state.get("sessions_id"), specialist_id=state.get("therapist_id"),
+        is_active=True, specialist__is_active=True,
+    ).first()
+    service = Massage.objects.filter(pk=state.get("massage_id"), is_archived=False).first()
+    selected_time = state.get("timeslot_label")
+    if not option or not service or selected_time not in _bk_free_times(
+        {**state, "sessions": option.count},
+    ):
+        return None
+    return BookingRequest.objects.create(
+        source=BookingRequest.Source.BOT, client_name=user.display_name[:255],
+        specialist_id=option.specialist_id, service=service, sessions=option,
+        preferred_date=date.fromisoformat(state["date_iso"]),
+        preferred_time=time.fromisoformat(selected_time),
+        messenger=BookingRequest.Messenger.TELEGRAM, messenger_user_id=user.telegram_id,
+        messenger_username=user.username, client_confirmed=True, consent_at=user.consent_at,
     )
-    DialogMessage.objects.create(user=user, direction=DialogMessage.IN, text=summary)
-
-    admin_ids = _active_admin_ids()
-    if not admin_ids:
-        logger.warning("tgbot: нет активных администраторов (заявка клиента %s)", user.telegram_id)
-        return
-    for admin_id in admin_ids:
-        try:
-            sent = bot.send_message(admin_id, header)
-            AdminForward.objects.create(
-                user=user, admin_telegram_id=admin_id, admin_message_id=sent.message_id
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("tgbot: заявка не доставлена админу %s: %s", admin_id, exc)
 
 
 def _handle_admin_reply(bot: telebot.TeleBot, message) -> None:
@@ -1189,6 +1171,7 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
             opt = qs.first()
             if opt is None:
                 return
+            state["sessions_id"] = opt.pk
             state["sessions"] = opt.count
             state["sessions_label"] = opt.button_label
             _pending_bookings[uid] = state
@@ -1236,7 +1219,15 @@ def _register_handlers(bot: telebot.TeleBot) -> None:  # noqa: C901
         # ── Подтверждение ────────────────────────────────────────────────────
         if data == "bk_confirm":
             user = _upsert_user(call.from_user)
-            _send_booking_to_admins(bot, user, state)
+            booking = _create_bot_booking(user, state)
+            if booking is None:
+                _pending_bookings.pop(uid, None)
+                _bk_delete_or_edit(bot, chat_id, msg_id)
+                bot.answer_callback_query(call.id, "Запись недоступна. Начните запись заново.")
+                return
+            from .notifications import notify_new_booking
+
+            notify_new_booking(booking)
             _pending_bookings.pop(uid, None)
             _bk_delete_or_edit(bot, chat_id, msg_id)
             bot.send_message(

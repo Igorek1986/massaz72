@@ -193,42 +193,8 @@ def handle_review_action(bot, call) -> None:
 
 # ─── Заявки на запись ─────────────────────────────────────────────────────────
 
-_BOOKING_ACTION_LABELS = {
-    "confirm": "подтверждена",
-    "decline": "отклонена",
-}
-
-
-def build_booking_text(booking) -> str:
-    lines = ["📅 <b>Новая заявка на запись</b>", f"<b>Имя:</b> {html.escape(booking.client_name)}"]
-    if booking.phone:
-        lines.append(f"<b>Телефон:</b> {html.escape(booking.phone)}")
-    else:
-        lines.append("<b>Телефон:</b> не указан")
-    if booking.address:
-        lines.append(f"<b>Адрес (выезд):</b> {html.escape(booking.address)}")
-    if booking.service:
-        lines.append(f"<b>Услуга:</b> {html.escape(booking.service.name)}")
-    if booking.specialist:
-        lines.append(f"<b>Мастер:</b> {html.escape(booking.specialist.name)}")
-    if booking.sessions:
-        lines.append(f"<b>Сеансов:</b> {html.escape(booking.sessions.button_label)}")
-    lines.append(f"<b>Желаемые дата/время:</b> {booking.preferred_date:%d.%m.%Y} {booking.preferred_time:%H:%M}")
-    if booking.messenger_user_id:
-        contact = (
-            f"@{html.escape(booking.messenger_username)}"
-            if booking.messenger_username
-            else f"id {booking.messenger_user_id}"
-        )
-        lines.append(f"<b>На связи в боте:</b> {contact} — можно написать ему здесь")
-    if booking.client_confirmed:
-        lines.append("<b>✅ Клиент подтвердил заявку и согласие на обработку ПД</b>")
-    from booking.models import BookingRequest
-    if booking.status == BookingRequest.Status.CANCELLED:
-        lines.append("<b>❌ Клиент отменил заявку</b>")
-    if booking.comment:
-        lines.append(f"\n{html.escape(booking.comment)}")
-    return "\n".join(lines)
+def booking_notice(title: str) -> str:
+    return f"{title}\n{html.escape(abs_url('cabinet:booking_requests'))}"
 
 
 def client_booking_summary(booking) -> str:
@@ -303,32 +269,18 @@ def handle_client_booking_confirm(bot, call) -> None:
 
 
 def refresh_booking_messages(bot, booking) -> None:
-    """Перерисовывает сообщения о заявке у всех админов (напр. после того как
-    клиент подключился к боту — чтобы показать контакт)."""
-    text = build_booking_text(booking)
-    keyboard = build_booking_keyboard(booking)
-    for n in BookingNotification.objects.filter(booking=booking):
-        try:
-            bot.edit_message_text(
-                text, n.admin_telegram_id, n.message_id, reply_markup=keyboard
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("booking %s: не обновить сообщение %s/%s: %s",
-                           booking.pk, n.admin_telegram_id, n.message_id, exc)
-
-
-def build_booking_keyboard(booking) -> types.InlineKeyboardMarkup:
     from booking.models import BookingRequest
 
-    kb = types.InlineKeyboardMarkup()
-    # Закрытая заявка (отменена клиентом/отклонена) — без кнопок действий.
-    if booking.status in (BookingRequest.Status.CANCELLED, BookingRequest.Status.DECLINED):
-        return kb
-    kb.row(
-        types.InlineKeyboardButton("✅ Подтвердить", callback_data=f"br_confirm_{booking.pk}"),
-        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"br_decline_{booking.pk}"),
-    )
-    return kb
+    title = ("Заявка на запись отменена." if booking.status == BookingRequest.Status.CANCELLED
+             else "Откройте заявку в кабинете специалиста.")
+    for notification in BookingNotification.objects.filter(booking=booking):
+        try:
+            bot.edit_message_text(
+                booking_notice(title), notification.admin_telegram_id, notification.message_id,
+                disable_web_page_preview=True, reply_markup=None,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("Не удалось обновить уведомление о заявке")
 
 
 def booking_recipients(booking) -> list[int]:
@@ -349,12 +301,11 @@ def booking_recipients(booking) -> list[int]:
 
 def send_booking_to_admins(bot, booking) -> int:
     """Шлёт заявку адресатам (мастер/главный или все админы)."""
-    text = build_booking_text(booking)
-    keyboard = build_booking_keyboard(booking)
+    text = booking_notice("Новая заявка на запись. Откройте кабинет специалиста.")
     sent = 0
     for admin_id in booking_recipients(booking):
         try:
-            msg = bot.send_message(admin_id, text, reply_markup=keyboard)
+            msg = bot.send_message(admin_id, text, disable_web_page_preview=True)
             BookingNotification.objects.create(
                 booking=booking, admin_telegram_id=admin_id, message_id=msg.message_id
             )
@@ -371,12 +322,11 @@ def send_booking_reminder(bot, booking) -> int:
 
     if booking.status != BookingRequest.Status.PENDING:
         return 0
-    text = "⏰ <b>Напоминание: необработанная заявка</b>\n\n" + build_booking_text(booking)
-    keyboard = build_booking_keyboard(booking)
+    text = booking_notice("Заявка ждёт обработки. Откройте кабинет специалиста.")
     sent = 0
     for admin_id in booking_recipients(booking):
         try:
-            msg = bot.send_message(admin_id, text, reply_markup=keyboard)
+            msg = bot.send_message(admin_id, text, disable_web_page_preview=True)
             BookingNotification.objects.create(
                 booking=booking, admin_telegram_id=admin_id, message_id=msg.message_id
             )
@@ -417,46 +367,19 @@ def delete_booking_messages(bot, booking) -> None:
 
 
 def handle_booking_action(bot, call) -> None:
-    """Обрабатывает кнопку заявки (callback_data br_*)."""
-    from booking.models import BookingRequest
-    from booking.services import confirm_booking, decline_booking
-
+    """Заменяет старое сообщение с кнопками на ссылку в кабинет."""
     if not _is_admin(call.from_user.id):
         bot.answer_callback_query(call.id, "Нет доступа.")
         return
-
+    bot.answer_callback_query(call.id, "Откройте раздел «Заявки» в кабинете.")
     try:
-        _, action, pk = call.data.split("_", 2)
-    except ValueError:
-        bot.answer_callback_query(call.id)
-        return
-
-    booking = BookingRequest.objects.filter(pk=pk).first()
-    if booking is None:
-        bot.answer_callback_query(call.id, "Заявка не найдена.")
-        try:
-            bot.delete_message(call.message.chat.id, call.message.message_id)
-        except Exception:  # noqa: BLE001
-            pass
-        return
-
-    if action == "confirm":
-        if booking.status == BookingRequest.Status.CANCELLED:
-            bot.answer_callback_query(call.id, "Клиент отменил заявку.")
-            delete_booking_messages(bot, booking)
-            return
-        appointment = confirm_booking(booking)
-        if appointment is None:
-            bot.answer_callback_query(call.id, "Нет мастера в системе — подтвердите в кабинете.")
-            return
-    elif action == "decline":
-        decline_booking(booking)
-    else:
-        bot.answer_callback_query(call.id)
-        return
-
-    delete_booking_messages(bot, booking)
-    bot.answer_callback_query(call.id, f"Заявка {_BOOKING_ACTION_LABELS[action]}.")
+        bot.edit_message_text(
+            booking_notice("Откройте кабинет специалиста для работы с заявками."),
+            call.message.chat.id, call.message.message_id,
+            disable_web_page_preview=True, reply_markup=None,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("Не удалось заменить прежнее уведомление о заявке")
 
 
 # ─── Отмена и перенос сеанса клиентом ─────────────────────────────────────────
