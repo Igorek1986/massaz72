@@ -161,6 +161,37 @@ class PushWorkflowTest(TestCase):
             self.assertEqual(self.post(consent=True, subscription=self.web_subscription).status_code, 503)
         self.assertEqual(PushSubscription.objects.count(), 1)
 
+    def test_status_distinguishes_missing_configuration_from_ineligible_account(self):
+        available = self.client.get(self.url)
+        self.assertTrue(available.json()["configured"])
+        self.assertTrue(bool(available.json()["key"]))
+        self.assertIn("no-store", available.headers["Cache-Control"])
+
+        self.client.force_login(User.objects.create_user(username="push-unassigned-admin", is_staff=True))
+        self.assertEqual(self.client.get(self.url).json(), {"configured": True, "key": "", "active": False})
+
+        with self.settings(WEB_PUSH_VAPID_PRIVATE_KEY=""):
+            self.assertEqual(self.client.get(self.url).json(), {"configured": False, "key": "", "active": False})
+
+    def test_promotion_on_first_launch_and_dashboard_for_both_roles(self):
+        marker = "data-push-promotion hidden"
+        home = reverse("main:index")
+        guest = Browser().get(home)
+        self.assertContains(guest, marker)
+        self.assertContains(guest, "Войдите в кабинет, чтобы получать уведомления о записи.")
+        self.assertNotContains(guest, "data-push-url")
+        with self.settings(WEB_PUSH_VAPID_PRIVATE_KEY=""):
+            self.assertNotContains(Browser().get(home), marker)
+
+        for url in (home, reverse("accounts:dashboard")):
+            response = self.client.get(url)
+            self.assertContains(response, marker, count=1)
+            self.assertContains(response, "data-push-url", count=1)
+
+        self.client.force_login(self.specialist.user)
+        self.assertContains(self.client.get(reverse("cabinet:index")), marker, count=1)
+        self.assertNotContains(self.client.get(reverse("cabinet:settings")), marker)
+
     def test_rejects_unsafe_endpoints_and_bad_keys(self):
         urls = [
             "http://web.push.apple.com/path",

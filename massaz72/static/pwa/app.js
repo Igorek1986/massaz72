@@ -1,4 +1,20 @@
 (() => {
+  function reminderPaused(preference) {
+    try {
+      return Number(localStorage.getItem(preference)) > Date.now();
+    } catch {
+      return false;
+    }
+  }
+
+  function pauseReminder(preference, days) {
+    try {
+      localStorage.setItem(preference, String(Date.now() + days * 24 * 60 * 60 * 1000));
+    } catch {
+      // The dismissal still applies to the current page.
+    }
+  }
+
   function setupInstallPromotion(isAppleMobile, standalone) {
     const promotion = document.querySelector("[data-pwa-install]");
     if (!promotion || standalone || !window.isSecureContext
@@ -8,12 +24,7 @@
     if (typeof dialog.showModal !== "function") return;
 
     const preference = "massaz_pwa_install_hidden_until";
-    const pause = 30 * 24 * 60 * 60 * 1000;
-    try {
-      if (Number(localStorage.getItem(preference)) > Date.now()) return;
-    } catch {
-      // The instructions still work in browsers with storage disabled.
-    }
+    if (reminderPaused(preference)) return;
 
     const nativeInstall = promotion.querySelector("[data-pwa-install-native]");
     let installEvent;
@@ -21,11 +32,7 @@
     function hidePromotion() {
       if (dialog.open) dialog.close();
       promotion.hidden = true;
-      try {
-        localStorage.setItem(preference, String(Date.now() + pause));
-      } catch {
-        // Keep it hidden for the current page when storage is unavailable.
-      }
+      pauseReminder(preference, 30);
     }
 
     promotion.querySelector(isAppleMobile ? "[data-pwa-ios]" : "[data-pwa-android]").hidden = false;
@@ -60,6 +67,7 @@
   const script = document.currentScript;
   const root = document.querySelector("[data-push-url]");
   const section = root?.closest("[data-push-section]");
+  const pushPromo = document.querySelector("[data-push-promotion]");
   const isAppleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
@@ -67,17 +75,35 @@
   const worker = window.isSecureContext && "serviceWorker" in navigator
     ? navigator.serviceWorker.register(script.dataset.worker, { updateViaCache: "none" }).catch(() => null)
     : null;
+  const supportsPush = worker && "Notification" in window && "PushManager" in window;
+  let dismissPushPromo;
+  let later;
+  if (pushPromo) {
+    const preference = "massaz_push_promo_hidden_until";
+    if (!isAppleMobile || !standalone || !supportsPush || Notification.permission === "denied"
+        || reminderPaused(preference)) return;
+
+    later = pushPromo.querySelector("[data-push-later]");
+    dismissPushPromo = () => {
+      pushPromo.hidden = true;
+      pauseReminder(preference, 7);
+      dismissPushPromo = undefined;
+    };
+    later.addEventListener("click", () => dismissPushPromo?.());
+    if (!root) pushPromo.hidden = false;
+  }
   if (!root || !isAppleMobile) return;
 
-  root.hidden = false;
-  section.hidden = false;
+  if (!pushPromo) {
+    root.hidden = false;
+    section.hidden = false;
+  }
   const status = root.querySelector("[data-push-status]");
   if (!standalone) {
     status.textContent = "В Safari нажмите «Поделиться» → «На экран “Домой”». Затем откройте приложение с экрана «Домой» и вернитесь сюда.";
     return;
   }
-  if (!window.isSecureContext || !("Notification" in window) || !("PushManager" in window)
-      || !("serviceWorker" in navigator)) {
+  if (!supportsPush) {
     status.textContent = "Для уведомлений нужен iPhone или iPad с iOS 16.4 или новее и подключение по HTTPS.";
     return;
   }
@@ -92,11 +118,12 @@
   let registration;
   let subscription;
   let key;
+  let configured = false;
   let active = false;
   let busy = false;
 
   function updateControls() {
-    const canEnable = key && Notification.permission !== "denied" && !active;
+    const canEnable = registration && key && Notification.permission !== "denied" && !active;
     form.hidden = !active && !canEnable;
     consentLabel.hidden = !canEnable;
     consent.required = Boolean(canEnable);
@@ -106,6 +133,7 @@
     disable.disabled = busy;
     test.hidden = !active || !subscription || Notification.permission === "denied";
     test.disabled = busy;
+    if (later) later.hidden = active;
   }
 
   async function request(action, data = {}) {
@@ -129,7 +157,8 @@
 
   const denied = "Разрешите уведомления для «Массаж72» в настройках iOS и снова откройте приложение.";
   function showState() {
-    if (!key) status.textContent = "Уведомления пока недоступны.";
+    if (!configured) status.textContent = "Сервер пока не настроен для отправки уведомлений.";
+    else if (!key) status.textContent = "Уведомления доступны активным специалистам и клиентам с доступом к кабинету.";
     else if (Notification.permission === "denied") status.textContent = denied;
     else if (active) status.textContent = "Уведомления включены на этом устройстве.";
     else status.textContent = "Включите уведомления, чтобы получать обновления в кабинете.";
@@ -141,6 +170,7 @@
     updateControls();
     try {
       const state = await request();
+      configured = state.configured;
       key = state.key ? asBytes(state.key) : null;
       if (key) {
         if (!await worker) throw new Error("Service worker");
@@ -153,6 +183,10 @@
         active = false;
       }
       showState();
+      if (pushPromo && dismissPushPromo) {
+        pushPromo.hidden = !key || Notification.permission === "denied" || active;
+        root.hidden = pushPromo.hidden;
+      }
     } catch {
       status.textContent = "Не удалось проверить уведомления. Обновите страницу.";
     } finally {
@@ -213,6 +247,7 @@
         subscription = null;
       }
       showState();
+      dismissPushPromo?.();
     } catch {
       status.textContent = "Не удалось отключить уведомления. Попробуйте ещё раз.";
     } finally {
@@ -241,5 +276,8 @@
   refresh();
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) refresh();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refresh();
   });
 })();

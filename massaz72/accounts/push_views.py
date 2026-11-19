@@ -31,7 +31,7 @@ def subscription(request):
     if request.method == "GET":
         key = config[1] if config and push_delivery.eligible(request.user) else ""
         active = current.filter(vapid_key=key).exists() if key else current.exists()
-        return JsonResponse({"key": key, "active": active})
+        return JsonResponse({"key": key, "active": active, "configured": config is not None})
 
     try:
         body = request.read(MAX_BODY_BYTES + 1)

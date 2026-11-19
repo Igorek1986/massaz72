@@ -1,5 +1,6 @@
 from django.db.models import Avg, Count
 from django.shortcuts import render
+from accounts.web_push import config as web_push_config
 from main.models import Certificate
 from services.models import Massage
 
@@ -50,6 +51,7 @@ def home_context(request, review_form=None):
         "reviews": reviews,
         "review_stats": review_stats,
         "review_form": review_form if can_review else None,
+        "web_push_available": web_push_config() is not None,
     }
     return context
 
