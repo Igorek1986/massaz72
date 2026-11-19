@@ -16,3 +16,23 @@
     observer.observe(card);
   });
 })();
+
+(function () {
+  if (!('IntersectionObserver' in window)) return;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const pending = new WeakMap();
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      const lotus = entry.target;
+      clearTimeout(pending.get(lotus));
+      if (entry.intersectionRatio < 0.65 || reducedMotion.matches) continue;
+
+      pending.set(lotus, setTimeout(() => {
+        lotus.classList.add('is-blooming');
+        observer.unobserve(lotus);
+      }, 180));
+    }
+  }, { threshold: 0.65 });
+
+  document.querySelectorAll('.site-redesign .service-lotus').forEach(lotus => observer.observe(lotus));
+})();

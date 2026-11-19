@@ -1,0 +1,48 @@
+<svg class="service-lotus" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="lotus-bg-{{ lotus_id }}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff5f0"/>
+      <stop offset="100%" stop-color="#ffddd0"/>
+    </linearGradient>
+    <radialGradient id="lotus-glow-{{ lotus_id }}" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffb89a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ffb89a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="600" height="400" fill="url(#lotus-bg-{{ lotus_id }})"/>
+
+  <!-- Soft radial glow behind figure -->
+  <circle cx="300" cy="200" r="180" fill="url(#lotus-glow-{{ lotus_id }})"/>
+
+  <!-- Decorative concentric rings (zen/spa motif) -->
+  <circle cx="300" cy="200" r="155" fill="none" stroke="#e8926a" stroke-width="0.8" opacity="0.2"/>
+  <circle cx="300" cy="200" r="130" fill="none" stroke="#e8926a" stroke-width="0.8" opacity="0.2"/>
+  <circle cx="300" cy="200" r="105" fill="none" stroke="#e8926a" stroke-width="0.8" opacity="0.2"/>
+
+  <!-- Lotus petals (8 outer) -->
+  <g class="service-lotus__petal" style="--petal-delay: 0ms"><ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.18" transform="rotate(0 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 72ms"><ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.15" transform="rotate(45 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 144ms"><ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.18" transform="rotate(90 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 216ms"><ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.15" transform="rotate(135 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 288ms"><ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.18" transform="rotate(180 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 360ms"><ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.15" transform="rotate(225 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 432ms"><ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.18" transform="rotate(270 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 504ms"><ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.15" transform="rotate(315 300 200)"/></g>
+
+  <!-- Inner petals (8, rotated 22.5°, smaller) -->
+  <g class="service-lotus__petal" style="--petal-delay: 576ms"><ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(22.5 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 648ms"><ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(67.5 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 720ms"><ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(112.5 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 792ms"><ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(157.5 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 864ms"><ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(202.5 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 936ms"><ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(247.5 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 1008ms"><ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(292.5 300 200)"/></g>
+  <g class="service-lotus__petal" style="--petal-delay: 1080ms"><ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(337.5 300 200)"/></g>
+
+  <!-- Center circles -->
+  <circle cx="300" cy="200" r="26" fill="#e8926a" opacity="0.28"/>
+  <circle cx="300" cy="200" r="14" fill="#d4724a" opacity="0.35"/>
+  <circle cx="300" cy="200" r="6"  fill="#c05a32" opacity="0.45"/>
+</svg>

@@ -165,8 +165,28 @@
     &__price, &__promo { margin: 0; }
   }
 
-  .service-card.revealed .service-card__photo--empty {
-    background-image: url('../design-preview/assets/lotus-bloom.svg');
+  .service-card__photo--empty { background-image: none; }
+
+  .service-lotus {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .service-card:focus-visible {
+    outline: none;
+
+    &::after {
+      content: "";
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      border: 3px solid var(--redesign-focus);
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow: inset 0 0 0 1px var(--color-canvas-card);
+    }
   }
 
   .redesign-service-image {
@@ -193,6 +213,17 @@
   .site-redesign .redesign-hero__copy,
   .site-redesign .service-card.revealed {
     animation: redesign-arrive .65s ease both;
+  }
+
+  .service-lotus.is-blooming .service-lotus__petal {
+    transform-origin: 300px 200px;
+    animation: service-lotus-open 1.15s ease-out var(--petal-delay) both;
+  }
+
+  @keyframes service-lotus-open {
+    from { transform: scale(.1); opacity: 0; }
+    75% { transform: scale(1.07); }
+    to { transform: scale(1); opacity: 1; }
   }
 
   @keyframes redesign-arrive {
