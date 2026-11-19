@@ -1,0 +1,106 @@
+@font-face{font-family:Inter;src:url(assets/inter-400.woff2)}
+*{box-sizing:border-box}
+body{margin:0;background:#fbf6ee;color:#38222c;font:16px/1.55 Inter,Arial,sans-serif}
+a{color:inherit;text-decoration:none}
+a:focus-visible,summary:focus-visible{outline:3px solid #a23960;outline-offset:4px}
+main,header,footer{width:min(1320px,92%);position:relative;left:50%;transform:translateX(-50%)}
+header,nav,footer,.actions,.heading,.cardfoot{display:flex;align-items:center;justify-content:space-between;gap:20px}
+header{padding:18px 0;border-bottom:1px solid #d8c9c3}
+.brand{display:flex;gap:12px;align-items:center;font:24px Georgia,serif}
+.brand img{width:62px;height:56px;object-fit:contain}
+nav{font-size:14px;gap:32px}
+.hero,.detail,.profile{display:grid;grid-template-columns:1fr 1.12fr;align-items:center;gap:5%;padding:clamp(36px,5vw,76px) 0}
+.copy,.service,.aboutcopy{display:grid;justify-items:start;gap:22px}
+h1,h2,h3,p,figure{margin:0}
+h1,h2,h3{font-family:Georgia,serif;font-weight:400;line-height:1.04}
+h1{font-size:clamp(50px,5.9vw,92px);letter-spacing:-.055em}
+h1 em{color:#8a3955;font-weight:400}
+h2{font-size:clamp(36px,4vw,62px);letter-spacing:-.045em}
+h3{font-size:clamp(24px,2.3vw,36px);letter-spacing:-.035em}
+.kicker,.meta{font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.kicker{color:#78374f}
+.actions{justify-content:flex-start;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:22px;background:#733149;color:white;padding:14px 23px;border-radius:32px}
+.line{border-bottom:1px solid;padding:8px 0}
+.scene{width:100%;aspect-ratio:1.28;object-fit:cover;border-radius:48% 48% 6px 6px}
+.catalog{border-top:1px solid #d8c9c3;padding:40px 0;display:grid;gap:26px}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.card{display:grid;grid-template-rows:auto 1fr auto;background:#fffaf5;border:1px solid #e4d6cc;border-radius:14px;overflow:hidden;transition:transform .25s}
+.card:hover{transform:translateY(-3px)}
+.card img{width:100%;aspect-ratio:1.9;object-fit:cover}
+.card h3{padding:20px}
+.cardfoot{padding:0 20px 18px;color:#78374f;font-size:14px}
+.profile{background:#eee2d8;border-radius:16px;padding:clamp(20px,4vw,54px);grid-template-columns:.7fr 1fr}
+.profile img{width:100%;max-height:420px;object-fit:cover;border-radius:100px 100px 8px 8px}
+footer{padding:35px 0;font-size:13px}
+.detail img{border-radius:120px 12px 12px 12px;width:100%}
+details{padding:12px 0;border-bottom:1px solid #d8c9c3}
+summary{cursor:pointer}
+@media(max-width:850px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.hero,.detail{gap:24px}nav{gap:14px}}
+@media(max-width:640px){header{gap:8px}.brand{font-size:19px;gap:6px}.brand img{width:40px;height:42px}nav a:first-child{display:none}nav{font-size:13px}.hero,.detail,.profile{grid-template-columns:1fr}.scene{aspect-ratio:1.55;border-radius:90px 90px 6px 6px}.cards{grid-template-columns:1fr}.catalog{padding:30px 0}.heading{align-items:flex-start}.actions{gap:16px}.profile img{max-height:310px;object-position:center 30%}.copy{gap:16px}}
+@media(prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+
+.hero-art{position:relative;display:grid}
+.portrait-link{position:absolute;bottom:16px;left:16px;display:flex;align-items:center;gap:9px;border-radius:40px;background:#fff9ef;padding:5px 16px 5px 5px;font-size:13px;color:#512a37}
+.portrait-link img{width:42px;height:42px;object-fit:cover;border-radius:50%}
+.facts{display:grid;width:100%;gap:0}
+.facts div{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #d8c9c3}
+.facts dd{margin:0;text-align:right}
+@media(max-width:370px){h1{font-size:43px}}
+
+.hero {
+  background: #472330;
+  color: #fff4e9;
+  border-radius: 12px;
+  display: grid;
+  gap: 0;
+  grid-template-columns: 1fr 1.12fr;
+  overflow: hidden;
+  padding: 0;
+  margin-block-end: 44px;
+}
+header { border: 0; }
+.hero .copy { padding: clamp(24px,4vw,62px); gap: 22px; }
+.hero .kicker { color: #ebcdbd; }
+.hero h1 { font-size: clamp(46px,5.4vw,82px); }
+.hero h1 em { color: #f5c6ad; }
+.hero .btn { background: #fff3e7; color: #472330; }
+.hero-art { align-self: stretch; overflow: hidden; min-height: 380px; }
+.hero .scene { position: absolute; inset: 0; height: 100%; aspect-ratio: auto; border-radius: 0; }
+.light { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at var(--x,60%) var(--y,40%),rgb(255 223 177 / 20%),transparent 48%);opacity:0;transition:opacity .55s; }
+.hero-art.lit .light { opacity: 1; }
+.directions { grid-column: 1/-1; display: grid; grid-template-columns: repeat(2,1fr); background: #f1e7dc; color:#432a32; }
+.directions a { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:20px clamp(18px,4vw,62px); font: clamp(22px,2.6vw,38px) Georgia,serif; }
+.directions a + a { border-inline-start:1px solid #d6c5b8; }
+.directions span { font: 22px Inter,sans-serif; transition:transform .3s; }
+.directions a:is(:focus-visible,:hover) span { transform:translate(3px,3px); }
+@media(max-width:750px){
+  .hero { grid-template-columns:1fr; }
+  .hero-art { min-height:0; aspect-ratio:1.95; }
+  .hero .copy { gap:14px; }
+  .hero h1 { font-size:clamp(40px,9vw,64px); }
+  .directions a { padding:18px 12px; font-size:clamp(18px,4.8vw,25px); }
+}
+@media(prefers-reduced-motion:no-preference){
+  .hero .copy > * { animation:arrive .85s backwards; }
+  .hero .copy h1 { animation-delay:.08s; }
+  .hero .intro { animation-delay:.16s; }
+  .hero .actions { animation-delay:.22s; }
+  .card.entered { animation:arrive .65s backwards; }
+  .btn:active,.card:active { transform:scale(.987); }
+  @keyframes arrive { from {opacity:.35;translate:0 12px} to {opacity:1;translate:0 0} }
+}
+@media(prefers-reduced-motion:reduce){.directions span,.light{transition:none}.directions a:hover span{transform:none}}
+
+.hero .scene { object-position: 64% 20%; }
+.profile img { object-position: center 18%; }
+
+/* Цвета рабочей формы и вышивки из 3D-иллюстраций. */
+body { background: #fcf6ef; }
+.hero { background: #4a2536; }
+.hero h1 em { color: #f4c7c6; }
+.hero .scene { object-position: 60% 24%; }
+.directions { background: #f3e3dc; }
+.card { background: #fffaf6; }
+.profile { background: #f2e1da; }
+.profile img { object-position: center 26%; }

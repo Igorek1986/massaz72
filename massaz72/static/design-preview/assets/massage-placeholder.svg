@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff5f0"/>
+      <stop offset="100%" stop-color="#ffddd0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffb89a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ffb89a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="600" height="400" fill="url(#bg)"/>
+
+  <!-- Soft radial glow behind figure -->
+  <circle cx="300" cy="200" r="180" fill="url(#glow)"/>
+
+  <!-- Decorative concentric rings (zen/spa motif) -->
+  <circle cx="300" cy="200" r="155" fill="none" stroke="#e8926a" stroke-width="0.8" opacity="0.2"/>
+  <circle cx="300" cy="200" r="130" fill="none" stroke="#e8926a" stroke-width="0.8" opacity="0.2"/>
+  <circle cx="300" cy="200" r="105" fill="none" stroke="#e8926a" stroke-width="0.8" opacity="0.2"/>
+
+  <!-- Lotus petals (8 outer) -->
+  <ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.18" transform="rotate(0 300 200)"/>
+  <ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.15" transform="rotate(45 300 200)"/>
+  <ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.18" transform="rotate(90 300 200)"/>
+  <ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.15" transform="rotate(135 300 200)"/>
+  <ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.18" transform="rotate(180 300 200)"/>
+  <ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.15" transform="rotate(225 300 200)"/>
+  <ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.18" transform="rotate(270 300 200)"/>
+  <ellipse cx="300" cy="152" rx="20" ry="44" fill="#e8926a" opacity="0.15" transform="rotate(315 300 200)"/>
+
+  <!-- Inner petals (8, rotated 22.5°, smaller) -->
+  <ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(22.5 300 200)"/>
+  <ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(67.5 300 200)"/>
+  <ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(112.5 300 200)"/>
+  <ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(157.5 300 200)"/>
+  <ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(202.5 300 200)"/>
+  <ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(247.5 300 200)"/>
+  <ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(292.5 300 200)"/>
+  <ellipse cx="300" cy="168" rx="13" ry="28" fill="#d4724a" opacity="0.22" transform="rotate(337.5 300 200)"/>
+
+  <!-- Center circles -->
+  <circle cx="300" cy="200" r="26" fill="#e8926a" opacity="0.28"/>
+  <circle cx="300" cy="200" r="14" fill="#d4724a" opacity="0.35"/>
+  <circle cx="300" cy="200" r="6"  fill="#c05a32" opacity="0.45"/>
+</svg>
