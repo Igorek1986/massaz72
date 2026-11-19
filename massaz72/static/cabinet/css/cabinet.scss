@@ -1883,16 +1883,35 @@ body.cabinet-body {
     gap: 8px;
   }
 
-  &__color {
+  &__color summary,
+  &__color-picker {
     display: flex;
     align-items: center;
     gap: 10px;
     cursor: pointer;
   }
 
+  &__color summary {
+    min-height: 34px;
+    list-style: none;
+  }
+
+  &__color summary::-webkit-details-marker { display: none; }
+
+  &__color-picker { padding: 8px 0 4px; }
+
+  &__swatch {
+    width: 34px;
+    height: 26px;
+    flex: none;
+    border: 1px solid var(--cab-border);
+    border-radius: 5px;
+    background: var(--preview-color);
+  }
+
   &__color input {
-    width: 42px;
-    height: 34px;
+    width: 34px;
+    height: 32px;
     flex: none;
     cursor: pointer;
   }

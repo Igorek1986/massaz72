@@ -7,6 +7,9 @@
   const colors = [...form.querySelectorAll('[data-theme-color]')];
 
   function applyPalette() {
+    for (const input of colors) {
+      input.closest('details').style.setProperty('--preview-color', input.value);
+    }
     const doc = frame.contentDocument;
     if (!doc?.getElementById('site-palette')) return;
 
@@ -18,7 +21,15 @@
     }
   }
 
+  function closePalette(restoreFocus = false) {
+    const open = form.querySelector('.site-designer__color[open]');
+    if (!open) return;
+    open.open = false;
+    if (restoreFocus) open.querySelector('summary').focus();
+  }
+
   function chooseTheme() {
+    closePalette();
     for (const section of form.querySelectorAll('[data-theme-fields]')) {
       section.hidden = section.dataset.themeFields !== theme.value;
     }
@@ -52,5 +63,9 @@
     }
     applyPalette();
   });
+  form.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closePalette(true);
+  });
+  applyPalette();
   choosePage();
 })();

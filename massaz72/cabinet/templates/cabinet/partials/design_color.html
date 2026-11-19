@@ -1,0 +1,5 @@
+<details class="site-designer__color" name="site-design-colors"{% if field.errors %} open{% endif %}>
+  <summary><span class="site-designer__swatch" aria-hidden="true"></span>{{ field.label }}</summary>
+  <label class="site-designer__color-picker">{{ field }} <span>Выбрать цвет</span></label>
+  {{ field.errors }}
+</details>
