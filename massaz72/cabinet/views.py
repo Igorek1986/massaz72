@@ -379,16 +379,26 @@ def specialist_roles(request, pk):
     specialists_permission = Permission.objects.get(
         content_type__app_label="cabinet", codename="manage_specialist_profiles",
     )
+    erasure_permission = Permission.objects.get(
+        content_type__app_label="accounts", codename="process_account_erasure",
+    )
+    direct_permissions = {
+        "can_manage_site": site_permission,
+        "can_manage_specialists": specialists_permission,
+        "can_process_erasure": erasure_permission,
+    }
     inherited_permissions = {
         permission.name
-        for permission in (site_permission, specialists_permission)
+        for permission in direct_permissions.values()
         if user.groups.filter(permissions=permission).exists()
     }
     initial = {
         "can_manage_prices": specialist.can_manage_prices,
         "can_manage_reviews": specialist.can_manage_reviews,
-        "can_manage_site": user.user_permissions.filter(pk=site_permission.pk).exists(),
-        "can_manage_specialists": user.user_permissions.filter(pk=specialists_permission.pk).exists(),
+        **{
+            field: user.user_permissions.filter(pk=permission.pk).exists()
+            for field, permission in direct_permissions.items()
+        },
     }
     form = SpecialistRolesForm(
         request.POST if request.method == "POST" else None, initial=initial,
@@ -401,10 +411,7 @@ def specialist_roles(request, pk):
             current.can_manage_prices = form.cleaned_data["can_manage_prices"]
             current.can_manage_reviews = form.cleaned_data["can_manage_reviews"]
             current.save(update_fields=["can_manage_prices", "can_manage_reviews"])
-            for field, permission in (
-                ("can_manage_site", site_permission),
-                ("can_manage_specialists", specialists_permission),
-            ):
+            for field, permission in direct_permissions.items():
                 if form.cleaned_data[field]:
                     user.user_permissions.add(permission)
                 else:

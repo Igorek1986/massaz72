@@ -12,7 +12,12 @@
         <h2 class="account__subtitle" id="admin-push-title">Уведомления на iPhone</h2>
         {% include "main/push_controls.html" with button_class="pwa-install__action" %}
       </section>
+      {% if is_booking_admin %}
       <p><a href="{% url 'admin:booking_bookingrequest_changelist' %}">Перейти к заявкам</a></p>
+      {% endif %}
+      {% if perms.accounts.process_account_erasure %}
+      <p><a href="{% url 'cabinet:erasure_requests' %}">Запросы на удаление ПД</a></p>
+      {% endif %}
     </div>
   </div>
 </section>

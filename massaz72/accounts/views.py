@@ -25,7 +25,8 @@ from .appointments import client_appointments, client_bookings
 from .erasure import is_client_account
 from .forms import ProfileForm, RegisterForm
 from .models import AccountErasureRequest, Client, PushSubscription
-from .permissions import is_booking_admin
+from .permissions import can_process_erasure, is_booking_admin
+from .push_delivery import queue_erasure_request
 
 
 def _cabinet_enabled() -> bool:
@@ -104,7 +105,7 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 @never_cache
 @require_safe
 def notifications(request: HttpRequest) -> HttpResponse:
-    if not is_booking_admin(request.user):
+    if not (is_booking_admin(request.user) or can_process_erasure(request.user)):
         return HttpResponse(status=403)
     return render(request, "accounts/notifications.html")
 
@@ -305,9 +306,11 @@ def request_account_erasure(request: HttpRequest) -> HttpResponse:
         user = get_user_model().objects.select_for_update().filter(pk=request.user.pk).first()
         if user is None or not is_client_account(user):
             return HttpResponse(status=403)
-        AccountErasureRequest.objects.get_or_create(user=user)
+        erasure_request, created = AccountErasureRequest.objects.get_or_create(user=user)
         Client.objects.filter(user=user).update(reminder_enabled=False)
         PushSubscription.objects.filter(user=user).delete()
+        if created:
+            queue_erasure_request(erasure_request.pk)
     return redirect(f"{reverse('accounts:profile')}#account-erasure")
 
 

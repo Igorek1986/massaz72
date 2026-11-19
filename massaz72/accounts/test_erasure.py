@@ -3,7 +3,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.test import Client as TestClient, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -82,7 +82,7 @@ class AccountErasureTest(TestCase):
         self.assertFalse(self.profile.reminder_enabled)
         self.assertContains(self.client.get(reverse("accounts:profile")), "Запрос принят")
         self.client.force_login(self.operator)
-        self.assertContains(self.client.get(self.list_url), "Удаление данных (1)")
+        self.assertContains(self.client.get(self.list_url), "Запросы на удаление ПД (1)")
 
     def test_staff_with_client_profile_cannot_submit_request(self):
         Client.objects.create(user=self.operator)
@@ -103,6 +103,33 @@ class AccountErasureTest(TestCase):
         self.assertEqual(self.client.post(url).status_code, 400)
         request.refresh_from_db()
         self.assertIsNone(request.completed_at)
+
+    def test_assigned_role_can_review_and_process_without_an_active_specialist_profile(self):
+        request, url = self._process_url()
+        group = Group.objects.get(name="Ответственный за удаление ПД")
+        self.assertEqual(list(group.permissions.values_list("codename", flat=True)), ["process_account_erasure"])
+        operator = get_user_model().objects.create_user("erasure-operator-without-profile")
+        operator.groups.add(group)
+        self.specialist.is_active = False
+        self.specialist.save(update_fields=["is_active"])
+        for user in (self.operator, operator):
+            with self.subTest(has_specialist=user == self.operator):
+                self.client.force_login(user)
+                self.assertContains(self.client.get(self.list_url), "Запросы на удаление ПД (1)")
+
+        strict = TestClient(enforce_csrf_checks=True)
+        strict.force_login(operator)
+        self.assertEqual(strict.post(url, {"confirmed": "on"}).status_code, 403)
+        self.assertRedirects(self.client.post(url, {"confirmed": "on"}), self.list_url)
+        request.refresh_from_db()
+        self.assertIsNotNone(request.completed_at)
+        self.assertIsNone(request.user_id)
+
+    def test_client_with_erasure_role_cannot_request_removal_of_its_operator_account(self):
+        self.user.groups.add(Group.objects.get(name="Ответственный за удаление ПД"))
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.post(self.submit_url, {"confirm_erasure": "on"}).status_code, 403)
+        self.assertFalse(AccountErasureRequest.objects.exists())
 
     def test_future_visit_is_anonymized_and_stays_on_schedule(self):
         visit = self._make_visit(

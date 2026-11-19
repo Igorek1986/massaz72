@@ -1,5 +1,5 @@
 <section class="pwa-push-promo" data-push-section data-push-promotion hidden aria-labelledby="push-promo-title">
-  <h2 id="push-promo-title" tabindex="-1">Уведомления о записи</h2>
+  <h2 id="push-promo-title" tabindex="-1">{% if user.is_authenticated %}Уведомления{% else %}Уведомления о записи{% endif %}</h2>
   {% if user.is_authenticated %}
     {% include "main/push_controls.html" with button_class="pwa-install__action" %}
   {% else %}

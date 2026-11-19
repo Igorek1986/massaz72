@@ -1,11 +1,11 @@
 {% extends 'cabinet/base.html' %}
 
-{% block title %}Удаление данных{% endblock %}
+{% block title %}Запросы на удаление ПД{% endblock %}
 {% block nav_erasure %}sidebar__link--active{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-header__title">Запросы на удаление данных</h1>
+  <h1 class="page-header__title">Запросы на удаление ПД</h1>
 </div>
 {% if erasure_error %}
 <p role="alert">{{ erasure_error }}</p>

@@ -340,6 +340,7 @@ class SpecialistRolesForm(forms.Form):
     can_manage_reviews = forms.BooleanField(label="Управление отзывами", required=False)
     can_manage_site = forms.BooleanField(label="Управление настройками сайта", required=False)
     can_manage_specialists = forms.BooleanField(label="Добавление и активация специалистов", required=False)
+    can_process_erasure = forms.BooleanField(label="Просмотр и обработка запросов на удаление ПД", required=False)
 
 
 class SpecialistCreateForm(forms.ModelForm):

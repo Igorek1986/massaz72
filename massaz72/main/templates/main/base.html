@@ -123,7 +123,10 @@
           <li class="nav__item nav__item--account-mobile"><a href="{% url 'accounts:dashboard' %}" class="nav__link">Личный кабинет</a></li>
           <li class="nav__item nav__item--account-mobile"><a href="{% url 'accounts:profile' %}" class="nav__link">Профиль</a></li>
           {% endif %}
-          {% if is_booking_admin %}
+          {% if perms.accounts.process_account_erasure %}
+          <li class="nav__item nav__item--account-mobile"><a href="{% url 'cabinet:erasure_requests' %}" class="nav__link">Запросы на удаление ПД</a></li>
+          {% endif %}
+          {% if is_booking_admin or perms.accounts.process_account_erasure %}
           <li class="nav__item nav__item--account-mobile"><a href="{% url 'accounts:notifications' %}" class="nav__link">Уведомления</a></li>
           {% endif %}
         {% endif %}
@@ -152,7 +155,10 @@
           <a href="{% url 'accounts:dashboard' %}" class="user-menu__item user-menu__item--role">Личный кабинет</a>
           <a href="{% url 'accounts:profile' %}" class="user-menu__item user-menu__item--role">Профиль</a>
           {% endif %}
-          {% if is_booking_admin %}
+          {% if perms.accounts.process_account_erasure %}
+          <a href="{% url 'cabinet:erasure_requests' %}" class="user-menu__item user-menu__item--role">Запросы на удаление ПД</a>
+          {% endif %}
+          {% if is_booking_admin or perms.accounts.process_account_erasure %}
           <a href="{% url 'accounts:notifications' %}" class="user-menu__item user-menu__item--role">Уведомления</a>
           {% endif %}
           <form method="post" action="{% url 'accounts:logout' %}">

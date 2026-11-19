@@ -11,12 +11,14 @@ from tgbot.models import BotAdmin, PendingNotification, TelegramUser
 
 from .appointments import client_appointments, client_bookings
 from .models import AccountErasureRequest, Client
+from .permissions import can_process_erasure
 
 
 def is_client_account(user):
     return (
         hasattr(user, "client_profile") and not user.is_staff and not user.is_superuser
         and not hasattr(user, "specialist")
+        and not can_process_erasure(user)
     )
 
 

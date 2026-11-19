@@ -117,10 +117,12 @@ class PushDelivery(models.Model):
         NEW_BOOKING = "new_booking"
         BOOKING_CONFIRMED = "booking_confirmed"
         BOOKING_DECLINED = "booking_declined"
+        ERASURE_REQUEST = "erasure_request"
         TEST = "test"
 
     subscription = models.ForeignKey(PushSubscription, on_delete=models.CASCADE)
     booking = models.ForeignKey("booking.BookingRequest", null=True, on_delete=models.CASCADE)
+    erasure_request = models.ForeignKey(AccountErasureRequest, null=True, on_delete=models.CASCADE)
     kind = models.CharField(max_length=24, choices=Kind.choices)
     available_at = models.DateTimeField(db_index=True)
     expires_at = models.DateTimeField()
@@ -130,5 +132,8 @@ class PushDelivery(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["subscription", "booking", "kind"], name="one_push_per_booking_event",
+            ),
+            models.UniqueConstraint(
+                fields=["subscription", "erasure_request"], name="one_push_per_erasure_request",
             ),
         ]

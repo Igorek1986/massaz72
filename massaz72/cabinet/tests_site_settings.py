@@ -160,13 +160,14 @@ class CabinetSpecialistRolesTest(TestCase):
         self.client.force_login(self.admin)
         self.assertContains(self.client.get(self.roles_url), "Управление настройками сайта")
         response = self.client.post(self.roles_url, {
-            "can_manage_reviews": "on", "can_manage_site": "on",
+            "can_manage_reviews": "on", "can_manage_site": "on", "can_process_erasure": "on",
         })
         self.assertRedirects(response, self.list_url)
         self.specialist.refresh_from_db()
         self.assertFalse(self.specialist.can_manage_prices)
         self.assertTrue(self.specialist.can_manage_reviews)
         self.assertTrue(self.editor.user_permissions.filter(pk=self.permission.pk).exists())
+        self.assertTrue(self.editor.user_permissions.filter(codename="process_account_erasure").exists())
 
         self.client.force_login(self.editor)
         self.assertContains(self.client.get(reverse("cabinet:index")), reverse("cabinet:site_settings"))
@@ -175,6 +176,7 @@ class CabinetSpecialistRolesTest(TestCase):
         self.specialist.refresh_from_db()
         self.assertFalse(self.specialist.can_manage_reviews)
         self.assertFalse(self.editor.user_permissions.filter(pk=self.permission.pk).exists())
+        self.assertFalse(self.editor.user_permissions.filter(codename="process_account_erasure").exists())
 
     def test_group_permission_is_preserved_and_disclosed(self):
         group = Group.objects.create(name="Редакторы")

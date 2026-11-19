@@ -26,7 +26,7 @@ from main.models import SiteSettings
 from tgbot.notifications import notify_new_booking
 
 from . import push_delivery, web_push
-from .models import Client, PushDelivery, PushSubscription
+from .models import AccountErasureRequest, Client, PushDelivery, PushSubscription
 
 Kind = PushDelivery.Kind
 User = get_user_model()
@@ -86,6 +86,7 @@ class PushTransportTest(SimpleTestCase):
         self.assertContains(response, "showNotification")
         self.assertContains(response, reverse("cabinet:booking_requests"))
         self.assertContains(response, reverse("admin:booking_bookingrequest_changelist"))
+        self.assertContains(response, reverse("cabinet:erasure_requests"))
         self.assertNotContains(response, "caches.open")
         self.assertEqual(self.client.post("/service-worker.js").status_code, 405)
 
@@ -292,6 +293,56 @@ class PushWorkflowTest(TestCase):
         self.post(action="test")
         self.client.post(reverse("accounts:request_account_erasure"), {"confirm_erasure": "on"})
         self.assertFalse(PushSubscription.objects.exists())
+        self.assertFalse(PushDelivery.objects.exists())
+
+    def test_erasure_push_requires_permission_and_ignores_specialist_activity(self):
+        submit = reverse("accounts:request_account_erasure")
+        group = Group.objects.get(name="Ответственный за удаление ПД")
+        operator = User.objects.create_user(username="push-erasure-operator")
+        operator.groups.add(group)
+        self.specialist.user.groups.add(group)
+        self.specialist.is_active = False
+        self.specialist.save(update_fields=["is_active"])
+
+        devices = {}
+        for recipient, label in (
+            (operator, "operator"), (self.specialist.user, "inactive-profile"),
+            (self.other.user, "other-specialist"),
+        ):
+            browser = Browser()
+            browser.force_login(recipient)
+            devices[label] = self.subscribe(browser, label)
+            if recipient == operator:
+                self.assertContains(browser.get(reverse("accounts:notifications")), "Запросы на удаление ПД")
+
+        with self.captureOnCommitCallbacks(execute=True):
+            for _ in range(2):
+                self.assertEqual(self.client.post(submit, {"confirm_erasure": "on"}).status_code, 302)
+        request = AccountErasureRequest.objects.get(user=self.customer)
+        self.assertCountEqual(
+            PushDelivery.objects.values_list("subscription_id", "kind", "erasure_request_id"),
+            [(devices[label].pk, Kind.ERASURE_REQUEST, request.pk) for label in ("operator", "inactive-profile")],
+        )
+        operator.groups.remove(group)
+        with patch("accounts.web_push.send", return_value=201) as send:
+            push_delivery.flush()
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[:2], (devices["inactive-profile"], Kind.ERASURE_REQUEST))
+        self.assertFalse(PushDelivery.objects.exists())
+
+    def test_erasure_push_is_discarded_if_request_already_processed(self):
+        operator = User.objects.create_superuser(username="push-erasure-admin")
+        browser = Browser()
+        browser.force_login(operator)
+        self.subscribe(browser)
+        submit = reverse("accounts:request_account_erasure")
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.client.post(submit, {"confirm_erasure": "on"}).status_code, 302)
+        self.assertTrue(PushDelivery.objects.filter(kind=Kind.ERASURE_REQUEST).exists())
+        AccountErasureRequest.objects.update(completed_at=timezone.now())
+        with patch("accounts.web_push.send") as send:
+            push_delivery.flush()
+        send.assert_not_called()
         self.assertFalse(PushDelivery.objects.exists())
 
     def test_new_booking_targets_specialist_and_head_and_is_queued_once(self):

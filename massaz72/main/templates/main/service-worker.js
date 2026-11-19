@@ -5,6 +5,7 @@ const messages = {
   new_booking_admin: ["Новая заявка ждёт обработки.", "{% url 'admin:booking_bookingrequest_changelist' %}"],
   booking_confirmed: ["Статус заявки изменился. Откройте личный кабинет.", "{% url 'accounts:dashboard' %}"],
   booking_declined: ["Статус заявки изменился. Откройте личный кабинет.", "{% url 'accounts:dashboard' %}"],
+  erasure_request: ["В кабинете есть новый запрос, требующий проверки.", "{% url 'cabinet:erasure_requests' %}"],
   test: ["Уведомления на этом устройстве работают.", "/"],
 };
 

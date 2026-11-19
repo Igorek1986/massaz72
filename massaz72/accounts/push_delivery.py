@@ -14,8 +14,11 @@ from main.models import SiteSettings
 from tgbot.notify import global_window, is_open, master_window, next_open
 
 from . import web_push
-from .models import PushDelivery, PushSubscription
-from .permissions import BOOKING_ADMIN_PERMISSIONS, is_booking_admin
+from .models import AccountErasureRequest, PushDelivery, PushSubscription
+from .permissions import (
+    BOOKING_ADMIN_PERMISSIONS, ERASURE_PERMISSION, can_process_erasure,
+    is_booking_admin, users_with_permission,
+)
 
 logger = logging.getLogger(__name__)
 Kind = PushDelivery.Kind
@@ -38,6 +41,7 @@ def eligible(user):
     return bool(
         (specialist and specialist.is_active)
         or is_booking_admin(user)
+        or can_process_erasure(user)
         or (hasattr(user, "client_profile") and enabled_for_client())
     )
 
@@ -48,10 +52,7 @@ def _recipients(booking, kind):
         specialists = Specialist.objects.filter(is_active=True, user__is_active=True)
         if booking.specialist_id:
             specialists = specialists.filter(pk__in=[booking.specialist_id, booking.specialist.head_id])
-        view, change = (
-            users.with_perm(permission, backend="django.contrib.auth.backends.ModelBackend")
-            for permission in BOOKING_ADMIN_PERMISSIONS
-        )
+        view, change = (users_with_permission(permission) for permission in BOOKING_ADMIN_PERMISSIONS)
         admins = users.filter(is_staff=True).exclude(specialist__is_active=True).filter(
             Q(pk__in=view) | Q(pk__in=change),
         )
@@ -63,34 +64,52 @@ def _recipients(booking, kind):
 
 
 @transaction.atomic
-def _enqueue_booking(booking, kind):
-    config = web_push.config()
-    if config is None or booking.status != EXPECTED_STATUS[kind]:
-        return
+def _enqueue(kind, recipients, vapid_key, **source):
     now = timezone.now()
     subscriptions = PushSubscription.objects.filter(
-        user_id__in=_recipients(booking, kind).values("pk"), user__is_active=True,
+        user_id__in=recipients.values("pk"), user__is_active=True,
         user__account_erasure_request__isnull=True, session__expire_date__gt=now,
-        vapid_key=config[1],
+        vapid_key=vapid_key,
     )
     PushDelivery.objects.bulk_create([
         PushDelivery(
-            subscription_id=pk, booking=booking, kind=kind, available_at=now,
-            expires_at=now + timedelta(days=1),
+            subscription_id=pk, kind=kind, available_at=now,
+            expires_at=now + timedelta(days=1), **source,
         )
         for pk in subscriptions.select_for_update(of=("self",)).order_by("pk").values_list("pk", flat=True)
     ], ignore_conflicts=True)
 
 
-def queue_booking(booking, kind):
+def _enqueue_after_commit(callback):
+    config = web_push.config()
+    if config is None:
+        return
+
     def enqueue():
         try:
-            _enqueue_booking(booking, kind)
+            callback(config[1])
         except DatabaseError:
             logger.warning("Не удалось поставить Web Push в очередь.")
 
-    if web_push.config():
-        transaction.on_commit(enqueue)
+    transaction.on_commit(enqueue)
+
+
+def queue_booking(booking, kind):
+    def enqueue(vapid_key):
+        if booking.status == EXPECTED_STATUS[kind]:
+            _enqueue(kind, _recipients(booking, kind), vapid_key, booking=booking)
+
+    _enqueue_after_commit(enqueue)
+
+
+def queue_erasure_request(request_id):
+    def enqueue(vapid_key):
+        _enqueue(
+            Kind.ERASURE_REQUEST, users_with_permission(ERASURE_PERMISSION), vapid_key,
+            erasure_request_id=request_id,
+        )
+
+    _enqueue_after_commit(enqueue)
 
 
 def queue_test(subscription, now):
@@ -126,6 +145,12 @@ def _deliver(pk, config, now):
         return
     if delivery.kind == Kind.TEST:
         if not eligible(user):
+            delivery.delete()
+            return
+    elif delivery.kind == Kind.ERASURE_REQUEST:
+        if not can_process_erasure(user) or not AccountErasureRequest.objects.filter(
+            pk=delivery.erasure_request_id, completed_at__isnull=True,
+        ).exists():
             delivery.delete()
             return
     else:

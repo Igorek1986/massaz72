@@ -209,9 +209,12 @@
   }
 
   &__dialog {
+    inset-block: 50% auto;
+    max-block-size: calc(100dvh - 24px);
     border-color: var(--cab-border, var(--color-hairline));
     background: var(--cab-surface, var(--color-canvas-card));
     color: var(--cab-text, var(--color-ink));
+    transform: translate(-50%, -50%);
 
     > .pwa-push-promo {
       margin-block-end: 0;

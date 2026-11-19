@@ -183,7 +183,7 @@
   const denied = "Разрешите уведомления для «Массаж72» в настройках iOS и снова откройте приложение.";
   function showState() {
     if (!configured) status.textContent = "Сервер пока не настроен для отправки уведомлений.";
-    else if (!key) status.textContent = "Уведомления доступны активным специалистам, клиентам с кабинетом и администраторам с доступом к заявкам.";
+    else if (!key) status.textContent = "Уведомления доступны клиентам с кабинетом, активным специалистам и сотрудникам с доступом к заявкам или запросам на удаление ПД.";
     else if (Notification.permission === "denied") status.textContent = denied;
     else if (active) status.textContent = "Уведомления включены на этом устройстве.";
     else status.textContent = "Включите уведомления, чтобы получать обновления в кабинете.";
