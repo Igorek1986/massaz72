@@ -34,7 +34,7 @@
 
 {% block body %}
 {% if web_push_available and not request.site_design_preview %}
-<div class="container">
+<div class="container pwa-push-start">
   {% include "main/push_promo.html" %}
 </div>
 {% endif %}

@@ -233,8 +233,9 @@ class PushWorkflowTest(TestCase):
         home = reverse("main:index")
         guest = Browser().get(home)
         self.assertContains(guest, marker)
-        self.assertContains(guest, "Войдите в кабинет, чтобы получать уведомления о записи.")
+        self.assertContains(guest, "После входа вы сможете включить уведомления о записи.")
         self.assertNotContains(guest, "data-push-url")
+        self.assertNotContains(guest, "data-push-login-dialog")
         with self.settings(WEB_PUSH_VAPID_PRIVATE_KEY=""):
             self.assertNotContains(Browser().get(home), marker)
 
@@ -242,10 +243,16 @@ class PushWorkflowTest(TestCase):
             response = self.client.get(url)
             self.assertContains(response, marker, count=1)
             self.assertContains(response, "data-push-url", count=1)
+            self.assertContains(response, "data-push-login-dialog", count=1)
 
         self.client.force_login(self.specialist.user)
         self.assertContains(self.client.get(reverse("cabinet:index")), marker, count=1)
         self.assertNotContains(self.client.get(reverse("cabinet:settings")), marker)
+
+    def test_both_sign_in_pages_mark_the_form_for_push_offer_after_login(self):
+        for name in ("accounts:login", "cabinet:login"):
+            with self.subTest(name=name):
+                self.assertContains(Browser().get(reverse(name)), "data-push-login-form", count=1)
 
     def test_rejects_unsafe_endpoints_and_bad_keys(self):
         urls = [

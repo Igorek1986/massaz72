@@ -68,6 +68,7 @@
   const root = document.querySelector("[data-push-url]");
   const section = root?.closest("[data-push-section]");
   const pushPromo = document.querySelector("[data-push-promotion]");
+  const pushDialog = document.querySelector("[data-push-login-dialog]");
   const isAppleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
@@ -76,6 +77,26 @@
     ? navigator.serviceWorker.register(script.dataset.worker, { updateViaCache: "none" }).catch(() => null)
     : null;
   const supportsPush = worker && "Notification" in window && "PushManager" in window;
+  const loginMarker = "massaz_push_login_at";
+  let openAfterLogin = false;
+  if (isAppleMobile && standalone && supportsPush) {
+    document.querySelector("[data-push-login-form]")?.addEventListener("submit", () => {
+      try {
+        sessionStorage.setItem(loginMarker, String(Date.now()));
+      } catch {
+        // The inline offer is still available without session storage.
+      }
+    });
+    if (pushPromo && root) {
+      try {
+        openAfterLogin = Date.now() - Number(sessionStorage.getItem(loginMarker)) < 120000;
+        sessionStorage.removeItem(loginMarker);
+      } catch {
+        // Keep the offer inline if session storage is unavailable.
+      }
+    }
+  }
+  let active = false;
   let dismissPushPromo;
   let later;
   if (pushPromo) {
@@ -86,10 +107,12 @@
     later = pushPromo.querySelector("[data-push-later]");
     dismissPushPromo = () => {
       pushPromo.hidden = true;
-      pauseReminder(preference, 7);
+      if (!active) pauseReminder(preference, 7);
       dismissPushPromo = undefined;
+      if (pushDialog?.open) pushDialog.close();
     };
     later.addEventListener("click", () => dismissPushPromo?.());
+    pushDialog?.addEventListener("close", () => dismissPushPromo?.());
     if (!root) pushPromo.hidden = false;
   }
   if (!root || !isAppleMobile) return;
@@ -119,7 +142,6 @@
   let subscription;
   let key;
   let configured = false;
-  let active = false;
   let busy = false;
 
   function updateControls() {
@@ -133,7 +155,10 @@
     disable.disabled = busy;
     test.hidden = !active || !subscription || Notification.permission === "denied";
     test.disabled = busy;
-    if (later) later.hidden = active;
+    if (later) {
+      later.hidden = active && !pushDialog?.open;
+      later.textContent = active ? "Готово" : "Позже";
+    }
   }
 
   async function request(action, data = {}) {
@@ -183,9 +208,15 @@
         active = false;
       }
       showState();
-      if (pushPromo && dismissPushPromo) {
+      if (pushPromo && dismissPushPromo && !pushDialog?.open) {
         pushPromo.hidden = !key || Notification.permission === "denied" || active;
         root.hidden = pushPromo.hidden;
+        if (!pushPromo.hidden && openAfterLogin && typeof pushDialog?.showModal === "function") {
+          openAfterLogin = false;
+          pushDialog.append(pushPromo);
+          pushDialog.showModal();
+          pushDialog.querySelector("h2").focus();
+        }
       }
     } catch {
       status.textContent = "Не удалось проверить уведомления. Обновите страницу.";

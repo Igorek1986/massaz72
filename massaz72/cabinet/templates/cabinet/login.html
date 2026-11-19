@@ -15,7 +15,7 @@
       <div class="login-card__error">{{ form.non_field_errors }}</div>
     {% endif %}
 
-    <form method="post" class="login-form" novalidate>
+    <form method="post" class="login-form" data-push-login-form novalidate>
       {% csrf_token %}
       <div class="login-form__field">
         <label for="{{ form.username.id_for_label }}" class="login-form__label">Логин</label>

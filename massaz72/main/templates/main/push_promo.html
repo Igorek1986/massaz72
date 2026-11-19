@@ -1,9 +1,9 @@
 <section class="pwa-push-promo" data-push-section data-push-promotion hidden aria-labelledby="push-promo-title">
-  <h2 id="push-promo-title">Уведомления о записи</h2>
+  <h2 id="push-promo-title" tabindex="-1">Уведомления о записи</h2>
   {% if user.is_authenticated %}
     {% include "main/push_controls.html" with button_class="pwa-install__action" %}
   {% else %}
-    <p>Войдите в кабинет, чтобы получать уведомления о записи.</p>
+    <p>После входа вы сможете включить уведомления о записи.</p>
   {% endif %}
   <div class="pwa-push-promo__actions">
     {% if not user.is_authenticated %}
@@ -12,3 +12,6 @@
     <button class="pwa-install__action pwa-install__action--secondary" type="button" data-push-later>Позже</button>
   </div>
 </section>
+{% if user.is_authenticated %}
+<dialog class="pwa-install__dialog pwa-push-promo__dialog" data-push-login-dialog aria-labelledby="push-promo-title"></dialog>
+{% endif %}

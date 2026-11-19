@@ -11,7 +11,7 @@
     <div class="account-card">
       <h1 class="account__title">Вход</h1>
       {% if request.GET.reset %}<p class="account__notice">Пароль изменён. Войдите с новым паролем.</p>{% endif %}
-      <form class="account-form" method="post">
+      <form class="account-form" method="post" data-push-login-form>
         {% csrf_token %}
         {% if form.non_field_errors %}<div class="account-form__error">{{ form.non_field_errors }}</div>{% endif %}
         {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
