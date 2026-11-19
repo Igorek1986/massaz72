@@ -1,14 +1,60 @@
+.redesign-page {
+  --color-canvas: #fbf4ed;
+  --color-canvas-card: #fffaf5;
+  --color-ink: #422735;
+  --color-body: #573d47;
+  --color-muted: #725761;
+  --color-muted-soft: #785b66;
+  --color-surface-soft: #f3e4dc;
+  --color-surface-strong: #ead5cb;
+  --color-hairline: #dac4ba;
+  --color-hairline-soft: #e7d6cb;
+  --color-primary: #803650;
+  --color-primary-active: #67233d;
+  --color-header-bg: #f5e7dc;
+  --color-header-text-hover: #803650;
+  --redesign-hero-bg: #582d40;
+  --redesign-navigation: #f0dfd4;
+  --redesign-focus: #943f64;
+}
+
+.redesign-page[data-theme="dark"] {
+  --color-canvas: #21191f;
+  --color-canvas-card: #2e222b;
+  --color-ink: #f8e8e4;
+  --color-body: #e2cdd2;
+  --color-muted: #c8adb7;
+  --color-muted-soft: #baa0ab;
+  --color-surface-soft: #33252f;
+  --color-surface-strong: #44303d;
+  --color-hairline: #59434f;
+  --color-hairline-soft: #483541;
+  --color-primary: #d991ac;
+  --color-primary-active: #efb0c5;
+  --color-on-primary: #281820;
+  --color-header-bg: #281c26;
+  --redesign-hero-bg: #3b2634;
+  --redesign-navigation: #392934;
+  --redesign-focus: #efb0c5;
+}
+
+.redesign-page[data-theme="dark"] .site-redesign {
+  .price-discounted,
+  .price-promo-note,
+  .service-card__promo { color: #a2d7b2; }
+}
+
 .site-redesign {
-  background: #fcf6ef;
-  color: #412935;
+  background: var(--color-canvas);
+  color: var(--color-ink);
 
   .redesign-hero {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
     padding: 0;
     overflow: hidden;
-    border-radius: 14px;
-    background: #4a2536;
+    border-radius: 0 0 14px 14px;
+    background: var(--redesign-hero-bg);
     color: #fff5ec;
 
     &__copy {
@@ -65,8 +111,8 @@
     &__directions {
       grid-column: 1 / -1;
       display: flex;
-      background: #f3e3dc;
-      color: #432a32;
+      background: var(--redesign-navigation);
+      color: var(--color-ink);
     }
 
     &__directions a {
@@ -79,7 +125,7 @@
       font: clamp(19px, 3vw, 34px)/1.15 Georgia, serif;
     }
 
-    &__directions a + a { border-inline-start: 1px solid #d6c5b8; }
+    &__directions a + a { border-inline-start: 1px solid var(--color-hairline); }
 
     @media (max-width: 750px) {
       grid-template-columns: minmax(0, 1fr);
@@ -93,7 +139,7 @@
 
   .service__section-title,
   .massage__detail-title {
-    color: #4a2536;
+    color: var(--color-ink);
     font: 400 clamp(32px, 4vw, 57px)/1.08 Georgia, serif;
     overflow-wrap: anywhere;
   }
@@ -101,8 +147,8 @@
   .service-card {
     opacity: 1;
     transform: none;
-    border: 1px solid #e4d6cc;
-    background: #fffaf6;
+    border: 1px solid var(--color-hairline);
+    background: var(--color-canvas-card);
 
     &__photo { padding-bottom: 56%; }
 
@@ -115,7 +161,7 @@
     }
 
     &__name { font: 400 clamp(21px, 2vw, 30px)/1.1 Georgia, serif; }
-    &__facts { color: #694955; font-size: 14px; }
+    &__facts { color: var(--color-muted); font-size: 14px; }
     &__price, &__promo { margin: 0; }
   }
 
@@ -133,7 +179,7 @@
   }
 
   a:focus-visible {
-    outline: 3px solid #9d4666;
+    outline: 3px solid var(--redesign-focus);
     outline-offset: -3px;
   }
 

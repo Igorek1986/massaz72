@@ -1,6 +1,6 @@
 {% load static sass_tags %}{% if False %}{% sass_src 'css/vendor.scss' %}{% sass_src 'css/main.scss' %}{% endif %}
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru"{% block html_attributes %}{% endblock %}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -333,7 +333,7 @@
 
     function setTheme(theme) {
       html.dataset.theme = theme;
-      if (metaTheme) metaTheme.content = theme === 'dark' ? '#191512' : '#dac2ac';
+      if (metaTheme) metaTheme.content = getComputedStyle(html).getPropertyValue('--color-header-bg').trim();
     }
 
     setTheme(getTheme());
