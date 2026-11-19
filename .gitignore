@@ -185,6 +185,7 @@ node_modules/
 
 # Claude Code
 CLAUDE.md
+AGENTS.md
 
 # Локальные рабочие файлы (не для репозитория)
 /dev/
