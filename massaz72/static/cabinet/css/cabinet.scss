@@ -195,6 +195,8 @@ body.cabinet-body {
 .cabinet-content {
   padding: 28px 32px;
   max-width: 1200px;
+
+  &--wide { max-width: none; }
 }
 
 // ===== Page header =====

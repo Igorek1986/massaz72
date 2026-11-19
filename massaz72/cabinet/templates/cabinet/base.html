@@ -107,7 +107,7 @@
   </aside>
 
   <main class="cabinet-main">
-    <div class="cabinet-content">
+    <div class="cabinet-content{% block cabinet_content_modifier %}{% endblock %}">
       {% block content %}{% endblock %}
     </div>
   </main>

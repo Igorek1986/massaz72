@@ -1,6 +1,7 @@
 {% extends "cabinet/base.html" %}
 {% load static %}
 
+{% block cabinet_content_modifier %} cabinet-content--wide{% endblock %}
 {% block title %}Конструктор сайта{% endblock %}
 {% block nav_site_settings %}sidebar__link--active{% endblock %}
 {% block head_extra %}<script src="{% static 'cabinet/js/site-design.js' %}" defer></script>{% endblock %}
