@@ -411,6 +411,19 @@ class BookingViewTest(TestCase):
         self.assertEqual(booking.user, user)
         self.assertEqual(booking.source, BookingRequest.Source.ACCOUNT)
 
+    def test_pending_erasure_blocks_authenticated_booking(self):
+        from accounts.models import AccountErasureRequest, Client
+
+        self.settings_obj.client_cabinet_enabled = True
+        self.settings_obj.save(update_fields=["client_cabinet_enabled"])
+        user = User.objects.create_user("clientacc")
+        Client.objects.create(user=user)
+        AccountErasureRequest.objects.create(user=user)
+        self.client.force_login(user)
+
+        self.assertRedirects(self._post(), reverse("accounts:profile"))
+        self.assertFalse(BookingRequest.objects.exists())
+
 
 def next_weekday(weekday: int, min_ahead: int = 7) -> date_cls:
     """Ближайшая дата ≥ today+min_ahead с нужным днём недели (0=Пн)."""

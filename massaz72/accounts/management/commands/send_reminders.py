@@ -20,10 +20,10 @@ def add_months(d: date, months: int) -> date:
 
 def last_visit_date(client):
     """Дата последнего сеанса клиента (по его записям)."""
-    from accounts.views import _client_appointment_qs
+    from accounts.appointments import client_appointments
 
     return (
-        _client_appointment_qs(client.user)
+        client_appointments(client.user)
         .order_by("-date")
         .values_list("date", flat=True)
         .first()

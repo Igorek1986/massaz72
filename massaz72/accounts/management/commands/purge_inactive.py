@@ -30,9 +30,9 @@ def last_activity_date(user) -> date:
 
 
 def has_future_appointment(user, today: date) -> bool:
-    from accounts.views import _client_appointment_qs
+    from accounts.appointments import client_appointments
 
-    return _client_appointment_qs(user).filter(date__gte=today).exists()
+    return client_appointments(user).filter(date__gte=today).exists()
 
 
 class Command(BaseCommand):
@@ -53,7 +53,7 @@ class Command(BaseCommand):
         warn_threshold = INACTIVE_DAYS - WARN_BEFORE_DAYS
 
         warned = deleted = 0
-        clients = Client.objects.select_related("user")
+        clients = Client.objects.filter(user__account_erasure_request__isnull=True).select_related("user")
         for client in clients:
             user = client.user
             # Сотрудников/админов не трогаем.

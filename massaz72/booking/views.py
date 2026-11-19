@@ -1,10 +1,13 @@
 import logging
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
+from accounts.models import AccountErasureRequest
 from main.models import SiteSettings
 from reviews.spam import timing_is_human
 from tgbot.models import BotSettings
@@ -122,23 +125,25 @@ def booking_page(request: HttpRequest) -> HttpResponse:
             booking.ip_address = ip
             booking.consent_at = timezone.now()
             # Залогиненный клиент — привязываем заявку к аккаунту.
-            if request.user.is_authenticated and hasattr(request.user, "client_profile"):
-                booking.user = request.user
-                booking.source = BookingRequest.Source.ACCOUNT
-                # Нет телефона в форме — берём из профиля аккаунта.
-                if not booking.phone:
-                    booking.phone = (request.user.client_profile.phone or "").strip()
-            else:
-                booking.source = BookingRequest.Source.GUEST
-            # Гейт по контакту: с телефоном — сразу «на подтверждении» и
-            # уведомляем мастера. Без телефона — «ожидает контакта», мастеру не
-            # показываем и не шлём, пока клиент не подтвердит в боте
-            # (см. tgbot: подтверждение переключит статус и уведомит мастера).
-            if booking.phone:
-                booking.status = BookingRequest.Status.PENDING
-            else:
-                booking.status = BookingRequest.Status.AWAITING_CONTACT
-            booking.save()
+            with transaction.atomic():
+                if request.user.is_authenticated and hasattr(request.user, "client_profile"):
+                    user = get_user_model().objects.select_for_update().filter(
+                        pk=request.user.pk,
+                    ).first()
+                    if user is None or AccountErasureRequest.objects.filter(user=user).exists():
+                        return redirect("accounts:profile")
+                    booking.user = user
+                    booking.source = BookingRequest.Source.ACCOUNT
+                    if not booking.phone:
+                        booking.phone = user.client_profile.phone.strip()
+                else:
+                    booking.source = BookingRequest.Source.GUEST
+                # Без подтверждённого канала связи заявка ждёт контакта.
+                booking.status = (
+                    BookingRequest.Status.PENDING if booking.phone
+                    else BookingRequest.Status.AWAITING_CONTACT
+                )
+                booking.save()
             if booking.phone:
                 _notify_admins(booking)
             # PRG: уводим на закладываемую страницу подтверждения по токену.

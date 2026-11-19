@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import views
+from . import erasure_views, views
 
 app_name = "cabinet"
 
@@ -74,6 +74,8 @@ urlpatterns = [
     path("requests/<int:pk>/confirm/", views.booking_request_confirm, name="booking_request_confirm"),
     path("requests/<int:pk>/decline/", views.booking_request_decline, name="booking_request_decline"),
     path("requests/toggle/", views.booking_toggle, name="booking_toggle"),
+    path("data-erasure/", erasure_views.erasure_requests, name="erasure_requests"),
+    path("data-erasure/<int:pk>/process/", erasure_views.process_erasure, name="process_erasure"),
 
     # Reviews moderation (superuser)
     path("reviews/", views.reviews, name="reviews"),

@@ -15,3 +15,9 @@ def send_reminders():
 def purge_inactive():
     """Ежедневно: удаление неактивных аккаунтов (с предупреждением)."""
     call_command("purge_inactive")
+
+
+def remind_pending_erasure():
+    from .erasure_reminders import send_due_erasure_reminders
+
+    send_due_erasure_reminders()

@@ -57,7 +57,7 @@ class RegistrationTest(TestCase):
         self.assertContains(resp, reverse("main:consent"))
         self.assertContains(resp, reverse("main:privacy"))
 
-    def test_register_links_past_bookings_by_phone(self):
+    def test_register_does_not_link_bookings_by_phone(self):
         booking = BookingRequest.objects.create(
             client_name="Иван", phone="+70000000000",
             preferred_date=future_date(), preferred_time=time(10, 0),
@@ -67,7 +67,7 @@ class RegistrationTest(TestCase):
             "phone": "+70000000000", "consent": "on",
         })
         booking.refresh_from_db()
-        self.assertEqual(booking.user, User.objects.get(username="ivan"))
+        self.assertIsNone(booking.user_id)
 
     def test_register_disabled_redirects(self):
         self.settings.client_cabinet_enabled = False
@@ -85,6 +85,7 @@ class CabinetTest(TestCase):
         self.massage = make_massage("МойМассаж")
         self.booking = BookingRequest.objects.create(
             client_name="Иван", user=self.user, phone="111", service=self.massage,
+            source=BookingRequest.Source.ACCOUNT,
             preferred_date=future_date(), preferred_time=time(10, 0),
         )
 
@@ -104,12 +105,27 @@ class CabinetTest(TestCase):
         ClientProfile.objects.create(user=other)
         BookingRequest.objects.create(
             client_name="Чужой", user=other, service=make_massage("ЧужойМассаж"),
+            source=BookingRequest.Source.ACCOUNT,
             preferred_date=future_date(), preferred_time=time(9, 0),
         )
         self.client.force_login(self.user)
         body = self.client.get(reverse("accounts:dashboard")).content.decode()
         self.assertIn("МойМассаж", body)
         self.assertNotIn("ЧужойМассаж", body)
+
+    def test_legacy_phone_link_does_not_grant_access(self):
+        legacy = BookingRequest.objects.create(
+            client_name="Гость", user=self.user, service=make_massage("ГостеваяУслуга"),
+            preferred_date=future_date(), preferred_time=time(11, 0),
+        )
+        self.client.force_login(self.user)
+
+        self.assertNotContains(self.client.get(reverse("accounts:dashboard")), "ГостеваяУслуга")
+        response = self.client.post(reverse("accounts:cancel_booking", args=[legacy.pk]))
+        self.assertEqual(response.status_code, 404)
+        legacy.refresh_from_db()
+        self.assertEqual(legacy.status, BookingRequest.Status.PENDING)
+        self.assertEqual(legacy.user_id, self.user.pk)
 
     def test_dashboard_shows_calendar_when_sessions(self):
         from booking.models import BookingSessionOption
@@ -154,6 +170,7 @@ class CabinetTest(TestCase):
         spec = Specialist.objects.create(name="М")
         b = BookingRequest.objects.create(
             client_name="Кл", user=self.user, service=self.massage,
+            source=BookingRequest.Source.ACCOUNT,
             preferred_date=timezone.localdate() + timedelta(days=days_ahead),
             preferred_time=time(10, 0),
         )
@@ -208,6 +225,7 @@ class CabinetTest(TestCase):
         ClientProfile.objects.create(user=other)
         ob = BookingRequest.objects.create(
             client_name="X", user=other,
+            source=BookingRequest.Source.ACCOUNT,
             preferred_date=future_date(), preferred_time=time(9, 0),
         )
         self.client.force_login(self.user)
@@ -432,6 +450,7 @@ class PurgeInactiveTest(TestCase):
         spec = Specialist.objects.create(name="Мастер")
         booking = BookingRequest.objects.create(
             client_name="Иван", user=c.user, phone="111", service=self.massage,
+            source=BookingRequest.Source.ACCOUNT,
             preferred_date=future_date(), preferred_time=time(10, 0),
             sessions=BookingSessionOption.objects.create(specialist=spec, count=1, label="1 сеанс"),
         )
@@ -458,7 +477,7 @@ class SchedulerTest(TestCase):
         self.assertEqual(names, {
             "send_reminders_daily", "purge_inactive_daily",
             "purge_unconfirmed_bookings", "flush_notifications",
-            "remind_unconfirmed_bookings",
+            "remind_unconfirmed_bookings", "remind_pending_account_erasure",
         })
         s = Schedule.objects.get(name="send_reminders_daily")
         self.assertEqual(s.func, "accounts.tasks.send_reminders")
@@ -469,6 +488,10 @@ class SchedulerTest(TestCase):
         self.assertEqual(m.func, "booking.tasks.purge_unconfirmed_bookings")
         self.assertEqual(m.schedule_type, Schedule.MINUTES)
         self.assertEqual(m.minutes, 5)
+        reminder = Schedule.objects.get(name="remind_pending_account_erasure")
+        self.assertEqual(reminder.func, "accounts.tasks.remind_pending_erasure")
+        self.assertEqual(reminder.schedule_type, Schedule.MINUTES)
+        self.assertEqual(reminder.minutes, 5)
 
     def test_task_wrappers_call_commands(self):
         from unittest.mock import patch

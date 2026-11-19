@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -13,6 +14,10 @@ class Review(models.Model):
         APPROVED = "approved", "Одобрен"
         REJECTED = "rejected", "Отклонён"
 
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, editable=False, related_name="written_reviews",
+    )
     name = models.CharField("Имя", max_length=100)
     rating = models.PositiveSmallIntegerField(
         "Оценка",

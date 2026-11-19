@@ -1,4 +1,4 @@
-{% load static sass_tags %}{% if False %}{% sass_src 'cabinet/css/cabinet.scss' %}{% endif %}
+{% load static sass_tags erasure_tags %}{% if False %}{% sass_src 'cabinet/css/cabinet.scss' %}{% endif %}
 <!DOCTYPE html>
 <html lang="ru" data-theme="light">
 <head>
@@ -89,6 +89,12 @@
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
         Отзывы
+      </a>
+      {% endif %}
+      {% if perms.accounts.process_account_erasure %}
+      {% pending_erasure_count as erasure_count %}
+      <a href="{% url 'cabinet:erasure_requests' %}" class="sidebar__link {% block nav_erasure %}{% endblock %}">
+        Удаление данных{% if erasure_count %} ({{ erasure_count }}){% endif %}
       </a>
       {% endif %}
     </nav>

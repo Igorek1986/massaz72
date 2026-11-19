@@ -71,6 +71,28 @@
         <button type="submit" name="change_password" class="account-form__submit">Изменить пароль</button>
       </form>
 
+      {% if can_request_erasure %}
+      <section id="account-erasure" aria-labelledby="account-erasure-title">
+        <h2 class="account__subtitle" id="account-erasure-title">Удаление аккаунта и персональных данных</h2>
+        {% if erasure_requested %}
+        <p class="account__notice">Запрос принят. Ответственный проверит его перед удалением.</p>
+        {% else %}
+        <p class="account__muted">После обработки запроса вы потеряете доступ к аккаунту. В истории мастера останутся сведения о визитах без имени, контактов, адреса и заметок.</p>
+        {% if request.GET.erasure == 'confirm' %}
+        <p class="account-form__error">Подтвердите, что хотите удалить аккаунт и персональные данные.</p>
+        {% endif %}
+        <form class="account-form" method="post" action="{% url 'accounts:request_account_erasure' %}">
+          {% csrf_token %}
+          <label class="consent-row__label">
+            <input type="checkbox" name="confirm_erasure" required>
+            <span>Прошу удалить мой аккаунт и персональные данные.</span>
+          </label>
+          <button type="submit" class="account-form__submit">Запросить удаление</button>
+        </form>
+        {% endif %}
+      </section>
+      {% endif %}
+
       <p class="account__alt"><a href="{% url 'accounts:dashboard' %}">← В кабинет</a></p>
     </div>
   </div>

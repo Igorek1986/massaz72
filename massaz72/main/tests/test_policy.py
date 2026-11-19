@@ -70,6 +70,13 @@ class PolicyContextTest(TestCase):
         BotSettings.objects.create(is_enabled=False, bot_username="massaz_bot")
         self.assertEqual(build_policy_context().messengers, "")
 
+    def test_configured_token_counts_as_outbound_channel_even_if_bot_hidden(self):
+        BotSettings.objects.create(is_enabled=False, token="test-only")
+        policy = build_policy_context()
+        self.assertTrue(policy.telegram_notifications)
+        self.assertTrue(policy.foreign_transfer)
+        self.assertEqual(policy.messengers, "Telegram")
+
 
 class PrivacyPageTest(TestCase):
     def test_operator_details_from_settings(self):
@@ -137,6 +144,18 @@ class PrivacyPageTest(TestCase):
         html = _page(self)
         self.assertIn("IP-адрес", html)
         self.assertIn("Срок обработки и хранения:", html)
+
+    def test_erasure_link_with_custom_policy_and_on_consent_page(self):
+        cfg = SiteSettings.objects.create(
+            client_cabinet_enabled=True, privacy_body="Опубликованная редакция",
+        )
+        profile_url = reverse("accounts:profile") + "#account-erasure"
+        self.assertIn(profile_url, _page(self))
+        self.assertIn(profile_url, _consent(self))
+        cfg.client_cabinet_enabled = False
+        cfg.save(update_fields=["client_cabinet_enabled"])
+        self.assertNotIn(profile_url, _page(self))
+        self.assertNotIn(profile_url, _consent(self))
 
 
 def _consent(testcase):

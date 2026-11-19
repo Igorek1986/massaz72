@@ -44,6 +44,32 @@ def abs_url(route_name: str) -> str:
 
 logger = logging.getLogger(__name__)
 
+
+def send_account_erasure_reminder(telegram_id) -> bool:
+    from .bot import get_bot
+    from .models import BotSettings
+
+    settings = BotSettings.objects.first()
+    if not settings or not settings.is_enabled or not settings.token:
+        return False
+    url = abs_url("cabinet:erasure_requests")
+    if not url.startswith("https://"):
+        return False
+    try:
+        bot = get_bot(settings.token)
+        if bot is None:
+            return False
+        bot.send_message(
+            telegram_id,
+            f"В кабинете есть запросы, требующие проверки.\n{html.escape(url)}",
+            disable_web_page_preview=True,
+            timeout=10,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("Не удалось отправить напоминание об обработке запросов на удаление")
+        return False
+    return True
+
 REVIEW_CB_PREFIX = "rv_"
 
 _ACTION_LABELS = {

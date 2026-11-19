@@ -78,3 +78,24 @@ class Client(models.Model):
     @property
     def bot_linked(self) -> bool:
         return self.telegram_id is not None
+
+
+class AccountErasureRequest(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name="account_erasure_request",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        permissions = [
+            ("process_account_erasure", "Обработка запросов на удаление данных клиентов"),
+        ]
+        verbose_name = "Запрос на удаление данных клиента"
+        verbose_name_plural = "Запросы на удаление данных клиентов"
+
+
+class AccountErasureReminder(models.Model):
+    recipient = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    last_sent_at = models.DateTimeField(null=True, blank=True)

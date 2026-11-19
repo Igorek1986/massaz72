@@ -1,11 +1,15 @@
 import logging
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from accounts.appointments import has_completed_appointment
+from accounts.models import AccountErasureRequest
 from main.models import SiteSettings
 
 from .forms import ReviewForm
@@ -48,6 +52,9 @@ def create(request: HttpRequest) -> HttpResponse:
     if not _reviews_enabled():
         return redirect(reverse("main:index"))
 
+    if not has_completed_appointment(request.user):
+        return _redirect_to_reviews("visit_required")
+
     # Honeypot и time-trap: для ботов делаем вид, что всё прошло успешно,
     # чтобы не подсказывать им, как обойти защиту, и ничего не сохраняем.
     if request.POST.get("website"):
@@ -62,11 +69,17 @@ def create(request: HttpRequest) -> HttpResponse:
 
     form = ReviewForm(request.POST)
     if form.is_valid():
-        review: Review = form.save(commit=False)
-        review.ip_address = ip
-        review.consent_at = timezone.now()
-        review.status = Review.Status.PENDING
-        review.save()
+        with transaction.atomic():
+            author = get_user_model().objects.select_for_update().filter(pk=request.user.pk).first()
+            if not author or AccountErasureRequest.objects.filter(user=author).exists():
+                return _redirect_to_reviews("visit_required")
+            review: Review = form.save(commit=False)
+            review.author = author
+            review.name = "Клиент"
+            review.ip_address = ip
+            review.consent_at = timezone.now()
+            review.status = Review.Status.PENDING
+            review.save()
         _notify_admins(review)
         return _redirect_to_reviews("ok")
 

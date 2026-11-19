@@ -8,6 +8,7 @@ from django.contrib.auth.forms import (
     AuthenticationForm, PasswordChangeForm, SetPasswordForm,
 )
 from django.contrib.auth.tokens import default_token_generator
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -18,8 +19,10 @@ from django.views.decorators.http import require_POST
 
 from main.models import SiteSettings
 
+from .appointments import client_appointments, client_bookings
+from .erasure import is_client_account
 from .forms import ProfileForm, RegisterForm
-from .models import Client
+from .models import AccountErasureRequest, Client
 
 
 def _cabinet_enabled() -> bool:
@@ -52,12 +55,6 @@ def register(request: HttpRequest) -> HttpResponse:
             user = form.save()
             phone = form.cleaned_data.get("phone", "")
             Client.objects.create(user=user, phone=phone, consent_at=timezone.now())
-            # Привязываем прежние заявки клиента по телефону.
-            if phone:
-                from booking.models import BookingRequest
-                BookingRequest.objects.filter(
-                    phone=phone, user__isnull=True
-                ).update(user=user)
             # Бэкенд указываем явно: настроены axes + ModelBackend.
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             return redirect("accounts:dashboard")
@@ -107,36 +104,17 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     # Заявки без подтверждённой записи (на подтверждении/отклонённые) — отдельным
     # списком; подтверждённые сеансы показываются в календаре и день-панели.
     requests = (
-        BookingRequest.objects.filter(user=request.user, appointment__isnull=True)
+        client_bookings(request.user).filter(appointment__isnull=True)
         .exclude(status=BookingRequest.Status.CONFIRMED)
         .select_related("service", "specialist", "sessions")
         .order_by("-created_at")
     )
-    has_sessions = _client_appointment_qs(request.user).exists()
+    has_sessions = client_appointments(request.user).exists()
     return render(request, "accounts/dashboard.html", {
         "requests": requests,
         "has_sessions": has_sessions,
         "today": timezone.localdate().isoformat(),
     })
-
-
-def _client_appointment_qs(user):
-    """Все записи клиента (через его заявки и серии)."""
-    from booking.models import BookingRequest
-    from cabinet.models import Appointment
-
-    apt_ids = set()
-    qs = (
-        BookingRequest.objects.filter(user=user, appointment__isnull=False)
-        .select_related("appointment__series")
-    )
-    for b in qs:
-        apt = b.appointment
-        if apt.series_id:
-            apt_ids.update(apt.series.appointments.values_list("id", flat=True))
-        else:
-            apt_ids.add(apt.id)
-    return Appointment.objects.filter(id__in=apt_ids)
 
 
 def _telegram_bot_url() -> str | None:
@@ -151,7 +129,7 @@ def _day_panel(request: HttpRequest, day) -> HttpResponse:
     from cabinet.models import Specialist
 
     sessions = list(
-        _client_appointment_qs(request.user)
+        client_appointments(request.user)
         .filter(date=day)
         .select_related("service", "specialist")
         .order_by("time_start")
@@ -175,7 +153,7 @@ def events(request: HttpRequest) -> JsonResponse:
     from collections import Counter
 
     counts = Counter()
-    for a in _client_appointment_qs(request.user).exclude(status="cancelled"):
+    for a in client_appointments(request.user).exclude(status="cancelled"):
         counts[a.date] += 1
 
     events_data = []
@@ -212,7 +190,7 @@ def day_sessions(request: HttpRequest, date_str: str) -> HttpResponse:
 def session_cancel(request: HttpRequest, pk: int) -> HttpResponse:
     from booking.services import cancel_appointment
 
-    appt = get_object_or_404(_client_appointment_qs(request.user), pk=pk)
+    appt = get_object_or_404(client_appointments(request.user), pk=pk)
     if appt.date > timezone.localdate() and appt.status == "scheduled":
         cancel_appointment(appt)
         try:
@@ -227,7 +205,7 @@ def session_cancel(request: HttpRequest, pk: int) -> HttpResponse:
 def session_reschedule(request: HttpRequest, pk: int) -> HttpResponse:
     from booking.services import request_reschedule
 
-    appt = get_object_or_404(_client_appointment_qs(request.user), pk=pk)
+    appt = get_object_or_404(client_appointments(request.user), pk=pk)
     editable = appt.date > timezone.localdate() and appt.status == "scheduled"
     if not editable:
         return _day_panel(request, appt.date)
@@ -259,7 +237,7 @@ def session_reschedule(request: HttpRequest, pk: int) -> HttpResponse:
 def cancel_booking(request: HttpRequest, pk: int) -> HttpResponse:
     from booking.models import BookingRequest
 
-    booking = get_object_or_404(BookingRequest, pk=pk, user=request.user)
+    booking = get_object_or_404(client_bookings(request.user), pk=pk)
     if booking.status == BookingRequest.Status.PENDING:
         booking.status = BookingRequest.Status.CANCELLED
         booking.save(update_fields=["status", "updated_at"])
@@ -276,7 +254,15 @@ def profile(request: HttpRequest) -> HttpResponse:
         if "save_profile" in request.POST:
             profile_form = ProfileForm(request.POST, instance=client)
             if profile_form.is_valid():
-                profile_form.save()
+                with transaction.atomic():
+                    user = get_user_model().objects.select_for_update().filter(
+                        pk=request.user.pk,
+                    ).first()
+                    if user is None:
+                        return redirect("main:index")
+                    if hasattr(user, "account_erasure_request"):
+                        return redirect(f"{reverse('accounts:profile')}#account-erasure")
+                    profile_form.save()
                 return redirect(f"{reverse('accounts:profile')}?saved=1")
         elif "change_password" in request.POST:
             password_form = PasswordChangeForm(request.user, request.POST)
@@ -292,8 +278,24 @@ def profile(request: HttpRequest) -> HttpResponse:
         "profile_form": profile_form,
         "password_form": password_form,
         "client": client,
+        "can_request_erasure": is_client_account(request.user),
+        "erasure_requested": hasattr(request.user, "account_erasure_request"),
         **_telegram_link_context(client),
     })
+
+
+@client_required
+@require_POST
+def request_account_erasure(request: HttpRequest) -> HttpResponse:
+    if request.POST.get("confirm_erasure") != "on":
+        return redirect(f"{reverse('accounts:profile')}?erasure=confirm#account-erasure")
+    with transaction.atomic():
+        user = get_user_model().objects.select_for_update().filter(pk=request.user.pk).first()
+        if user is None or not is_client_account(user):
+            return HttpResponse(status=403)
+        AccountErasureRequest.objects.get_or_create(user=user)
+        Client.objects.filter(user=user).update(reminder_enabled=False)
+    return redirect(f"{reverse('accounts:profile')}#account-erasure")
 
 
 def password_reset_request(request: HttpRequest) -> HttpResponse:

@@ -1,11 +1,13 @@
-from datetime import timedelta
+from datetime import time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from cabinet.models import Specialist
+from accounts.models import AccountErasureRequest, Client
+from booking.models import BookingRequest
+from cabinet.models import Appointment, AppointmentSeries, Specialist
 from main.models import SiteSettings
 from reviews.forms import ReviewForm
 from reviews.models import Review
@@ -78,11 +80,10 @@ class SpamHelpersTest(TestCase):
 
 
 class ReviewFormTest(TestCase):
-    def test_blank_name_and_text_invalid(self):
-        form = ReviewForm(data={"name": "  ", "text": "  ", "rating": 5,
+    def test_blank_text_invalid(self):
+        form = ReviewForm(data={"text": "  ", "rating": 5,
                                 "ts": _human_token()})
         self.assertFalse(form.is_valid())
-        self.assertIn("name", form.errors)
         self.assertIn("text", form.errors)
 
     def test_rating_out_of_range_invalid(self):
@@ -105,6 +106,21 @@ class ReviewCreateViewTest(TestCase):
     def setUp(self):
         self.url = reverse("reviews:create")
         self.settings_obj = SiteSettings.objects.create(reviews_enabled=True)
+        self.user = User.objects.create_user("reviewer")
+        Client.objects.create(user=self.user)
+        self.client.force_login(self.user)
+        self.specialist = Specialist.objects.create(name="Мастер")
+        self.appointment = Appointment.objects.create(
+            specialist=self.specialist, client_name="Клиент", cost=1000,
+            date=timezone.localdate() - timedelta(days=1), time_start=time(10),
+            status=Appointment.COMPLETED,
+        )
+        self.booking = BookingRequest.objects.create(
+            user=self.user, source=BookingRequest.Source.ACCOUNT,
+            client_name="Клиент", preferred_date=self.appointment.date,
+            preferred_time=self.appointment.time_start, appointment=self.appointment,
+            status=BookingRequest.Status.CONFIRMED,
+        )
 
     def _post(self, **overrides):
         data = {
@@ -117,6 +133,57 @@ class ReviewCreateViewTest(TestCase):
         }
         data.update(overrides)
         return self.client.post(self.url, data)
+
+    def assert_review_requires_visit(self):
+        self.assertNotContains(self.client.get(reverse("main:index")), 'class="review-form"')
+        self.assertIn("review=visit_required", self._post()["Location"])
+        self.assertFalse(Review.objects.exists())
+
+    def test_anonymous_cannot_review(self):
+        self.client.logout()
+        self.assert_review_requires_visit()
+
+    def test_account_without_client_profile_cannot_review(self):
+        self.user.client_profile.delete()
+        self.assert_review_requires_visit()
+
+    def test_someone_elses_visit_does_not_grant_access(self):
+        self.booking.user = User.objects.create_user("other")
+        self.booking.save(update_fields=["user"])
+        self.assert_review_requires_visit()
+
+    def test_legacy_guest_link_does_not_grant_access(self):
+        self.booking.source = BookingRequest.Source.GUEST
+        self.booking.save(update_fields=["source"])
+        self.assert_review_requires_visit()
+
+    def test_pending_erasure_disables_review_submission(self):
+        AccountErasureRequest.objects.create(user=self.user)
+        self.assert_review_requires_visit()
+
+    def test_uncompleted_or_future_appointments_do_not_grant_access(self):
+        for status in (Appointment.SCHEDULED, Appointment.CANCELLED):
+            with self.subTest(status=status):
+                self.appointment.status = status
+                self.appointment.save(update_fields=["status"])
+                self.assert_review_requires_visit()
+        self.appointment.status = Appointment.COMPLETED
+        self.appointment.date = timezone.localdate() + timedelta(days=1)
+        self.appointment.save(update_fields=["status", "date"])
+        self.assert_review_requires_visit()
+
+    def test_completed_session_later_in_course_grants_access(self):
+        series = AppointmentSeries.objects.create(specialist=self.specialist, total_sessions=2)
+        self.appointment.series = series
+        self.appointment.status = Appointment.SCHEDULED
+        self.appointment.save(update_fields=["series", "status"])
+        Appointment.objects.create(
+            series=series, specialist=self.specialist, client_name="Клиент", cost=1000,
+            date=timezone.localdate(), time_start=time(10), status=Appointment.COMPLETED,
+        )
+        self.assertContains(self.client.get(reverse("main:index")), 'class="review-form"')
+        self.assertIn("review=ok", self._post()["Location"])
+        self.assertTrue(Review.objects.exists())
 
     def test_consent_recorded(self):
         self._post()
@@ -132,7 +199,8 @@ class ReviewCreateViewTest(TestCase):
         self.assertIn("review=ok", resp["Location"])
         review = Review.objects.get()
         self.assertEqual(review.status, Review.Status.PENDING)
-        self.assertEqual(review.name, "Иван")
+        self.assertEqual(review.name, "Клиент")
+        self.assertEqual(review.author_id, self.user.pk)
         self.assertIsNotNone(review.ip_address)
 
     def test_honeypot_silently_drops(self):
@@ -157,16 +225,14 @@ class ReviewCreateViewTest(TestCase):
                                   ip_address="127.0.0.1")
         resp = self._post()
         self.assertIn("review=throttled", resp["Location"])
-        self.assertEqual(Review.objects.filter(name="Иван").count(), 0)
+        self.assertFalse(Review.objects.filter(author=self.user).exists())
 
     def test_invalid_form_rerenders_index(self):
-        # Пустой текст не сохраняется, главная перерисовывается с формой,
-        # ранее введённое имя сохраняется, показана ошибка поля.
+        # Пустой текст не сохраняется, главная показывает ошибку формы.
         resp = self._post(text="   ")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(Review.objects.count(), 0)
         self.assertContains(resp, 'class="review-form__error"')
-        self.assertContains(resp, 'value="Иван"')
 
     def test_disabled_rejects_post(self):
         self.settings_obj.reviews_enabled = False
@@ -193,13 +259,14 @@ class HomePageReviewsTest(TestCase):
 
     def test_section_shows_only_approved(self):
         SiteSettings.objects.create(reviews_enabled=True)
-        Review.objects.create(name="Visible", rating=5, text="approved one",
+        Review.objects.create(name="АвторТестовогоОтзыва", rating=5, text="approved one",
                               status=Review.Status.APPROVED)
         Review.objects.create(name="Hidden", rating=2, text="pending one",
                               status=Review.Status.PENDING)
         resp = self.client.get(self.url)
         self.assertContains(resp, 'id="reviews"')
-        self.assertContains(resp, "Visible")
+        self.assertContains(resp, "approved one")
+        self.assertNotContains(resp, "АвторТестовогоОтзыва")
         self.assertNotContains(resp, "Hidden")
 
 

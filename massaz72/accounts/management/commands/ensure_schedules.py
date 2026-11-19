@@ -22,6 +22,7 @@ DAILY_SCHEDULES = [
 
 # Частые задачи: (имя, путь, период в минутах).
 MINUTE_SCHEDULES = [
+    ("remind_pending_account_erasure", "accounts.tasks.remind_pending_erasure", 5),
     ("purge_unconfirmed_bookings", "booking.tasks.purge_unconfirmed_bookings", 5),
     ("flush_notifications", "tgbot.tasks.flush_notifications", 5),
     ("remind_unconfirmed_bookings", "booking.tasks.remind_unconfirmed_bookings", 5),

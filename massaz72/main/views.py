@@ -10,6 +10,7 @@ from .policy import build_policy_context
 def home_context(request, review_form=None):
     """Контекст главной страницы. Вынесен отдельно, чтобы view приёма отзывов
     мог перерисовать главную с заполненной формой при ошибке валидации."""
+    from accounts.appointments import has_completed_appointment
     from reviews.forms import ReviewForm
     from reviews.models import Review
 
@@ -34,6 +35,10 @@ def home_context(request, review_form=None):
         reviews = Review.objects.public()
         review_stats = reviews.aggregate(avg=Avg("rating"), total=Count("id"))
 
+    can_review = reviews_enabled and has_completed_appointment(request.user)
+    if can_review and review_form is None:
+        review_form = ReviewForm()
+
     context = {
         "site_settings": site_settings,
         "child_massages": child_massages,
@@ -44,7 +49,7 @@ def home_context(request, review_form=None):
         "reviews_enabled": reviews_enabled,
         "reviews": reviews,
         "review_stats": review_stats,
-        "review_form": review_form if review_form is not None else ReviewForm(),
+        "review_form": review_form if can_review else None,
     }
     return context
 

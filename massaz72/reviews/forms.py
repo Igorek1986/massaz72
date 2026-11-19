@@ -26,13 +26,8 @@ class ReviewForm(forms.ModelForm):
 
     class Meta:
         model = Review
-        fields = ["name", "rating", "text"]
+        fields = ["rating", "text"]
         widgets = {
-            "name": forms.TextInput(attrs={
-                "maxlength": 100,
-                "placeholder": "Как вас зовут",
-                "class": "review-form__input",
-            }),
             "rating": forms.RadioSelect,
             "text": forms.Textarea(attrs={
                 "maxlength": 2000,
@@ -42,14 +37,12 @@ class ReviewForm(forms.ModelForm):
             }),
         }
         labels = {
-            "name": "Имя",
             "rating": "Оценка",
             "text": "Отзыв",
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["name"].required = True
         self.fields["text"].required = True
         self.fields["rating"].required = True
         # Свежий токен time-trap для незаполненной (GET) формы.
@@ -61,9 +54,3 @@ class ReviewForm(forms.ModelForm):
         if not text:
             raise forms.ValidationError("Напишите текст отзыва.")
         return text
-
-    def clean_name(self):
-        name = (self.cleaned_data.get("name") or "").strip()
-        if not name:
-            raise forms.ValidationError("Укажите имя.")
-        return name

@@ -21,7 +21,7 @@
       {% for review in reviews %}
       <article class="review-card">
         <div class="review-card__head">
-          <span class="review-card__name">{{ review.name }}</span>
+          <span class="review-card__name">Клиент</span>
           <span class="review-card__stars" aria-label="Оценка {{ review.rating }} из 5">
             {% for i in "12345"|make_list %}<span class="star {% if forloop.counter <= review.rating %}star--on{% endif %}">★</span>{% endfor %}
           </span>
@@ -32,7 +32,7 @@
       {% endfor %}
     </div>
     {% else %}
-    <p class="reviews__empty">Пока нет отзывов. Будьте первым!</p>
+    <p class="reviews__empty">Пока нет отзывов.</p>
     {% endif %}
 
     {% if request.GET.review == 'ok' %}
@@ -41,6 +41,7 @@
     <p class="reviews__notice reviews__notice--warn">Вы недавно уже оставляли отзыв. Попробуйте позже.</p>
     {% endif %}
 
+    {% if review_form %}
     <form class="review-form" method="post" action="{% url 'reviews:create' %}">
       {% csrf_token %}
       <h3 class="review-form__title">Оставить отзыв</h3>
@@ -48,12 +49,6 @@
       {# honeypot + time-trap #}
       {{ review_form.website }}
       {{ review_form.ts }}
-
-      <div class="review-form__row">
-        <label class="review-form__label" for="{{ review_form.name.id_for_label }}">Имя</label>
-        {{ review_form.name }}
-        {% if review_form.name.errors %}<span class="review-form__error">{{ review_form.name.errors.0 }}</span>{% endif %}
-      </div>
 
       <div class="review-form__row">
         <span class="review-form__label">Оценка</span>
@@ -69,6 +64,7 @@
 
       <div class="review-form__row">
         <label class="review-form__label" for="{{ review_form.text.id_for_label }}">Отзыв</label>
+        <p>Отзыв публикуется без имени после проверки. Не указывайте контакты и сведения о здоровье.</p>
         {{ review_form.text }}
         {% if review_form.text.errors %}<span class="review-form__error">{{ review_form.text.errors.0 }}</span>{% endif %}
       </div>
@@ -84,6 +80,9 @@
 
       <button type="submit" class="review-form__submit">Отправить</button>
     </form>
+    {% else %}
+    <p class="reviews__notice">Оставить отзыв можно из аккаунта, в котором есть завершённый визит.</p>
+    {% endif %}
   </div>
 
   <script>

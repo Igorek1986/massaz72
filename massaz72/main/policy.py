@@ -20,8 +20,9 @@ def build_policy_context() -> SimpleNamespace:
     therapists = Specialist.objects.filter(is_active=True)
     bot = BotSettings.objects.first()
     bot_enabled = bool(bot and bot.is_enabled and bot.bot_username)
+    telegram_notifications = bool(bot and bot.token)
 
-    telegram = bot_enabled or any(
+    telegram = bot_enabled or telegram_notifications or any(
         t.telegram_username and t.telegram_active for t in therapists
     )
     whatsapp = any(t.whatsapp_number and t.whatsapp_active for t in therapists)
@@ -50,6 +51,7 @@ def build_policy_context() -> SimpleNamespace:
         messengers=", ".join(names),
         foreign_transfer=bool(foreign),
         foreign_services=", ".join(foreign),
+        telegram_notifications=telegram_notifications,
     )
 
 
