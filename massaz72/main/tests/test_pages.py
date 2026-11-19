@@ -35,7 +35,7 @@ class HomeSocialPreviewTest(TestCase):
         self.assertContains(response, 'property="og:url" content="https://testserver/"')
         self.assertContains(
             response,
-            'property="og:image" content="https://testserver/static/img/social-cover.jpg"',
+            'property="og:image" content="https://testserver/static/img/social-cover-embroidered.jpg"',
         )
         self.assertContains(response, 'name="twitter:card" content="summary_large_image"')
 
