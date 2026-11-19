@@ -397,17 +397,6 @@
       </script>
 
       <script>
-        // Баннер «продолжить подтверждение» — если на этом устройстве есть
-        // незавершённая заявка (localStorage).
-        (function () {
-          var el = document.getElementById('bookingResume');
-          if (!el || !window.MassazBookings) return;
-          var items = window.MassazBookings.list();
-          if (!items.length) return;
-          var latest = items[items.length - 1];
-          el.href = el.dataset.confirmBase.replace('TOKEN', encodeURIComponent(latest.token));
-          el.hidden = false;
-        })();
         // Маска телефона.
         if (window.attachPhoneMask) window.attachPhoneMask(document.getElementById('id_phone'));
       </script>

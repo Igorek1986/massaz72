@@ -363,16 +363,34 @@
   })();
 </script>
 <script>
-  // Пункт «Моя заявка» в шапке — если на этом устройстве есть незавершённая заявка.
-  (function () {
-    var li = document.getElementById('navMyBooking');
-    if (!li) return;
-    var items = window.MassazBookings.list();
-    if (!items.length) return;
-    var link = document.getElementById('navMyBookingLink');
-    var latest = items[items.length - 1];
-    link.href = link.dataset.confirmBase.replace('TOKEN', encodeURIComponent(latest.token));
-    li.hidden = false;
+  // Проверяем сохранённые в браузере заявки, прежде чем показывать ссылку.
+  (async function () {
+    const nav = document.getElementById('navMyBooking');
+    const navLink = document.getElementById('navMyBookingLink');
+    const banner = document.getElementById('bookingResume');
+    if (!navLink && !banner) return;
+
+    const statusBase = "{% url 'booking:status' 'TOKEN' %}";
+    for (const entry of window.MassazBookings.list().reverse()) {
+      try {
+        const token = encodeURIComponent(entry.token);
+        const response = await fetch(statusBase.replace('TOKEN', token), { cache: 'no-store' });
+        if (!response.ok) continue;
+        const result = await response.json();
+        if (!result.found || result.status !== 'awaiting_contact') {
+          window.MassazBookings.remove(entry.token);
+          continue;
+        }
+        for (const [link, container] of [[navLink, nav], [banner, banner]]) {
+          if (!link || !container) continue;
+          link.href = link.dataset.confirmBase.replace('TOKEN', token);
+          container.hidden = false;
+        }
+        return;
+      } catch {
+        // При сбое связи оставляем токен для повторной проверки при следующем открытии.
+      }
+    }
   })();
 </script>
 </body>
