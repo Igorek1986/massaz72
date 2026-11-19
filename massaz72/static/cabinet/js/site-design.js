@@ -57,25 +57,27 @@
     applyPalette();
   }
 
-  for (const input of colors) {
+  function openPicker(input) {
+    closePicker();
     const row = input.closest('.site-designer__color-row');
     const trigger = row.querySelector('.site-designer__color-trigger');
+    active = { input, trigger };
+    label.textContent = trigger.textContent.trim();
+    hex.value = input.value;
+    readColor(input.value);
+    paintPicker();
+    row.append(picker);
+    picker.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+  }
+
+  for (const input of colors) {
+    const trigger = input.closest('.site-designer__color-row').querySelector('.site-designer__color-trigger');
     input.closest('label').hidden = true;
     trigger.hidden = false;
     trigger.addEventListener('click', () => {
-      if (active?.input === input) {
-        closePicker();
-        return;
-      }
-      closePicker();
-      active = { input, trigger };
-      label.textContent = trigger.textContent.trim();
-      hex.value = input.value;
-      readColor(input.value);
-      paintPicker();
-      row.append(picker);
-      picker.hidden = false;
-      trigger.setAttribute('aria-expanded', 'true');
+      if (active?.input === input) closePicker();
+      else openPicker(input);
     });
   }
 
@@ -139,6 +141,89 @@
     }
   }
 
+  const eyedropper = document.getElementById('design-eyedropper');
+  const feedback = document.getElementById('design-eyedropper-feedback');
+  let picking = false;
+  let highlighted = null;
+
+  function highlight(element) {
+    highlighted?.removeAttribute('data-eyedropper-target');
+    highlighted = element;
+    highlighted?.setAttribute('data-eyedropper-target', '');
+  }
+
+  function setPicking(enabled, message = '') {
+    picking = enabled;
+    eyedropper.setAttribute('aria-pressed', String(enabled));
+    frame.contentDocument?.documentElement.toggleAttribute('data-eyedropper', enabled);
+    if (!enabled) highlight(null);
+    feedback.textContent = message;
+    feedback.hidden = !message;
+  }
+
+  function normalizeColor(value) {
+    const rgb = value.match(/^rgb\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)$/);
+    return rgb ? '#' + rgb.slice(1).map(channel => Number(channel).toString(16).padStart(2, '0')).join('') : null;
+  }
+
+  function clickedText(event) {
+    const range = event.target.ownerDocument.createRange();
+    return [...event.target.childNodes].some(node => {
+      if (node.nodeType !== Node.TEXT_NODE || !node.textContent.trim()) return false;
+      range.selectNodeContents(node);
+      return [...range.getClientRects()].some(rect =>
+        event.clientX >= rect.left && event.clientX <= rect.right &&
+        event.clientY >= rect.top && event.clientY <= rect.bottom);
+    });
+  }
+
+  function paletteInput(event) {
+    const target = event.target;
+    const matchingTheme = colors.filter(input => input.dataset.themeColor === theme.value);
+    const control = variable => matchingTheme.find(input => input.dataset.cssVariable === variable);
+    const inlineStyle = target.ownerDocument.defaultView;
+    const text = clickedText(event);
+    if (target.closest('.redesign-hero .massage__cta')) {
+      return control(text ? '--redesign-booking-text' : '--redesign-booking-glow');
+    }
+    if (target.closest('img, video, canvas, svg')) return undefined;
+
+    const match = (value, names) => {
+      const hexColor = normalizeColor(value);
+      return hexColor && names.map(control).find(input => input?.value === hexColor);
+    };
+    if (text) {
+      return match(inlineStyle.getComputedStyle(target).color, [
+        '--color-ink', '--color-body', '--color-muted', '--color-primary',
+        '--color-on-primary', '--redesign-hero-text',
+      ]);
+    }
+    for (let element = target; element; element = element.parentElement) {
+      const style = inlineStyle.getComputedStyle(element);
+      if (style.backgroundImage !== 'none') return undefined;
+      if (style.backgroundColor === 'rgba(0, 0, 0, 0)') continue;
+      const preferred = [
+        ['.header', '--color-header-bg'],
+        ['.redesign-hero', '--redesign-hero-bg'],
+        ['.redesign-hero__directions', '--redesign-navigation'],
+        ['.service-card, input, select', '--color-canvas-card'],
+      ].find(([selector]) => element.matches(selector));
+      return (preferred && control(preferred[1])) || match(style.backgroundColor, [
+        '--color-canvas', '--color-canvas-card', '--color-surface-soft', '--color-primary',
+        '--color-header-bg', '--redesign-hero-bg', '--redesign-navigation',
+      ]);
+    }
+    return undefined;
+  }
+
+  eyedropper.addEventListener('click', () => {
+    closePicker();
+    setPicking(!picking, picking ? '' : 'Нажмите на цвет в предпросмотре. Esc отменяет выбор.');
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && picking) setPicking(false);
+  });
+
   function chooseTheme() {
     closePicker();
     for (const section of form.querySelectorAll('[data-theme-fields]')) {
@@ -148,6 +233,8 @@
   }
 
   function choosePage() {
+    setPicking(false);
+    eyedropper.disabled = true;
     const url = new URL(page.value, window.location.origin);
     url.searchParams.set('design_preview', '1');
     frame.src = url.href;
@@ -156,7 +243,33 @@
   frame.addEventListener('load', () => {
     const doc = frame.contentDocument;
     if (!doc?.getElementById('site-palette')) return;
+    const cursorStyle = doc.createElement('style');
+    cursorStyle.textContent = '[data-eyedropper], [data-eyedropper] * { cursor: crosshair !important; }' +
+      '[data-eyedropper-target] { outline: 2px solid #ba527b !important; outline-offset: -2px !important; }';
+    doc.head.append(cursorStyle);
+    eyedropper.disabled = false;
+    doc.addEventListener('pointermove', event => {
+      if (picking && highlighted !== event.target) highlight(event.target);
+    });
+    doc.addEventListener('pointerleave', () => highlight(null));
+    doc.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && picking) setPicking(false);
+    });
     doc.addEventListener('click', event => {
+      if (picking) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const input = paletteInput(event);
+        if (!input) {
+          feedback.textContent = 'У этого фрагмента нет цвета из палитры. Выберите другой элемент.';
+          return;
+        }
+        setPicking(false, 'Выбран цвет «' + input.closest('label').textContent.trim() + '».');
+        openPicker(input);
+        active.trigger.scrollIntoView({ block: 'nearest' });
+        active.trigger.focus({ preventScroll: true });
+        return;
+      }
       closePicker();
       if (event.target.closest('a, .js-theme-toggle, .accept-cookies, .cookie-details')) {
         event.preventDefault();
