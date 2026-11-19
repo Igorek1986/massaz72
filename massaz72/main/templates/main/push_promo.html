@@ -4,9 +4,11 @@
     {% include "main/push_controls.html" with button_class="pwa-install__action" %}
   {% else %}
     <p>Войдите в кабинет, чтобы получать уведомления о записи.</p>
-    <div>
-      <a class="pwa-install__action pwa-push-promo__login" href="{% url 'accounts:login' %}">Войти</a>
-    </div>
   {% endif %}
-  <button class="pwa-install__action pwa-install__action--secondary" type="button" data-push-later>Позже</button>
+  <div class="pwa-push-promo__actions">
+    {% if not user.is_authenticated %}
+      <a class="pwa-install__action pwa-push-promo__login" href="{% url 'accounts:login' %}">Войти</a>
+    {% endif %}
+    <button class="pwa-install__action pwa-install__action--secondary" type="button" data-push-later>Позже</button>
+  </div>
 </section>

@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from cabinet.models import Specialist
@@ -78,6 +78,7 @@ class PolicyContextTest(TestCase):
         self.assertEqual(policy.messengers, "Telegram")
 
 
+@override_settings(WEB_PUSH_VAPID_PRIVATE_KEY="")
 class PrivacyPageTest(TestCase):
     def test_operator_details_from_settings(self):
         SiteSettings.objects.create(
@@ -162,6 +163,7 @@ def _consent(testcase):
     return testcase.client.get(reverse("main:consent")).content.decode()
 
 
+@override_settings(WEB_PUSH_VAPID_PRIVATE_KEY="")
 class ConsentPageTest(TestCase):
     def test_phone_purpose_shown_for_booking(self):
         cfg = SiteSettings.objects.create(online_booking_enabled=True)
