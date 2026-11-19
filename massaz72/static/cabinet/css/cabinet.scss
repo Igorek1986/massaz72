@@ -1883,8 +1883,7 @@ body.cabinet-body {
     gap: 8px;
   }
 
-  &__color summary,
-  &__color-picker {
+  &__color summary {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1898,7 +1897,32 @@ body.cabinet-body {
 
   &__color summary::-webkit-details-marker { display: none; }
 
-  &__color-picker { padding: 8px 0 4px; }
+  &__color-picker {
+    display: grid;
+    gap: 8px;
+    padding: 8px 0 4px;
+  }
+
+  &__presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  &__presets button {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--cab-border);
+    border-radius: 5px;
+    background: var(--preset-color);
+    cursor: pointer;
+  }
+
+  &__hex {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
   &__swatch {
     width: 34px;
@@ -1907,13 +1931,6 @@ body.cabinet-body {
     border: 1px solid var(--cab-border);
     border-radius: 5px;
     background: var(--preview-color);
-  }
-
-  &__color input {
-    width: 34px;
-    height: 32px;
-    flex: none;
-    cursor: pointer;
   }
 
   &__toolbar {

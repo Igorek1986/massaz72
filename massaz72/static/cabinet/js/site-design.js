@@ -6,6 +6,34 @@
   const frame = document.getElementById('design-preview');
   const colors = [...form.querySelectorAll('[data-theme-color]')];
 
+  const presets = ['#ffffff', '#fbf4ed', '#f0dfd4', '#e2cdd2', '#d991ac',
+    '#803650', '#582d40', '#33252f', '#21191f', '#111111'];
+
+  for (const input of colors) {
+    const row = input.closest('details');
+    const hex = row.querySelector('[data-color-hex]');
+    const swatches = row.querySelector('.site-designer__presets');
+    for (const color of presets) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.style.setProperty('--preset-color', color);
+      button.setAttribute('aria-label', color);
+      button.title = color;
+      button.addEventListener('click', () => {
+        input.value = color;
+        hex.value = color;
+        applyPalette();
+      });
+      swatches.append(button);
+    }
+    hex.value = input.value;
+    hex.addEventListener('input', () => {
+      const value = '#' + hex.value.trim().replace(/^#/, '');
+      if (/^#[0-9a-f]{6}$/i.test(value)) input.value = value;
+    });
+    hex.addEventListener('blur', () => { hex.value = input.value; });
+  }
+
   function applyPalette() {
     for (const input of colors) {
       input.closest('details').style.setProperty('--preview-color', input.value);
@@ -59,7 +87,9 @@
   width.addEventListener('change', () => frame.classList.toggle('site-designer__frame--mobile', width.value === 'mobile'));
   document.getElementById('design-reset').addEventListener('click', () => {
     for (const input of colors) {
-      if (input.dataset.themeColor === theme.value) input.value = input.dataset.defaultColor;
+      if (input.dataset.themeColor !== theme.value) continue;
+      input.value = input.dataset.defaultColor;
+      input.closest('details').querySelector('[data-color-hex]').value = input.value;
     }
     applyPalette();
   });

@@ -1,5 +1,11 @@
 <details class="site-designer__color" name="site-design-colors"{% if field.errors %} open{% endif %}>
   <summary><span class="site-designer__swatch" aria-hidden="true"></span>{{ field.label }}</summary>
-  <label class="site-designer__color-picker">{{ field }} <span>Выбрать цвет</span></label>
+  <div class="site-designer__color-picker">
+    {{ field }}
+    <div class="site-designer__presets" aria-label="Готовые оттенки"></div>
+    <label class="site-designer__hex">
+      HEX <input class="form-input" data-color-hex type="text" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Код цвета — {{ field.label }}">
+    </label>
+  </div>
   {{ field.errors }}
 </details>
