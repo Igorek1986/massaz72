@@ -9,7 +9,7 @@
   <h1 class="page-header__title">Заявки на запись</h1>
 </div>
 
-{% include "cabinet/partials/booking_toggle.html" %}
+{% if perms.main.manage_site_in_cabinet %}{% include "cabinet/partials/booking_toggle.html" %}{% endif %}
 
 <div id="booking-requests-list">
   {% include "cabinet/partials/booking_request_list.html" %}

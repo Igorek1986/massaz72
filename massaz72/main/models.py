@@ -1,6 +1,6 @@
 from datetime import time
 
-from django.db import models
+from django.db import models, transaction
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 
@@ -86,6 +86,13 @@ class SiteSettings(models.Model):
         validators=[validate_file_size],
         blank=True,
         null=True,
+    )
+    social_cover = models.ImageField(
+        "Обложка для соцсетей",
+        upload_to=get_file_path,
+        validators=[validate_file_size],
+        blank=True,
+        help_text="JPEG или PNG. Рекомендуемый размер 1200 × 630. Пустое поле использует стандартную обложку.",
     )
     price_change_date = models.DateField(
         "Дата изменения цен",
@@ -192,14 +199,23 @@ class SiteSettings(models.Model):
     class Meta:
         verbose_name = "Настройки сайта"
         verbose_name_plural = "Настройки сайта"
+        permissions = [("manage_site_in_cabinet", "Может менять настройки сайта в кабинете")]
 
     def __str__(self):
         return "Настройки"
 
     def save(self, *args, **kwargs):
-        if self.pk:
+        update_fields = kwargs.get("update_fields")
+        if self.pk and (update_fields is None or "background" in update_fields):
             delete_old_file(self, "background")
+        previous_cover = None
+        if self.pk and (update_fields is None or "social_cover" in update_fields):
+            previous = type(self).objects.filter(pk=self.pk).only("social_cover").first()
+            if previous:
+                previous_cover = previous.social_cover
         super().save(*args, **kwargs)
+        if previous_cover and previous_cover.name != self.social_cover.name:
+            transaction.on_commit(lambda: previous_cover.delete(save=False), using=self._state.db)
 
 
 @receiver(pre_delete, sender=Certificate)
@@ -214,3 +230,5 @@ def sitesettings_delete_file(sender, instance, **kwargs):
     """Удаляет файл при удалении объекта SiteSettings"""
     if instance.background:
         instance.background.delete(False)
+    if instance.social_cover:
+        transaction.on_commit(lambda: instance.social_cover.delete(save=False), using=kwargs["using"])

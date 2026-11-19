@@ -2,16 +2,19 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
-from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, permission_required
+from django.db import transaction
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from booking.models import BookingRequest
 from booking.services import confirm_booking, decline_booking
+from main.forms import CabinetSiteSettingsForm, SITE_SETTINGS_SECTIONS
 from main.models import SiteSettings
 from reviews.models import Review
 from services.models import Massage
@@ -280,6 +283,32 @@ def settings(request):
         "client_cabinet_enabled": bool(settings_obj and settings_obj.client_cabinet_enabled),
         **_tg_link_ctx(specialist),
     })
+
+
+@specialist_required
+@permission_required("main.manage_site_in_cabinet", raise_exception=True)
+@require_http_methods(["GET", "POST"])
+def site_settings_edit(request):
+    if request.method == "POST":
+        with transaction.atomic():
+            instance = SiteSettings.objects.select_for_update().first()
+            form = CabinetSiteSettingsForm(request.POST, request.FILES, instance=instance)
+            if form.is_valid():
+                settings_obj = form.save(commit=False)
+                if instance is None:
+                    settings_obj.save()
+                elif form.changed_data:
+                    settings_obj.save(update_fields=form.changed_data)
+                messages.success(request, "Настройки сайта сохранены.")
+                return redirect("cabinet:site_settings")
+    else:
+        form = CabinetSiteSettingsForm(instance=SiteSettings.objects.first())
+
+    sections = [
+        (title, [form[name] for name in names])
+        for title, names in SITE_SETTINGS_SECTIONS.items()
+    ]
+    return render(request, "cabinet/site_settings.html", {"form": form, "sections": sections})
 
 
 @specialist_required
@@ -1649,6 +1678,7 @@ def booking_request_decline(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @specialist_required
+@permission_required("main.manage_site_in_cabinet", raise_exception=True)
 @require_POST
 def booking_toggle(request: HttpRequest) -> HttpResponse:
     settings_obj = SiteSettings.objects.first()
@@ -1663,6 +1693,7 @@ def booking_toggle(request: HttpRequest) -> HttpResponse:
 
 
 @specialist_required
+@permission_required("main.manage_site_in_cabinet", raise_exception=True)
 @require_POST
 def client_cabinet_toggle(request: HttpRequest) -> HttpResponse:
     settings_obj = SiteSettings.objects.first()

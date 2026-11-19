@@ -1015,6 +1015,11 @@ class CabinetBookingTest(TestCase):
         self.assertEqual(resp.status_code, 405)
 
     def test_toggle_flips(self):
+        from django.contrib.auth.models import Permission
+
+        self.specialist.user.user_permissions.add(
+            Permission.objects.get(content_type__app_label="main", codename="manage_site_in_cabinet")
+        )
         self._login()
         resp = self.client.post(reverse("cabinet:booking_toggle"))
         self.assertEqual(resp.status_code, 200)

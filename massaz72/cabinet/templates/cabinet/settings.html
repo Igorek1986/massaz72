@@ -6,6 +6,9 @@
 {% block content %}
 <div class="page-header">
   <h1 class="page-header__title">Настройки</h1>
+  {% if perms.main.manage_site_in_cabinet %}
+  <a class="btn" href="{% url 'cabinet:site_settings' %}">Настройки сайта</a>
+  {% endif %}
 </div>
 
 <div class="settings-layout">
@@ -30,6 +33,7 @@
     {% include "cabinet/partials/tg_link_section.html" %}
   </div>
 
+  {% if perms.main.manage_site_in_cabinet %}
   <div class="settings-card">
     <div class="settings-card__header">
       <h2 class="settings-card__title">Личный кабинет клиентов</h2>
@@ -42,6 +46,7 @@
       {% include "cabinet/partials/client_cabinet_toggle.html" %}
     </div>
   </div>
+  {% endif %}
 
 </div>
 {% endblock %}

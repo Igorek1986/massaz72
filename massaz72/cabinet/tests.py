@@ -2,6 +2,7 @@ from datetime import date, time, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import TestCase, RequestFactory
 from django.urls import reverse
 
@@ -1068,6 +1069,9 @@ class ClientCabinetToggleTest(TestCase):
     def setUp(self):
         from main.models import SiteSettings
         self.spec = _make_specialist("toggle_spec")
+        self.spec.user.user_permissions.add(
+            Permission.objects.get(content_type__app_label="main", codename="manage_site_in_cabinet")
+        )
         self.settings = SiteSettings.objects.create(client_cabinet_enabled=False)
         self.client.force_login(self.spec.user)
 

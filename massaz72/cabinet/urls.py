@@ -8,6 +8,7 @@ app_name = "cabinet"
 urlpatterns = [
     path("", views.index, name="index"),
     path("settings/", views.settings, name="settings"),
+    path("settings/site/", views.site_settings_edit, name="site_settings"),
     path(
         "login/",
         auth_views.LoginView.as_view(template_name="cabinet/login.html"),
