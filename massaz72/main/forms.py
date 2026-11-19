@@ -23,7 +23,7 @@ SITE_SETTINGS_SECTIONS = {
     ),
     "Политика обработки персональных данных": (
         "operator_name", "operator_inn", "operator_address", "operator_email",
-        "retention_text", "privacy_updated_at",
+        "retention_text", "privacy_updated_at", "privacy_body",
     ),
 }
 
@@ -55,6 +55,7 @@ class CabinetSiteSettingsForm(SiteSettingsForm):
     class Meta(SiteSettingsForm.Meta):
         widgets = {
             "price_change_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "privacy_body": forms.Textarea(attrs={"rows": 16}),
             "privacy_updated_at": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
             "notify_start": forms.TimeInput(attrs={"type": "time"}),
             "notify_end": forms.TimeInput(attrs={"type": "time"}),

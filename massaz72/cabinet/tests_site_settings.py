@@ -90,6 +90,17 @@ class CabinetSiteSettingsTest(TestCase):
         self.site.refresh_from_db()
         self.assertNotEqual(self.site.main_title, "Новый заголовок")
 
+    def test_editor_can_publish_policy_text(self):
+        self.grant_access()
+        self.assertContains(self.client.get(self.url), 'name="privacy_body"')
+        response = self.client.post(self.url, self.form_data(
+            privacy_body="Текст редакции", privacy_updated_at="2026-11-19",
+        ))
+        self.assertRedirects(response, self.url, fetch_redirect_response=False)
+        published = self.client.get(reverse("main:privacy"))
+        self.assertContains(published, "Текст редакции")
+        self.assertContains(published, "19.11.2026")
+
     def test_post_requires_csrf(self):
         self.grant_access()
         client = Client(enforce_csrf_checks=True)

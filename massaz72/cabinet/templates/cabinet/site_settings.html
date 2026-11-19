@@ -16,10 +16,13 @@
   {{ form.non_field_errors }}
   {% for title, fields in sections %}
   <section class="settings-card">
-    <div class="settings-card__header"><h2 class="settings-card__title">{{ title }}</h2></div>
+    <div class="settings-card__header">
+      <h2 class="settings-card__title">{{ title }}</h2>
+      {% if title == "Политика обработки персональных данных" %}<a class="btn" href="{% url 'main:privacy' %}">Открыть опубликованный текст</a>{% endif %}
+    </div>
     <div class="settings-card__body form-grid">
       {% for field in fields %}
-      <div class="form-field">
+      <div class="form-field{% if field.name == 'privacy_body' %} form-field--full{% endif %}">
         <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
         {{ field }}
         {% if field.help_text %}<small class="settings-card__hint">{{ field.help_text }}</small>{% endif %}

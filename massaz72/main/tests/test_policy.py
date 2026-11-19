@@ -203,3 +203,19 @@ class ConsentPageTest(TestCase):
 
     def test_links_to_policy(self):
         self.assertIn(reverse("main:privacy"), _consent(self))
+
+
+class EditablePrivacyPageTest(TestCase):
+    def test_custom_text_is_escaped_and_does_not_replace_consent(self):
+        site = SiteSettings.objects.create(privacy_body="Новая редакция\n\n<script>test</script>")
+        response = self.client.get(reverse("main:privacy"))
+        self.assertContains(response, "<p>Новая редакция</p>", html=True)
+        self.assertContains(response, "&lt;script&gt;test&lt;/script&gt;")
+        self.assertNotContains(response, "<script>test</script>")
+        self.assertContains(response, site.operator_email)
+        self.assertNotContains(response, "Основные понятия")
+        self.assertNotContains(self.client.get(reverse("main:consent")), "Новая редакция")
+
+        site.privacy_body = ""
+        site.save(update_fields=["privacy_body"])
+        self.assertContains(self.client.get(reverse("main:privacy")), "Основные понятия")
