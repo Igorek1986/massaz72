@@ -1,7 +1,7 @@
 {% extends "cabinet/base.html" %}
 {% load static %}
 
-{% block cabinet_content_modifier %} cabinet-content--wide{% endblock %}
+{% block cabinet_content_modifier %} cabinet-content--wide cabinet-content--designer{% endblock %}
 {% block title %}Конструктор сайта{% endblock %}
 {% block nav_site_settings %}sidebar__link--active{% endblock %}
 {% block head_extra %}<script src="{% static 'cabinet/js/site-design.js' %}" defer></script>{% endblock %}
@@ -24,14 +24,37 @@
       </select>
     </div>
     <div class="site-designer__toolbar">
-      <div class="site-designer__field">
-        <label class="form-label" for="design-width">Экран</label>
-        <select class="form-input" id="design-width">
-          <option value="wide">Обычный</option>
-          <option value="mobile">Телефон</option>
-        </select>
+      <div class="site-designer__devices" role="group" aria-label="Размер экрана">
+        <button class="btn btn--ghost site-designer__icon-button" type="button" data-preview-width="wide"
+                aria-label="Компьютер" title="Компьютер" aria-pressed="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="13" rx="2"/>
+            <path d="M12 17v4m-4 0h8"/>
+          </svg>
+        </button>
+        <button class="btn btn--ghost site-designer__icon-button" type="button" data-preview-width="mobile"
+                aria-label="Телефон" title="Телефон" aria-pressed="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <rect x="7" y="2.5" width="10" height="19" rx="2"/>
+            <path d="M11 18.5h2"/>
+          </svg>
+        </button>
       </div>
-      <button class="btn site-designer__eyedropper" type="button" id="design-eyedropper"
+      <button class="btn btn--ghost site-designer__icon-button" type="button" id="design-theme"
+              aria-label="Тёмная тема" title="Тёмная тема" aria-pressed="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" aria-hidden="true" data-theme-icon="light">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19m0-14-1.4 1.4M6.4 17.6 5 19"/>
+        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linejoin="round" aria-hidden="true" data-theme-icon="dark">
+          <path d="M21 13.2A9 9 0 1 1 10.8 3 7 7 0 0 0 21 13.2Z"/>
+        </svg>
+      </button>
+      <button class="btn btn--ghost site-designer__icon-button" type="button" id="design-eyedropper"
               aria-label="Пипетка" title="Пипетка" aria-pressed="false" disabled>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -40,13 +63,6 @@
       </button>
     </div>
     <p id="design-eyedropper-feedback" role="status" hidden></p>
-    <div class="site-designer__field">
-      <label class="form-label" for="design-theme">Тема</label>
-      <select class="form-input" id="design-theme">
-        <option value="light">Светлая</option>
-        <option value="dark">Тёмная</option>
-      </select>
-    </div>
 
     <div class="site-designer__colors" data-theme-fields="light">
       {% for field in light_fields %}

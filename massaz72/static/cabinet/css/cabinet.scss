@@ -1865,16 +1865,42 @@ body.cabinet-body {
   color: #15803d;
 }
 
+body.cabinet-body:has(.cabinet-content--designer),
+.cabinet-layout:has(.cabinet-content--designer) {
+  min-height: 100dvh;
+}
+
+.cabinet-main:has(.cabinet-content--designer) {
+  height: 100dvh;
+}
+
+.cabinet-content--designer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  padding-bottom: 0;
+
+  .page-header { margin-bottom: 0; }
+}
+
 .site-designer {
+  flex: 1;
   display: grid;
   grid-template-columns: minmax(230px, 290px) minmax(0, 1fr);
-  align-items: start;
+  grid-template-rows: minmax(0, 1fr);
   gap: 16px;
+  min-height: 0;
 
   &__form {
     display: grid;
+    align-content: start;
     gap: 12px;
+    min-width: 0;
+    min-height: 0;
     padding: 16px;
+    overflow: auto;
+    overscroll-behavior: contain;
 
     .settings-card__hint { margin-bottom: 0; }
   }
@@ -1904,17 +1930,44 @@ body.cabinet-body {
     cursor: pointer;
   }
 
-  &__toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 8px;
+  &__toolbar,
+  &__devices {
+    display: flex;
+    gap: 6px;
+  }
+
+  &__toolbar { flex-wrap: wrap; }
+
+  &__icon-button {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+
+    &[aria-pressed="true"] {
+      border-color: var(--cab-primary);
+      background: var(--cab-bg);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cab-primary);
+      outline-offset: 2px;
+    }
+
+    &:disabled { opacity: .5; }
+
+    [data-theme-icon="dark"],
+    &[aria-pressed="true"] [data-theme-icon="light"] { display: none; }
+
+    &[aria-pressed="true"] [data-theme-icon="dark"] { display: block; }
   }
 
   iframe {
     justify-self: center;
     width: 100%;
-    min-height: 70vh;
+    height: 100%;
+    min-height: 0;
     border: 1px solid var(--cab-border);
     border-radius: 8px;
     background: #fff;
@@ -1924,6 +1977,7 @@ body.cabinet-body {
 
   @media (max-width: 900px) {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, unquote("min(38dvh, 280px)")) minmax(0, 1fr);
   }
 }
 
@@ -2024,21 +2078,6 @@ body.cabinet-body {
   }
 }
 
-
-.site-designer__eyedropper {
-  display: inline-grid;
-  place-items: center;
-  min-width: 36px;
-  min-height: 36px;
-  padding: 6px;
-
-  &[aria-pressed="true"] {
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
-  }
-
-  &:disabled { opacity: .5; }
-}
 
 .erasure-card {
   display: grid;

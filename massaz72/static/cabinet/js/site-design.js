@@ -1,10 +1,11 @@
 (() => {
   const form = document.getElementById('site-design-form');
-  const theme = document.getElementById('design-theme');
+  const themeButton = document.getElementById('design-theme');
   const page = document.getElementById('design-page');
-  const width = document.getElementById('design-width');
+  const deviceButtons = form.querySelectorAll('[data-preview-width]');
   const frame = document.getElementById('design-preview');
   const colors = [...form.querySelectorAll('[data-theme-color]')];
+  let theme = 'light';
 
   const picker = document.getElementById('design-color-picker');
   const plane = picker.querySelector('[data-picker-plane]');
@@ -130,9 +131,9 @@
     const doc = frame.contentDocument;
     if (!doc?.getElementById('site-palette')) return;
 
-    doc.documentElement.dataset.theme = theme.value;
+    doc.documentElement.dataset.theme = theme;
     for (const input of colors) {
-      if (input.dataset.themeColor === theme.value) {
+      if (input.dataset.themeColor === theme) {
         doc.documentElement.style.setProperty(input.dataset.cssVariable, input.value);
       }
     }
@@ -176,7 +177,7 @@
 
   function paletteInput(event) {
     const target = event.target;
-    const matchingTheme = colors.filter(input => input.dataset.themeColor === theme.value);
+    const matchingTheme = colors.filter(input => input.dataset.themeColor === theme);
     const control = variable => matchingTheme.find(input => input.dataset.cssVariable === variable);
     const inlineStyle = target.ownerDocument.defaultView;
     const text = clickedText(event);
@@ -231,13 +232,15 @@
 
   document.addEventListener('keydown', handleEscape);
 
-  function chooseTheme() {
+  themeButton.addEventListener('click', () => {
     closePicker();
+    theme = theme === 'light' ? 'dark' : 'light';
+    themeButton.setAttribute('aria-pressed', String(theme === 'dark'));
     for (const section of form.querySelectorAll('[data-theme-fields]')) {
-      section.hidden = section.dataset.themeFields !== theme.value;
+      section.hidden = section.dataset.themeFields !== theme;
     }
     applyPalette();
-  }
+  });
 
   function choosePage() {
     setPicking(false);
@@ -288,12 +291,18 @@
     applyPalette();
   });
   form.addEventListener('input', applyPalette);
-  theme.addEventListener('change', chooseTheme);
   page.addEventListener('change', choosePage);
-  width.addEventListener('change', () => frame.classList.toggle('site-designer__frame--mobile', width.value === 'mobile'));
+  for (const button of deviceButtons) {
+    button.addEventListener('click', () => {
+      for (const option of deviceButtons) {
+        option.setAttribute('aria-pressed', String(option === button));
+      }
+      frame.classList.toggle('site-designer__frame--mobile', button.dataset.previewWidth === 'mobile');
+    });
+  }
   document.getElementById('design-reset').addEventListener('click', () => {
     for (const input of colors) {
-      if (input.dataset.themeColor === theme.value) input.value = input.dataset.defaultColor;
+      if (input.dataset.themeColor === theme) input.value = input.dataset.defaultColor;
     }
     applyPalette();
   });
