@@ -260,6 +260,10 @@
     });
     doc.addEventListener('pointerleave', () => highlight(null));
     doc.addEventListener('keydown', handleEscape);
+    doc.addEventListener('submit', event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
     doc.addEventListener('click', event => {
       if (picking) {
         event.preventDefault();

@@ -45,7 +45,7 @@
         {% endif %}
         <a class="booking-done__home" href="{% url 'main:index' %}">На главную</a>
 
-        <form method="post" action="{% url 'booking:confirm' booking_token %}" class="confirm-cancel"
+        <form method="post"{% if booking_token %} action="{% url 'booking:confirm' booking_token %}"{% endif %} class="confirm-cancel"
               onsubmit="return confirm('Отменить заявку и освободить время? Можно будет записаться заново на другое время.');">
           {% csrf_token %}
           <input type="hidden" name="action" value="cancel">
@@ -61,7 +61,7 @@
         </p>
 
         <div class="confirm-timer" id="confirmTimer" data-deadline="{{ deadline_iso }}">
-          Время на подтверждение: <b id="confirmCountdown">--:--</b>
+          Время на подтверждение: <b id="confirmCountdown">{% if request.site_design_preview %}15:00{% else %}--:--{% endif %}</b>
         </div>
 
         {# Приоритет — боты: два больших блока с QR сверху. #}
@@ -91,7 +91,7 @@
         {# Телефон — запасной способ, снизу. #}
         <div class="confirm-phone">
           <h2 class="confirm-section__title">📞 Или оставьте телефон</h2>
-          <form class="confirm-phone__form" method="post" action="{% url 'booking:confirm' booking_token %}">
+          <form class="confirm-phone__form" method="post"{% if booking_token %} action="{% url 'booking:confirm' booking_token %}"{% endif %}>
             {% csrf_token %}
             <input type="tel" name="phone" id="confirmPhone" class="booking-form__input"
                    placeholder="+7 000 000 00 00" maxlength="20" required>
@@ -102,7 +102,7 @@
 
         <a class="booking-done__home" href="{% url 'main:index' %}">Пропустить → на главную</a>
 
-        <form method="post" action="{% url 'booking:confirm' booking_token %}" class="confirm-cancel"
+        <form method="post"{% if booking_token %} action="{% url 'booking:confirm' booking_token %}"{% endif %} class="confirm-cancel"
               onsubmit="return confirm('Отменить заявку и освободить время? Можно будет записаться заново на другое время.');">
           {% csrf_token %}
           <input type="hidden" name="action" value="cancel">
@@ -113,6 +113,7 @@
   </div>
 </section>
 
+{% if not request.site_design_preview %}
 <script>
   (function () {
     var root = document.getElementById('confirmRoot');
@@ -182,4 +183,5 @@
     });
   })();
 </script>
+{% endif %}
 {% endblock %}

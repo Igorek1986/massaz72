@@ -1,6 +1,8 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
+from main.preview import preview_sample
+
 from . import erasure_views, views
 
 app_name = "cabinet"
@@ -14,6 +16,7 @@ urlpatterns = [
     path("specialists/<int:pk>/status/", views.specialist_status, name="specialist_status"),
     path("specialists/<int:pk>/roles/", views.specialist_roles, name="specialist_roles"),
     path("settings/site/design/", views.site_design, name="site_design"),
+    path("settings/site/design/preview/<str:page_name>/", preview_sample, name="site_design_sample"),
     path("settings/site/", views.site_settings_edit, name="site_settings"),
     path(
         "login/",

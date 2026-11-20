@@ -102,7 +102,8 @@ def _notify_admins(booking: BookingRequest) -> None:
 
 
 def booking_page(request: HttpRequest) -> HttpResponse:
-    if not _booking_enabled():
+    preview = getattr(request, "site_design_preview", False)
+    if not preview and not _booking_enabled():
         return redirect("main:index")
 
     if request.method == "POST":
@@ -167,7 +168,7 @@ def booking_page(request: HttpRequest) -> HttpResponse:
         except ValueError:
             pass
     # Для залогиненного клиента подставляем телефон из профиля.
-    if request.user.is_authenticated and hasattr(request.user, "client_profile"):
+    if not preview and request.user.is_authenticated and hasattr(request.user, "client_profile"):
         initial.setdefault("phone", request.user.client_profile.phone)
     return render(request, "booking/booking.html", {
         "form": BookingForm(initial=initial),

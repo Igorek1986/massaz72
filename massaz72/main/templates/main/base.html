@@ -34,6 +34,7 @@
 </head>
 <body>
 <script>
+  {% if not request.site_design_preview %}
   // Хранилище незавершённых заявок (возврат к подтверждению на том же
   // устройстве). Определяется до скриптов в теле страницы.
   window.MassazBookings = (function () {
@@ -55,6 +56,7 @@
       remove: function (token) { write(read().filter(function (x) { return x.token !== token; })); },
     };
   })();
+  {% endif %}
 
   // Маска телефона РФ: ввод только цифр, 8/7 → +7, красивый формат
   // «+7 999 123 45 67», не больше 10 цифр после +7.
@@ -379,6 +381,7 @@
     });
   })();
 </script>
+{% if not request.site_design_preview %}
 <script>
   // Проверяем сохранённые в браузере заявки, прежде чем показывать ссылку.
   (async function () {
@@ -411,5 +414,6 @@
     }
   })();
 </script>
+{% endif %}
 </body>
 </html>

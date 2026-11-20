@@ -20,7 +20,7 @@ from booking.services import confirm_booking, decline_booking
 from main.forms import CabinetSiteSettingsForm, SITE_SETTINGS_SECTIONS, SitePaletteForm
 from main.models import SiteSettings
 from main.policy import published_privacy_text
-from main.preview import PREVIEW_PAGES
+from main.preview import preview_page_urls
 from reviews.models import Review
 from services.models import Massage
 
@@ -477,23 +477,9 @@ def site_design(request):
         messages.success(request, "Палитра опубликована.")
         return redirect("cabinet:site_design")
 
-    page_urls = []
-    for route, title in PREVIEW_PAGES.items():
-        if route == "services:massage_detail":
-            page_urls.extend(
-                (reverse(route, args=[massage.slug]), massage.name)
-                for massage in Massage.objects.filter(is_archived=False).order_by("name")
-            )
-        elif route == "booking:page" and not (site and site.online_booking_enabled):
-            continue
-        elif route in ("accounts:register", "accounts:password_reset") and not (site and site.client_cabinet_enabled):
-            continue
-        else:
-            page_urls.append((reverse(route), title))
-
     return render(request, "cabinet/site_design.html", {
         "form": form,
-        "page_urls": page_urls,
+        "page_urls": list(preview_page_urls()),
         "light_fields": [field for field in form if field.name.startswith("light_")],
         "dark_fields": [field for field in form if field.name.startswith("dark_")],
     })

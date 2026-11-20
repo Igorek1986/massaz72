@@ -47,9 +47,10 @@ def client_required(view_func):
 
 
 def register(request: HttpRequest) -> HttpResponse:
-    if not _cabinet_enabled():
+    preview = getattr(request, "site_design_preview", False)
+    if not preview and not _cabinet_enabled():
         return redirect("main:index")
-    if request.user.is_authenticated and not getattr(request, "site_design_preview", False):
+    if request.user.is_authenticated and not preview:
         return redirect("accounts:dashboard")
 
     if request.method == "POST":
@@ -329,7 +330,7 @@ def request_account_erasure(request: HttpRequest) -> HttpResponse:
 
 def password_reset_request(request: HttpRequest) -> HttpResponse:
     """Запрос сброса пароля: ссылка отправляется в Telegram (если привязан)."""
-    if not _cabinet_enabled():
+    if not getattr(request, "site_design_preview", False) and not _cabinet_enabled():
         return redirect("main:index")
 
     status = None  # sent | no_telegram | not_found
