@@ -185,6 +185,8 @@ class PushWorkflowTest(TestCase):
         admin = User.objects.create_superuser(username="push-admin")
         self.client.force_login(admin)
         page = self.client.get(url)
+        self.assertContains(page, '<html lang="ru" class="redesign-page">')
+        self.assertContains(page, 'class="account__link" href="')
         self.assertContains(page, "data-push-url", count=1)
         self.assertContains(page, f'href="{url}"', count=2)
         self.assertIn("no-store", page.headers["Cache-Control"])

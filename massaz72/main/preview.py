@@ -14,6 +14,7 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_GET
 
 from accounts.forms import ProfileForm
+from accounts.models import PushSubscription
 from services.models import Massage
 
 
@@ -36,6 +37,18 @@ def _profile_sample():
 
 def _new_password_sample():
     return {"form": SetPasswordForm(get_user_model()())}
+
+
+def _notifications_sample():
+    now = timezone.now()
+    return {
+        "push_sample": True,
+        "push_devices": [
+            PushSubscription(device=PushSubscription.Device.IPHONE, consent_at=now, session_id="preview"),
+            PushSubscription(device=PushSubscription.Device.IPAD, consent_at=now - timedelta(days=1)),
+        ],
+        "current_push_session": "preview",
+    }
 
 
 def _booking_sample():
@@ -74,7 +87,9 @@ PREVIEW_PAGES = {
     ),
     "accounts:dashboard": PreviewPage("Личный кабинет клиента", "accounts/dashboard.html"),
     "accounts:profile": PreviewPage("Профиль клиента", "accounts/profile.html", _profile_sample),
-    "accounts:notifications": PreviewPage("Уведомления", "accounts/notifications.html"),
+    "accounts:notifications": PreviewPage(
+        "Уведомления", "accounts/notifications.html", _notifications_sample,
+    ),
     "services:massage_detail": PreviewPage("Страница услуги", "services/massage_detail.html", _service_sample),
     "404": PreviewPage("Страница не найдена (404)", "errors/404.html"),
     "500": PreviewPage("Ошибка сервера (500)", "errors/500.html"),

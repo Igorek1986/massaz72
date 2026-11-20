@@ -1,16 +1,20 @@
-<div class="push-controls" data-push-url="{% url 'pwa-subscription' %}" hidden>
-  <p data-push-status role="status">Проверяем поддержку уведомлений…</p>
-  <form class="push-controls__form" hidden>
+<div class="push-controls"{% if not push_sample %} data-push-url="{% url 'pwa-subscription' %}" hidden{% endif %}>
+  <p data-push-status role="status">{% if push_sample %}Уведомления включены на этом устройстве.{% else %}Проверяем поддержку уведомлений…{% endif %}</p>
+  <form class="push-controls__form"{% if not push_sample %} hidden{% endif %}>
+    {% if not push_sample %}
     {% csrf_token %}
     <label class="push-controls__consent">
       <input type="checkbox" required>
       <span>Даю <a href="{% url 'main:consent' %}#web-push">согласие на обработку данных для уведомлений</a>.
         С <a href="{% url 'main:privacy' %}#web-push">политикой</a> ознакомлен(а).</span>
     </label>
+    {% endif %}
     <div class="push-controls__actions">
+      {% if not push_sample %}
       <button type="submit" class="{{ button_class }}" data-push-enable>Включить уведомления</button>
-      <button type="button" class="{{ button_class }}" data-push-test hidden>Отправить тест</button>
-      <button type="button" class="{{ button_class }}" data-push-disable hidden>Отключить</button>
+      {% endif %}
+      <button type="button" class="{{ button_class }}" data-push-test{% if not push_sample %} hidden{% endif %}>Отправить тест</button>
+      <button type="button" class="{{ button_class }}" data-push-disable{% if not push_sample %} hidden{% endif %}>Отключить</button>
     </div>
   </form>
 </div>

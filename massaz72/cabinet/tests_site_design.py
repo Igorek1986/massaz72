@@ -158,7 +158,7 @@ class SiteDesignTest(TestCase):
         screens = {
             "accounts:dashboard": "Пока нет записей",
             "accounts:profile": "Смена пароля",
-            "accounts:notifications": "Подключённых устройств пока нет",
+            "accounts:notifications": "Устройства с push",
             "accounts:password_reset_confirm": "Сохранить пароль",
             "booking:confirm": "Подтвердите запись",
             "404": "Ошибка 404",
@@ -178,6 +178,21 @@ class SiteDesignTest(TestCase):
         self.assertEqual(self.client.get(booking_url, {"design_preview": "1"})["X-Frame-Options"], "DENY")
         self.assertEqual(BookingRequest.objects.count(), 1)
         self.assertEqual(ClientProfile.objects.count(), 1)
+
+    def test_notifications_preview_shows_inert_pwa_controls_and_sample_devices(self):
+        self.grant_access()
+        url = reverse("cabinet:site_design_sample", args=["accounts:notifications"])
+        response = self.client.get(url, {"design_preview": "1"})
+
+        self.assertContains(response, '<html lang="ru" class="redesign-page">')
+        self.assertContains(response, 'data-push-section aria-labelledby="admin-push-title"')
+        self.assertContains(response, "Уведомления включены на этом устройстве.")
+        self.assertContains(response, "Отправить тест")
+        self.assertContains(response, "iPhone · Это устройство")
+        self.assertContains(response, 'class="push-devices__row"', count=2)
+        self.assertNotContains(response, "data-push-url")
+        self.assertNotContains(response, 'type="submit" aria-label="Отключить push')
+        self.assertNotContains(response, "/revoke/")
 
     def test_publish_applies_both_themes_to_public_pages(self):
         self.grant_access()
