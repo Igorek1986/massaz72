@@ -17,11 +17,36 @@
     {% csrf_token %}
     {{ form.non_field_errors }}
     {% if form.errors %}<p role="alert">Проверьте значения цветов перед сохранением.</p>{% endif %}
-    <label class="form-label" for="design-theme">Тема</label>
-    <select class="form-input" id="design-theme">
-      <option value="light">Светлая</option>
-      <option value="dark">Тёмная</option>
-    </select>
+    <div class="site-designer__field">
+      <label class="form-label" for="design-page">Страница</label>
+      <select class="form-input" id="design-page">
+        {% for url, title in page_urls %}<option value="{{ url }}">{{ title }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="site-designer__toolbar">
+      <div class="site-designer__field">
+        <label class="form-label" for="design-width">Экран</label>
+        <select class="form-input" id="design-width">
+          <option value="wide">Обычный</option>
+          <option value="mobile">Телефон</option>
+        </select>
+      </div>
+      <button class="btn site-designer__eyedropper" type="button" id="design-eyedropper"
+              aria-label="Пипетка" title="Пипетка" aria-pressed="false" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m13 8 3 3m-5-5 7 7M12 7l5-5a2.8 2.8 0 0 1 4 4l-5 5M13 8l-9 9-1 4 4-1 9-9"/>
+        </svg>
+      </button>
+    </div>
+    <p id="design-eyedropper-feedback" role="status" hidden></p>
+    <div class="site-designer__field">
+      <label class="form-label" for="design-theme">Тема</label>
+      <select class="form-input" id="design-theme">
+        <option value="light">Светлая</option>
+        <option value="dark">Тёмная</option>
+      </select>
+    </div>
 
     <div class="site-designer__colors" data-theme-fields="light">
       {% for field in light_fields %}
@@ -52,30 +77,9 @@
     </div>
 
     <button class="btn" type="button" id="design-reset">Вернуть стандартные цвета темы</button>
+    <p class="settings-card__hint">Цвета применяются сразу в предпросмотре. Посетители увидят их после публикации.</p>
     <button class="btn btn--primary" type="submit">Опубликовать палитру</button>
   </form>
-  <section class="settings-card site-designer__preview">
-    <div class="site-designer__toolbar">
-      <label class="form-label" for="design-page">Страница</label>
-      <select class="form-input" id="design-page">
-        {% for url, title in page_urls %}<option value="{{ url }}">{{ title }}</option>{% endfor %}
-      </select>
-      <label class="form-label" for="design-width">Экран</label>
-      <select class="form-input" id="design-width">
-        <option value="wide">Обычный</option>
-        <option value="mobile">Телефон</option>
-      </select>
-      <button class="btn site-designer__eyedropper" type="button" id="design-eyedropper"
-              aria-label="Пипетка" title="Пипетка" aria-pressed="false" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m13 8 3 3m-5-5 7 7M12 7l5-5a2.8 2.8 0 0 1 4 4l-5 5M13 8l-9 9-1 4 4-1 9-9"/>
-        </svg>
-      </button>
-    </div>
-    <p id="design-eyedropper-feedback" role="status" hidden></p>
-    <p class="settings-card__hint">Цвета применяются сразу в предпросмотре. Посетители увидят их после публикации.</p>
-    <iframe id="design-preview" title="Предпросмотр сайта" sandbox="allow-scripts allow-same-origin"></iframe>
-  </section>
+  <iframe id="design-preview" title="Предпросмотр сайта" sandbox="allow-scripts allow-same-origin"></iframe>
 </div>
 {% endblock %}

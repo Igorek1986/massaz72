@@ -1871,11 +1871,18 @@ body.cabinet-body {
   align-items: start;
   gap: 16px;
 
-  &__form,
-  &__preview {
+  &__form {
     display: grid;
     gap: 12px;
     padding: 16px;
+
+    .settings-card__hint { margin-bottom: 0; }
+  }
+
+  &__field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
   }
 
   &__colors:not([hidden]) {
@@ -1898,9 +1905,9 @@ body.cabinet-body {
   }
 
   &__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
     gap: 8px;
   }
 
