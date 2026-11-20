@@ -1,0 +1,13 @@
+[Unit]
+Description=Check public massaz72.ru static assets
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/local/libexec/massaz72/check-static.sh
+TimeoutStartSec=45s
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
