@@ -61,6 +61,14 @@
           <path d="m13 8 3 3m-5-5 7 7M12 7l5-5a2.8 2.8 0 0 1 4 4l-5 5M13 8l-9 9-1 4 4-1 9-9"/>
         </svg>
       </button>
+      <button class="btn btn--ghost site-designer__icon-button" type="button" id="design-view-all"
+              aria-label="Все страницы" title="Все страницы" aria-pressed="false" aria-controls="design-gallery">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/>
+          <circle cx="12" cy="12" r="2.5"/>
+        </svg>
+      </button>
     </div>
     <p id="design-eyedropper-feedback" role="status" hidden></p>
 
@@ -96,6 +104,10 @@
     <p class="settings-card__hint">Цвета применяются сразу в предпросмотре. Посетители увидят их после публикации.</p>
     <button class="btn btn--primary" type="submit">Опубликовать палитру</button>
   </form>
-  <iframe id="design-preview" title="Предпросмотр сайта" sandbox="allow-scripts allow-same-origin"></iframe>
+  <div class="site-designer__preview" id="design-preview-panel">
+    <iframe id="design-preview" title="Предпросмотр сайта" sandbox="allow-scripts allow-same-origin"></iframe>
+    <div class="site-designer__gallery" id="design-gallery" tabindex="0" role="region"
+         aria-label="Предпросмотр всех страниц" hidden></div>
+  </div>
 </div>
 {% endblock %}

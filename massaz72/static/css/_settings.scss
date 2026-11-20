@@ -25,6 +25,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html[data-preview-gallery] {
+  overflow: hidden;
+
+  body { min-height: 0; }
+
+  .cookie-notice { display: none !important; }
+}
+
 header {
   grid-row: 1;
 }

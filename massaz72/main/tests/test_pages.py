@@ -63,6 +63,7 @@ class InstallPromotionTest(TestCase):
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertContains(response, "data-pwa-install hidden", count=1)
+                self.assertContains(response, "data-worker=")
                 self.assertContains(response, "data-pwa-ios hidden")
                 self.assertContains(response, "data-pwa-android hidden")
 

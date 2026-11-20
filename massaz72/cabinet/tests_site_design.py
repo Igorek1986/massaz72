@@ -87,6 +87,7 @@ class SiteDesignTest(TestCase):
         SiteSettings.objects.update(online_booking_enabled=False, client_cabinet_enabled=False)
         response = self.client.get(self.url)
         self.assertContains(response, 'type="color"')
+        self.assertContains(response, 'aria-controls="design-gallery"')
         self.assertEqual(
             [title for _, title in response.context["page_urls"]],
             [page.title for page in PREVIEW_PAGES.values()],
@@ -96,6 +97,7 @@ class SiteDesignTest(TestCase):
                 self.assertContains(response, f'<option value="{escape(url)}">{title}</option>')
                 preview = self.client.get(url, {"design_preview": "1"})
                 self.assertContains(preview, 'id="site-palette"')
+                self.assertNotContains(preview, "data-worker=")
                 self.assertEqual(preview["X-Frame-Options"], "SAMEORIGIN")
                 self.assertIn("no-store", preview["Cache-Control"])
         for route in ("accounts:register", "accounts:password_reset", "booking:page"):

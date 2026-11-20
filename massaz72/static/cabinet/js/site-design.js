@@ -3,7 +3,11 @@
   const themeButton = document.getElementById('design-theme');
   const page = document.getElementById('design-page');
   const deviceButtons = form.querySelectorAll('[data-preview-width]');
+  const previewPanel = document.getElementById('design-preview-panel');
   const frame = document.getElementById('design-preview');
+  const gallery = document.getElementById('design-gallery');
+  const viewAll = document.getElementById('design-view-all');
+  const pageSizes = new Map();
   const colors = [...form.querySelectorAll('[data-theme-color]')];
   let theme = 'light';
 
@@ -124,18 +128,31 @@
     if (!event.target.closest('#design-color-picker, .site-designer__color-trigger')) closePicker();
   });
 
-  function applyPalette() {
-    for (const input of colors) {
-      input.closest('.site-designer__color-row').style.setProperty('--current-color', input.value);
-    }
-    const doc = frame.contentDocument;
-    if (!doc?.getElementById('site-palette')) return;
+  function activePreviews() {
+    return gallery.hidden ? [frame] : [...gallery.querySelectorAll('iframe:not([hidden])')];
+  }
 
+  function previewDocument(preview) {
+    const doc = preview.contentDocument;
+    return doc?.getElementById('site-palette') ? doc : null;
+  }
+
+  function applyFramePalette(doc) {
     doc.documentElement.dataset.theme = theme;
     for (const input of colors) {
       if (input.dataset.themeColor === theme) {
         doc.documentElement.style.setProperty(input.dataset.cssVariable, input.value);
       }
+    }
+  }
+
+  function applyPalette() {
+    for (const input of colors) {
+      input.closest('.site-designer__color-row').style.setProperty('--current-color', input.value);
+    }
+    for (const preview of activePreviews()) {
+      const doc = previewDocument(preview);
+      if (doc) applyFramePalette(doc);
     }
   }
 
@@ -153,7 +170,9 @@
   function setPicking(enabled, message = '') {
     picking = enabled;
     eyedropper.setAttribute('aria-pressed', String(enabled));
-    frame.contentDocument?.documentElement.toggleAttribute('data-eyedropper', enabled);
+    for (const preview of activePreviews()) {
+      previewDocument(preview)?.documentElement.toggleAttribute('data-eyedropper', enabled);
+    }
     if (!enabled) highlight(null);
     feedback.textContent = message;
     feedback.hidden = !message;
@@ -242,22 +261,42 @@
     applyPalette();
   });
 
+  function loadPreview(preview, path) {
+    const url = new URL(path, window.location.origin);
+    url.searchParams.set('design_preview', '1');
+    preview.src = url.href;
+  }
+
   function choosePage() {
     setPicking(false);
     eyedropper.disabled = true;
-    const url = new URL(page.value, window.location.origin);
-    url.searchParams.set('design_preview', '1');
-    frame.src = url.href;
+    loadPreview(frame, page.value);
   }
 
-  frame.addEventListener('load', () => {
-    const doc = frame.contentDocument;
-    if (!doc?.getElementById('site-palette')) return;
+  function syncEyedropper() {
+    eyedropper.disabled = !activePreviews().some(previewDocument);
+  }
+
+  function fitGalleryPage(preview, doc) {
+    doc.documentElement.setAttribute('data-preview-gallery', '');
+    const resize = () => {
+      const borders = preview.offsetHeight - preview.clientHeight;
+      const contentHeight = Math.ceil(doc.body.getBoundingClientRect().height);
+      preview.style.setProperty('--preview-page-height', `${contentHeight + borders}px`);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(doc.body);
+    pageSizes.set(preview, observer);
+  }
+
+  function preparePreview(doc) {
+    applyFramePalette(doc);
+    doc.documentElement.toggleAttribute('data-eyedropper', picking);
     const cursorStyle = doc.createElement('style');
     cursorStyle.textContent = '[data-eyedropper], [data-eyedropper] * { cursor: crosshair !important; }' +
       '[data-eyedropper-target] { outline: 2px solid #ba527b !important; outline-offset: -2px !important; }';
     doc.head.append(cursorStyle);
-    eyedropper.disabled = false;
     doc.addEventListener('pointermove', event => {
       if (picking && highlighted !== event.target) highlight(event.target);
     });
@@ -288,7 +327,62 @@
         event.stopImmediatePropagation();
       }
     }, true);
-    applyPalette();
+  }
+
+  function galleryPage(option) {
+    const section = document.createElement('section');
+    section.className = 'site-designer__gallery-page';
+    const title = document.createElement('h2');
+    title.textContent = option.textContent;
+    const preview = document.createElement('iframe');
+    preview.title = option.textContent;
+    preview.loading = 'lazy';
+    preview.setAttribute('sandbox', frame.getAttribute('sandbox'));
+    const error = document.createElement('p');
+    error.className = 'form-error';
+    error.textContent = 'Не удалось загрузить предпросмотр страницы.';
+    error.hidden = true;
+    preview.addEventListener('load', () => {
+      pageSizes.get(preview)?.disconnect();
+      pageSizes.delete(preview);
+      const doc = previewDocument(preview);
+      preview.hidden = !doc;
+      error.hidden = Boolean(doc);
+      if (doc) {
+        preparePreview(doc);
+        fitGalleryPage(preview, doc);
+      }
+      syncEyedropper();
+    });
+    loadPreview(preview, option.value);
+    section.append(title, preview, error);
+    return section;
+  }
+
+  viewAll.addEventListener('click', () => {
+    const enabled = gallery.hidden;
+    closePicker();
+    setPicking(false);
+    frame.hidden = enabled;
+    gallery.hidden = !enabled;
+    page.disabled = enabled;
+    viewAll.setAttribute('aria-pressed', String(enabled));
+    if (enabled) {
+      gallery.replaceChildren(...Array.from(page.options, galleryPage));
+      gallery.scrollTop = 0;
+    } else {
+      for (const observer of pageSizes.values()) observer.disconnect();
+      pageSizes.clear();
+      gallery.replaceChildren();
+      applyPalette();
+    }
+    syncEyedropper();
+  });
+
+  frame.addEventListener('load', () => {
+    const doc = previewDocument(frame);
+    if (doc) preparePreview(doc);
+    syncEyedropper();
   });
   form.addEventListener('input', applyPalette);
   page.addEventListener('change', choosePage);
@@ -297,7 +391,7 @@
       for (const option of deviceButtons) {
         option.setAttribute('aria-pressed', String(option === button));
       }
-      frame.classList.toggle('site-designer__frame--mobile', button.dataset.previewWidth === 'mobile');
+      previewPanel.classList.toggle('site-designer__preview--mobile', button.dataset.previewWidth === 'mobile');
     });
   }
   document.getElementById('design-reset').addEventListener('click', () => {

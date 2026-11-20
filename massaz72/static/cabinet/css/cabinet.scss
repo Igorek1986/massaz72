@@ -1963,6 +1963,13 @@ body.cabinet-body:has(.cabinet-content--designer),
     &[aria-pressed="true"] [data-theme-icon="dark"] { display: block; }
   }
 
+  &__preview {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    min-width: 0;
+    min-height: 0;
+  }
+
   iframe {
     justify-self: center;
     width: 100%;
@@ -1973,7 +1980,31 @@ body.cabinet-body:has(.cabinet-content--designer),
     background: #fff;
   }
 
-  &__frame--mobile { max-width: 390px; }
+  &__gallery:not([hidden]) {
+    display: grid;
+    align-content: start;
+    justify-items: center;
+    gap: 24px;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  &__gallery-page {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+
+    h2 { font-size: 14px; }
+
+    iframe {
+      height: var(--preview-page-height, 50vh);
+    }
+  }
+
+  &__preview--mobile > iframe,
+  &__preview--mobile &__gallery-page { max-width: 390px; }
 
   @media (max-width: 900px) {
     grid-template-columns: minmax(0, 1fr);
