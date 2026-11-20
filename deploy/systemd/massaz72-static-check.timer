@@ -1,0 +1,9 @@
+[Unit]
+Description=Check massaz72.ru static assets every five minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

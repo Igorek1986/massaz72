@@ -3,7 +3,6 @@ set -e
 
 python manage.py migrate --noinput
 python manage.py apply_price_changes
-python manage.py collectstatic --noinput
 
 # Фоновая «уборка»: раз в несколько часов переносит запланированную цену в основную,
 # когда дата изменения наступила. Сам момент смены цены на сайте обеспечивается

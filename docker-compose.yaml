@@ -21,9 +21,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./massaz72/media:/app/media
+      - ${MASSAZ72_MEDIA_DIR:-./massaz72/media}:/app/media
       - ./massaz72/logs:/app/logs
-      - ./massaz72/staticfiles:/app/staticfiles
     restart: always
     env_file:
       - .env
@@ -33,7 +32,24 @@ services:
     healthcheck:
       # «Здоров» = entrypoint уже применил миграции и поднял gunicorn.
       # На него опирается qcluster, чтобы не мигрировать БД параллельно с app.
-      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status==200 else 1)\""]
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import http.client
+          import os
+          import sys
+
+          allowed_hosts = os.getenv("ALLOWED_HOSTS", "").split(",")
+          hosts = (item.strip().lstrip(".") for item in allowed_hosts)
+          host = next((item for item in hosts if item), "localhost")
+          if host == "*":
+              host = "localhost"
+
+          connection = http.client.HTTPConnection("127.0.0.1", 8000, timeout=4)
+          connection.request("GET", "/", headers={"Host": host})
+          sys.exit(0 if connection.getresponse().status == 200 else 1)
       interval: 10s
       timeout: 5s
       retries: 12

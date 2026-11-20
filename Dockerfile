@@ -17,6 +17,11 @@ ENV DJANGO_SECRET_KEY=build-only-dummy-key
 ENV ALLOWED_HOSTS=localhost
 RUN python manage.py compilescss
 RUN python manage.py collectstatic --noinput
+RUN test -s staticfiles/css/main.css && \
+    test -s staticfiles/css/vendor.css && \
+    test -s staticfiles/pwa/controls.css && \
+    test -s staticfiles/cabinet/css/cabinet.css && \
+    test -s staticfiles/robots.txt
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
