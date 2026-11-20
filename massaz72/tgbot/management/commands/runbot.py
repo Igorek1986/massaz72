@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
+from django.db import connections
 
 from tgbot.bot import ALLOWED_UPDATES, get_bot
 from tgbot.models import BotSettings
@@ -8,7 +9,10 @@ class Command(BaseCommand):
     help = "Запускает Telegram-бота в режиме polling (long polling)."
 
     def handle(self, *args, **options):
-        settings = BotSettings.load()
+        try:
+            settings = BotSettings.load()
+        finally:
+            connections.close_all()
         if not settings.token:
             raise CommandError(
                 "Токен бота не задан. Укажите его в админке: «Telegram-бот → Настройки»."
@@ -24,13 +28,26 @@ class Command(BaseCommand):
         me = bot.get_me()
         if settings.bot_username != me.username:
             settings.bot_username = me.username
-            settings.save(update_fields=["bot_username"])
+            try:
+                settings.save(update_fields=["bot_username"])
+            finally:
+                connections.close_all()
 
         self.stdout.write(
             self.style.SUCCESS(
                 f"Бот @{me.username} запущен в режиме polling. Нажмите Ctrl+C для остановки."
             )
         )
+        process_new_updates = bot.process_new_updates
+
+        def process_polling_updates(updates):
+            try:
+                return process_new_updates(updates)
+            finally:
+                connections.close_all()
+
+        # Синхронные обработчики работают в потоке polling, без цикла запроса Django.
+        bot.process_new_updates = process_polling_updates
         try:
             bot.infinity_polling(
                 timeout=30,
@@ -39,3 +56,5 @@ class Command(BaseCommand):
             )
         except KeyboardInterrupt:
             self.stdout.write("Остановлено.")
+        finally:
+            bot.process_new_updates = process_new_updates
